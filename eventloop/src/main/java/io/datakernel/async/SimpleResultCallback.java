@@ -19,6 +19,7 @@ package io.datakernel.async;
 import io.datakernel.annotation.Nullable;
 
 public abstract class SimpleResultCallback<T> implements ResultCallback<T> {
+
 	protected abstract void onResultOrException(@Nullable T result);
 
 	@Override

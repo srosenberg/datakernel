@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Blocks running until take place predetermined number of its calling
  */
-public class BlockingCompletionCallback implements CompletionCallback {
+public final class BlockingCompletionCallback implements CompletionCallback {
 	private final CountDownLatch latch;
 	private volatile Exception e;
 

@@ -24,7 +24,7 @@ import java.util.Iterator;
  * it will be call listeners methods too. Each listener can react only on one action, than it will be removed from
  * this ListenableCompletionCallback.
  */
-public class ListenableCompletionCallback extends AbstractAsyncCancellable implements CompletionCallback {
+public final class ListenableCompletionCallback extends AbstractAsyncCancellable implements CompletionCallback {
 	private ArrayList<CompletionCallback> callbackList = new ArrayList<>();
 	private int cancelled = 0;
 	private int cancellable = 0;

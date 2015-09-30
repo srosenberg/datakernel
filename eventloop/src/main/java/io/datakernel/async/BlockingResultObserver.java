@@ -25,7 +25,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <T> type of result
  */
-public class BlockingResultObserver<T> implements ResultCallback<T> {
+public final class BlockingResultObserver<T> implements ResultCallback<T> {
 	private final CountDownLatch latch = new CountDownLatch(1);
 	private volatile T result;
 	private volatile Exception e;

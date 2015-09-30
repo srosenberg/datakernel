@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
 import org.slf4j.Logger;
@@ -35,7 +36,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Static utility methods pertaining to {@link ResultCallback}, {@link CompletionCallback} and working with
  * {@link NioServer} and {@link NioService} with monitoring used {@link ListenableFuture} .
  */
-public class AsyncCallbacks {
+public final class AsyncCallbacks {
 	private static final Logger logger = getLogger(AsyncCallbacks.class);
 
 	private static final CompletionCallback IGNORE_COMPLETION_CALLBACK = new CompletionCallback() {
@@ -1051,6 +1052,60 @@ public class AsyncCallbacks {
 		public ParallelExecutionException(Object[] results, Exception[] exceptions) {
 			this.results = results;
 			this.exceptions = exceptions;
+		}
+	}
+
+	/**
+	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link ResultCallback}
+	 * @param <T>
+	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
+	 * to specified eventloop
+	 */
+	public static <T> ResultCallback<T> forwardingResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
+		return new ForwardingEventloopResultCallback<T>(eventloop, callback);
+	}
+
+	/**
+	 * Represents a ResultCallback which forwards result to another eventloop
+	 *
+	 * @param <T> type of result
+	 */
+	private static final class ForwardingEventloopResultCallback<T> implements ResultCallback<T> {
+		private final NioEventloop eventloop;
+		private final ResultCallback<T> callback;
+
+		/**
+		 * Creates a new instance of ConcurrentResultCallback
+		 *
+		 * @param eventloop eventloop in which it will handle result
+		 * @param callback  callback which will be handle result
+		 */
+		public ForwardingEventloopResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
+			this.eventloop = eventloop;
+			this.callback = callback;
+		}
+
+		@Override
+		public void onResult(final T result) {
+			eventloop.postConcurrently(new Runnable() {
+				@Override
+				public void run() {
+					callback.onResult(result);
+				}
+			});
+		}
+
+		@Override
+		public void onException(final Exception exception) {
+			eventloop.postConcurrently(new Runnable() {
+				@Override
+				public void run() {
+					callback.onException(exception);
+				}
+			});
 		}
 	}
 }

@@ -23,7 +23,7 @@ import static com.google.common.base.Throwables.propagate;
  * Observer, used to check completion of some asynchronous action.
  * Saves completion flag or exception upon the {@code onComplete} or {@code onException} call.
  */
-public class CompletionCallbackObserver implements CompletionCallback {
+public final class CompletionCallbackObserver implements CompletionCallback {
 	private boolean complete;
 	private Exception exception;
 
