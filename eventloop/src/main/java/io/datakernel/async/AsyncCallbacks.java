@@ -1064,48 +1064,61 @@ public final class AsyncCallbacks {
 	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
 	 * to specified eventloop
 	 */
-	public static <T> ResultCallback<T> concurrentResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
-		return new ConcurrentResultCallback<T>(eventloop, callback);
+	public static <T> ResultCallback<T> concurrentResultCallback(final NioEventloop eventloop,
+	                                                             final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			public void onResult(final T result) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onResult(result);
+					}
+				});
+			}
+
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
 	}
 
 	/**
-	 * Represents a ResultCallback which forwards result to another eventloop
-	 *
-	 * @param <T> type of result
+	 * Returns {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link CompletionCallback}
+	 * @return {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
 	 */
-	private static final class ConcurrentResultCallback<T> implements ResultCallback<T> {
-		private final NioEventloop eventloop;
-		private final ResultCallback<T> callback;
+	public static CompletionCallback concurrentCompletionCallback(final NioEventloop eventloop,
+	                                                             final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onComplete();
+					}
+				});
+			}
 
-		/**
-		 * Creates a new instance of ConcurrentResultCallback
-		 *
-		 * @param eventloop eventloop in which it will handle result
-		 * @param callback  callback which will be handle result
-		 */
-		public ConcurrentResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
-			this.eventloop = eventloop;
-			this.callback = callback;
-		}
-
-		@Override
-		public void onResult(final T result) {
-			eventloop.postConcurrently(new Runnable() {
-				@Override
-				public void run() {
-					callback.onResult(result);
-				}
-			});
-		}
-
-		@Override
-		public void onException(final Exception exception) {
-			eventloop.postConcurrently(new Runnable() {
-				@Override
-				public void run() {
-					callback.onException(exception);
-				}
-			});
-		}
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
 	}
 }

@@ -19,9 +19,8 @@ package io.datakernel.rpc.hello;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.BlockingCompletionCallback;
-import io.datakernel.async.BlockingResultObserver;
-import io.datakernel.async.ResultCallback;
+import com.google.common.util.concurrent.SettableFuture;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -131,21 +130,23 @@ public class RpcNioHelloWorldTest {
 					.requestSenderFactory(RequestSenderFactory.firstAvailable())
 					.build();
 
-			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
+			SettableFuture<Void> future = SettableFuture.create();
+			final CompletionCallback callback = AsyncCallbacks.completionCallbackOfFuture(future);
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
-					client.start(connectCompletion);
+					client.start(callback);
 				}
 			});
-			connectCompletion.await();
+			future.get();
 		}
 
 		@Override
 		public String hello(String name) throws Exception {
-			BlockingResultObserver<HelloResponse> result = new BlockingResultObserver<>();
-			helloAsync(name, result);
-			return result.getResult().message;
+			SettableFuture<HelloResponse> future = SettableFuture.create();
+			ResultCallback<HelloResponse> resultCallback = AsyncCallbacks.resultCallbackOfFuture(future);
+			helloAsync(name, resultCallback);
+			return future.get().message;
 		}
 
 		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
@@ -159,7 +160,8 @@ public class RpcNioHelloWorldTest {
 
 		@Override
 		public void close() throws IOException {
-			final BlockingCompletionCallback callback = new BlockingCompletionCallback();
+			SettableFuture<Void> future = SettableFuture.create();
+			final CompletionCallback callback = AsyncCallbacks.completionCallbackOfFuture(future);
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -167,7 +169,7 @@ public class RpcNioHelloWorldTest {
 				}
 			});
 			try {
-				callback.await();
+				future.get();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
