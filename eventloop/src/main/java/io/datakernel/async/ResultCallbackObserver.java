@@ -23,7 +23,7 @@ package io.datakernel.async;
  *
  * @param <T> type of received result
  */
-public class ResultCallbackObserver<T> implements ResultCallback<T> {
+public final class ResultCallbackObserver<T> implements ResultCallback<T> {
 	private boolean ready;
 	private T result;
 	private Exception exception;

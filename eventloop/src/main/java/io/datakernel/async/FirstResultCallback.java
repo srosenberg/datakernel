@@ -19,7 +19,7 @@ package io.datakernel.async;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class FirstResultCallback<T> implements ResultCallback<T> {
+public final class FirstResultCallback<T> implements ResultCallback<T> {
 	private final ResultCallback<T> resultCallback;
 	private T result;
 	private Exception exception;
