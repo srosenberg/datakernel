@@ -1056,7 +1056,7 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException} calls
+	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
 	 * to specified eventloop
 	 * @param eventloop {@link Eventloop} to which calls will be forwarded
 	 * @param callback {@link ResultCallback}
@@ -1064,8 +1064,8 @@ public final class AsyncCallbacks {
 	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
 	 * to specified eventloop
 	 */
-	public static <T> ResultCallback<T> forwardingResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
-		return new ForwardingEventloopResultCallback<T>(eventloop, callback);
+	public static <T> ResultCallback<T> concurrentResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
+		return new ConcurrentResultCallback<T>(eventloop, callback);
 	}
 
 	/**
@@ -1073,7 +1073,7 @@ public final class AsyncCallbacks {
 	 *
 	 * @param <T> type of result
 	 */
-	private static final class ForwardingEventloopResultCallback<T> implements ResultCallback<T> {
+	private static final class ConcurrentResultCallback<T> implements ResultCallback<T> {
 		private final NioEventloop eventloop;
 		private final ResultCallback<T> callback;
 
@@ -1083,7 +1083,7 @@ public final class AsyncCallbacks {
 		 * @param eventloop eventloop in which it will handle result
 		 * @param callback  callback which will be handle result
 		 */
-		public ForwardingEventloopResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
+		public ConcurrentResultCallback(NioEventloop eventloop, ResultCallback<T> callback) {
 			this.eventloop = eventloop;
 			this.callback = callback;
 		}
