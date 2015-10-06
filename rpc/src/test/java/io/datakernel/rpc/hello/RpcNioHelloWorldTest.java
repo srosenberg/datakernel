@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.async.AsyncCallbacks.closeFuture;
@@ -252,8 +253,10 @@ public class RpcNioHelloWorldTest {
 		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
 			client.hello("--");
 			fail("Exception expected");
-		} catch (RpcRemoteException e) {
-			assertEquals("java.lang.Exception: Illegal name", e.getMessage());
+		} catch (ExecutionException e) {
+			Throwable cause = e.getCause();
+			assertEquals(RpcRemoteException.class, cause.getClass());
+			assertEquals("java.lang.Exception: Illegal name", cause.getMessage());
 		} finally {
 			closeFuture(server).get();
 		}
