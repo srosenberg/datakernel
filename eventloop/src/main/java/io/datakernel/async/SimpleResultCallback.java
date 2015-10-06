@@ -23,12 +23,12 @@ public abstract class SimpleResultCallback<T> implements ResultCallback<T> {
 	protected abstract void onResultOrException(@Nullable T result);
 
 	@Override
-	public void onResult(T result) {
+	public final void onResult(T result) {
 		onResultOrException(result);
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	public final void onException(Exception exception) {
 		onResultOrException(null);
 	}
 }

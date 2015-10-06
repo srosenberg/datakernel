@@ -21,12 +21,12 @@ public abstract class SimpleCompletionCallback implements CompletionCallback {
 	protected abstract void onCompleteOrException();
 
 	@Override
-	public void onComplete() {
+	public final void onComplete() {
 		onCompleteOrException();
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	public final void onException(Exception exception) {
 		onCompleteOrException();
 	}
 }
