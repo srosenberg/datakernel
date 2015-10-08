@@ -21,7 +21,7 @@ import com.google.common.base.Throwables;
 /**
  * Represents the runnable which will be ran with exception, which will be threw from runWithException()
  */
-public abstract class RunnableWithException implements Runnable {
+public abstract class RunnableWithException extends  AbstractAsyncCancellable implements Runnable {
 
 	/**
 	 * Throws the exception

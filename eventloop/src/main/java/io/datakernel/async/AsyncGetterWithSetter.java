@@ -26,7 +26,9 @@ import static com.google.common.base.Preconditions.checkState;
  *
  * @param <T> type of result
  */
-public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCallback<T> {
+public final class AsyncGetterWithSetter<T> extends AbstractAsyncCancellable
+		implements AsyncGetter<T>, ResultCallback<T> {
+
 	private final Eventloop eventloop;
 	private T result;
 	private Exception exception;

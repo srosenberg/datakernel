@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-public abstract class SimpleCompletionCallback implements CompletionCallback {
+public abstract class SimpleCompletionCallback extends AbstractAsyncCancellable implements CompletionCallback {
 
 	protected abstract void onCompleteOrException();
 

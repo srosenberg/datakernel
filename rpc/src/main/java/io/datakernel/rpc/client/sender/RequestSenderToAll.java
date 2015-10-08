@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
@@ -26,6 +25,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.net.InetSocketAddress;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 final class RequestSenderToAll implements RequestSender {
@@ -69,4 +69,62 @@ final class RequestSenderToAll implements RequestSender {
 	public CompositeData getRequestSenderInfo() throws OpenDataException {
 		return null;
 	}
+
+
+	private static final class FirstResultCallback<T> implements ResultCallback<T> {
+		private final ResultCallback<T> resultCallback;
+		private T result;
+		private Exception exception;
+		private int countCalls;
+		private int awaitsCalls;
+		private boolean hasResult;
+		private boolean complete;
+
+		public FirstResultCallback(ResultCallback<T> resultCallback) {
+			checkNotNull(resultCallback);
+			this.resultCallback = resultCallback;
+		}
+
+		@Override
+		public final void onResult(T result) {
+			++countCalls;
+			if (!hasResult && isValidResult(result)) {
+				this.result = result;  // first valid result
+				this.hasResult = true;
+			}
+			processResult();
+		}
+
+		protected boolean isValidResult(T result) {
+			return result != null;
+		}
+
+		@Override
+		public final void onException(Exception exception) {
+			++countCalls;
+			if (!hasResult) {
+				this.exception = exception; // last Exception
+			}
+		}
+
+		public void resultOf(int maxAwaitsCalls) {
+			checkArgument(maxAwaitsCalls > 0);
+			this.awaitsCalls = maxAwaitsCalls;
+			processResult();
+		}
+
+		private boolean resultReady() {
+			return awaitsCalls > 0 && (countCalls == awaitsCalls || hasResult);
+		}
+
+		private void processResult() {
+			if (complete || !resultReady()) return;
+			complete = true;
+			if (hasResult || exception == null)
+				resultCallback.onResult(result);
+			else
+				resultCallback.onException(exception);
+		}
+	}
+
 }
