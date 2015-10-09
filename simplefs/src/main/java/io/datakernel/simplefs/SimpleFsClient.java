@@ -16,7 +16,6 @@
 
 package io.datakernel.simplefs;
 
-import com.google.common.base.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -30,7 +29,6 @@ import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.StreamByteChunker;
-import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.slf4j.Logger;
@@ -59,9 +57,10 @@ public class SimpleFsClient implements SimpleFs {
 
 	@Override
 	public StreamConsumer<ByteBuf> upload(final String fileName) {
-		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-		transformer.streamTo(forwarder);
+		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
+		forwarder.streamTo(transformer);
+
 		final CompletionCallback closeCallback = transformer.getCloseCallback();
 
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
@@ -81,7 +80,7 @@ public class SimpleFsClient implements SimpleFs {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-								forwarder.streamTo(streamByteChunker);
+								transformer.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
 							}
 						})
@@ -111,9 +110,8 @@ public class SimpleFsClient implements SimpleFs {
 				closeCallback.onException(e);
 			}
 		});
-		StreamFilter<ByteBuf> filter = new StreamFilter<>(eventloop, Predicates.<ByteBuf>alwaysTrue());
-		filter.streamTo(transformer);
-		return filter;
+
+		return forwarder;
 	}
 
 	@Override

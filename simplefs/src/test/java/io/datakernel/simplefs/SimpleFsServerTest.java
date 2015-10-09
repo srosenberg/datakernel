@@ -255,7 +255,7 @@ public class SimpleFsServerTest {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile), true);
 		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -365,6 +365,7 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile1).toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile2).toFile()));
 	}
 
 	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {
