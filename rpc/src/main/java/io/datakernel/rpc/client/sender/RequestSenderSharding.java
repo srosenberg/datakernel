@@ -35,6 +35,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 final class RequestSenderSharding implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;
+	private final List<RequestSender> subSenders;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 
 	// JMX
@@ -42,6 +43,15 @@ final class RequestSenderSharding implements RequestSender {
 
 	public RequestSenderSharding(RpcClientConnectionPool connections, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
 		this.connections = checkNotNull(connections);
+		this.subSenders = null;
+		this.hashFunction = checkNotNull(hashFunction);
+
+		this.callCounters = new long[connections.addresses().size()];
+	}
+
+	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		this.subSenders = checkNotNull(senders);
+		this.connections = null;
 		this.hashFunction = checkNotNull(hashFunction);
 
 		this.callCounters = new long[connections.addresses().size()];

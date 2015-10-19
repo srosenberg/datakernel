@@ -37,12 +37,22 @@ import io.datakernel.rpc.protocol.RpcMessage;
 final class RequestSenderToAll implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;
+	private final List<RequestSender> subSenders;
 
 	// JMX
 	private final long[] callCounters;
 
 	public RequestSenderToAll(RpcClientConnectionPool connections) {
 		this.connections = checkNotNull(connections);
+		this.subSenders = null;
+
+		this.callCounters = new long[connections.addresses().size()];
+	}
+
+
+	public RequestSenderToAll(List<RequestSender> senders) {
+		this.subSenders = checkNotNull(senders);
+		this.connections = null;
 
 		this.callCounters = new long[connections.addresses().size()];
 	}
@@ -50,23 +60,40 @@ final class RequestSenderToAll implements RequestSender {
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
 		checkNotNull(callback);
-		int serverNumber = 0;
-		int calls = 0;
-		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
-		for (InetSocketAddress address : connections.addresses()) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection == null) {
-				serverNumber++;
-				continue;
+		if (connections != null) {
+			int serverNumber = 0;
+			int calls = 0;
+			FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
+			for (InetSocketAddress address : connections.addresses()) {
+				RpcClientConnection connection = connections.get(address);
+				if (connection == null) {
+					serverNumber++;
+					continue;
+				}
+				++calls;
+				++callCounters[serverNumber];
+				connection.callMethod(request, timeout, resultCallback);
 			}
-			++calls;
-			++callCounters[serverNumber];
-			connection.callMethod(request, timeout, resultCallback);
-		}
-		if (calls == 0) {
-			callback.onException(NO_AVAILABLE_CONNECTION);
+			if (calls == 0) {
+				callback.onException(NO_AVAILABLE_CONNECTION);
+			} else {
+				resultCallback.resultOf(calls);
+			}
 		} else {
-			resultCallback.resultOf(calls);
+			int calls = 0;
+			FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
+			for (RequestSender subSender : subSenders) {
+				if (subSender == null) {
+					continue;
+				}
+				++calls;
+				subSender.sendRequest(request, timeout, resultCallback);
+			}
+			if (calls == 0) {
+				callback.onException(NO_AVAILABLE_CONNECTION);
+			} else {
+				resultCallback.resultOf(calls);
+			}
 		}
 	}
 

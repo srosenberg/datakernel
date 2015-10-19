@@ -35,31 +35,51 @@ import static com.google.common.base.Preconditions.checkNotNull;
 final class RequestSenderToFirst implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;
+	private final List<RequestSender> subSenders;
 
 	// JMX
 	private final long[] callCounters;
 
 	public RequestSenderToFirst(RpcClientConnectionPool connections) {
 		this.connections = checkNotNull(connections);
+		this.subSenders = null;
 
 		this.callCounters = new long[connections.addresses().size()];
+	}
+
+	public RequestSenderToFirst(List<RequestSender> senders) {
+		this.subSenders = checkNotNull(senders);
+		this.connections = null;
+
+//		this.callCounters = new long[connections.addresses().size()];
+		this.callCounters = null;
 	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
-		int serverNumber = 0;
-		for (InetSocketAddress address : connections.addresses()) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection == null) {
-				serverNumber++;
-				continue;
+		if (connections != null) {
+			int serverNumber = 0;
+			for (InetSocketAddress address : connections.addresses()) {
+				RpcClientConnection connection = connections.get(address);
+				if (connection == null) {
+					serverNumber++;
+					continue;
+				}
+				++callCounters[serverNumber];
+				connection.callMethod(request, timeout, callback);
+				return;
 			}
-			++callCounters[serverNumber];
-			connection.callMethod(request, timeout, callback);
-			return;
+			callback.onException(NO_AVAILABLE_CONNECTION);
+		} else {
+			for (RequestSender subSender : subSenders) {
+				if (subSender != null) {
+					subSender.sendRequest(request, timeout, callback);
+					return;
+				}
+			}
+			callback.onException(NO_AVAILABLE_CONNECTION);
 		}
-		callback.onException(NO_AVAILABLE_CONNECTION);
 	}
 
 	@Override

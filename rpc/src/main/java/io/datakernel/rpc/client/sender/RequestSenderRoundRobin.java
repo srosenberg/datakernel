@@ -35,39 +35,70 @@ import static com.google.common.base.Preconditions.checkNotNull;
 final class RequestSenderRoundRobin implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;
+	private final List<RequestSender> subSenders;
 	private int activeConnection = 0;
+	private int activeSubSender = 0;
 
 	// JMX
 	private final long[] callCounters;
 
 	public RequestSenderRoundRobin(RpcClientConnectionPool connections) {
 		this.connections = checkNotNull(connections);
+		this.subSenders = null;
 
 		this.callCounters = new long[connections.addresses().size()];
+	}
+
+	public RequestSenderRoundRobin(List<RequestSender> requestSenders) {
+		this.subSenders = checkNotNull(requestSenders);
+		this.connections = null;
+
+		this.callCounters = null;
 	}
 
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
-		while (connections.size() > 0) {
-			for (int i = 0; i < connections.addresses().size(); ++i) {
-				int serverNumber = getServerNumber();
-				InetSocketAddress address = connections.addresses().get(serverNumber);
-				RpcClientConnection connection = connections.get(address);
-				if (connection == null) {
-					continue;
+		if (connections != null) {
+			while (connections.size() > 0) {
+				for (int i = 0; i < connections.addresses().size(); ++i) {
+					int serverNumber = getServerNumber();
+					InetSocketAddress address = connections.addresses().get(serverNumber);
+					RpcClientConnection connection = connections.get(address);
+					if (connection == null) {
+						continue;
+					}
+					++callCounters[serverNumber];
+					connection.callMethod(request, timeout, callback);
+					return;
 				}
-				++callCounters[serverNumber];
-				connection.callMethod(request, timeout, callback);
-				return;
 			}
+			callback.onException(NO_AVAILABLE_CONNECTION);
+		} else {
+			while (subSenders.size() > 0) {
+				for (int i = 0; i < connections.addresses().size(); ++i) {
+					int subSenderNumber = getSubSenderNumber();
+					RequestSender subSender = subSenders.get(subSenderNumber);
+					if (subSender == null) {
+						continue;
+					}
+//					++callCounters[serverNumber];
+					subSender.sendRequest(request, timeout, callback);
+					return;
+				}
+			}
+			callback.onException(NO_AVAILABLE_CONNECTION);
 		}
-		callback.onException(NO_AVAILABLE_CONNECTION);
 	}
 
 	private int getServerNumber() {
 		activeConnection = (activeConnection + 1) % connections.addresses().size();
 		return activeConnection;
+	}
+
+	private int getSubSenderNumber() {
+		activeSubSender = (activeSubSender + 1) % subSenders.size();
+		return activeSubSender;
 	}
 
 	@Override
