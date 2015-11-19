@@ -17,8 +17,7 @@
 package io.datakernel.hashfs.example;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs.Config;
-import io.datakernel.hashfs.ServerFactory;
+import io.datakernel.hashfs.HashFsServer;
 import io.datakernel.hashfs.ServerInfo;
 
 import java.io.IOException;
@@ -33,21 +32,27 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ServerSetupExample {
+
 	public static void main(String[] args) throws IOException {
 
-		ServerInfo server0 = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5570), 1);
-		ServerInfo server1 = new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5571), 1);
-		ServerInfo server2 = new ServerInfo(2, new InetSocketAddress("127.0.0.1", 5572), 1);
-		ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("127.0.0.1", 5573), 1);
-		ServerInfo server4 = new ServerInfo(4, new InetSocketAddress("127.0.0.1", 5574), 1);
-
+		// Specifying bootstrap servers - these are considered to be always alive and keep the source info about alive servers map
+		ServerInfo server0 = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5570), 1.0);
+		ServerInfo server1 = new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5571), 0.2);
+		ServerInfo server2 = new ServerInfo(2, new InetSocketAddress("127.0.0.1", 5572), 1.3);
+		ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("127.0.0.1", 5573), 2.6);
+		ServerInfo server4 = new ServerInfo(4, new InetSocketAddress("127.0.0.1", 5574), 8.0);
 		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server0, server1, server2, server3, server4));
 
+		// Core component
 		NioEventloop eventloop = new NioEventloop();
 
-		Path serverStorage0 = Paths.get("./test/server_storage_" + server0.hashCode());
-		ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage0,
-				Config.getDefaultConfig(), server0, bootstrap).start(ignoreCompletionCallback());
-
+		// Starting servers
+		for (ServerInfo server : bootstrap) {
+			Path serverStorage = Paths.get("./test/server_storage_" + server.getServerId());
+			HashFsServer.buildInstance(eventloop, newCachedThreadPool(), serverStorage, server, bootstrap)
+					.build()
+					.start(ignoreCompletionCallback());
+		}
+		eventloop.run();
 	}
 }

@@ -32,7 +32,7 @@ import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class ServiceGraph implements AsyncService {
+public class ServiceGraph {
 
 	/**
 	 * Inner class which represents service with its identification key - object. This object can
@@ -257,7 +257,7 @@ public class ServiceGraph implements AsyncService {
 					callback.onComplete();
 					longestPath(processingTimes, vertices, forwardNodes, backwardNodes);
 				} else {
-					callback.onExeption((Exception) (failedNodes.values().iterator().next()));
+					callback.onException((Exception) (failedNodes.values().iterator().next()));
 				}
 			}
 			return;
@@ -288,7 +288,7 @@ public class ServiceGraph implements AsyncService {
 				}
 
 				@Override
-				public void onExeption(Exception e) {
+				public void onException(Exception e) {
 					synchronized (ServiceGraph.this) {
 						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
@@ -310,10 +310,21 @@ public class ServiceGraph implements AsyncService {
 	protected void onStart() {
 	}
 
+	public void start() throws Exception {
+		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
+		start(startCallback);
+		startCallback.await();
+	}
+
+	public void stop() throws Exception {
+		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
+		stop(stopCallback);
+		stopCallback.await();
+	}
+
 	/**
 	 * Started services from the service graph
 	 */
-	@Override
 	synchronized public void start(AsyncServiceCallback callback) {
 		if (!started) {
 			onStart();
@@ -337,7 +348,6 @@ public class ServiceGraph implements AsyncService {
 	/**
 	 * Stops services from  the service graph
 	 */
-	@Override
 	synchronized public void stop(final AsyncServiceCallback callback) {
 		logger.info("Stopping running services: " + nodesToString(startedServices));
 		visitForwardAsync(new ServiceGraphAction() {

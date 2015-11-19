@@ -47,7 +47,7 @@ public final class AsyncServiceAdapters {
 	private AsyncServiceAdapters() {
 	}
 
-	public static AsyncServiceAdapter<AsyncService> forConcurrentService() {
+	public static AsyncServiceAdapter<AsyncService> forAsyncService() {
 		return new AsyncServiceAdapter<AsyncService>() {
 			@Override
 			public AsyncService toService(AsyncService service, Executor executor) {
@@ -56,7 +56,7 @@ public final class AsyncServiceAdapters {
 		};
 	}
 
-	private static CompletionCallback toCompletionCallback(final AsyncServiceCallback callback) {
+	public static CompletionCallback toCompletionCallback(final AsyncServiceCallback callback) {
 		return new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -65,7 +65,7 @@ public final class AsyncServiceAdapters {
 
 			@Override
 			public void onException(Exception exception) {
-				callback.onExeption(exception);
+				callback.onException(exception);
 			}
 		};
 	}
@@ -82,7 +82,6 @@ public final class AsyncServiceAdapters {
 							@Override
 							public void run() {
 								node.start(toCompletionCallback(callback));
-								callback.onComplete();
 							}
 						});
 					}
@@ -93,7 +92,6 @@ public final class AsyncServiceAdapters {
 							@Override
 							public void run() {
 								node.stop(toCompletionCallback(callback));
-								callback.onComplete();
 							}
 						});
 					}
@@ -116,7 +114,7 @@ public final class AsyncServiceAdapters {
 									node.listen();
 									callback.onComplete();
 								} catch (IOException e) {
-									callback.onExeption(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -197,7 +195,7 @@ public final class AsyncServiceAdapters {
 									service.start();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onExeption(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -212,7 +210,7 @@ public final class AsyncServiceAdapters {
 									service.stop();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onExeption(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -293,7 +291,7 @@ public final class AsyncServiceAdapters {
 									closeable.close();
 									callback.onComplete();
 								} catch (IOException e) {
-									callback.onExeption(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -321,7 +319,7 @@ public final class AsyncServiceAdapters {
 									connection.close();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onExeption(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -337,7 +335,7 @@ public final class AsyncServiceAdapters {
 										((Closeable) dataSource).close();
 										callback.onComplete();
 									} catch (IOException e) {
-										callback.onExeption(e);
+										callback.onException(e);
 									}
 								}
 							});

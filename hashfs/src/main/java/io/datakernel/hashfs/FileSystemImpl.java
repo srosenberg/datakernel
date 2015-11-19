@@ -20,6 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -35,7 +36,55 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-final class FileSystemImpl implements FileSystem {
+final class FileSystemImpl implements FileSystem, NioService {
+	public static final class Builder {
+		private final NioEventloop eventLoop;
+		private final ExecutorService executor;
+		private final Path storage;
+		private Path tmpStorage;
+
+		private String inProgressExtension = DEFAULT_IN_PROGRESS_EXTENSION;
+		private String tmpDirectoryName = DEFAULT_TMP_FOLDER_NAME;
+		private int readerBufferSize = DEFAULT_READER_BUFFER_SIZE;
+
+		private Builder(NioEventloop eventLoop, ExecutorService executor, Path storage) {
+			this.eventLoop = eventLoop;
+			this.executor = executor;
+			this.storage = storage;
+		}
+
+		public Builder setInProgressExtension(String inProgressExtension) {
+			this.inProgressExtension = inProgressExtension;
+			return this;
+		}
+
+		public Builder setTmpDirectoryName(String tmpDirectoryName) {
+			this.tmpDirectoryName = tmpDirectoryName;
+			return this;
+		}
+
+		public Builder setReaderBufferSize(int readerBufferSize) {
+			this.readerBufferSize = readerBufferSize;
+			return this;
+		}
+
+		public Builder setTmpStorage(Path tmpStorage) {
+			this.tmpStorage = tmpStorage;
+			return this;
+		}
+
+		public FileSystemImpl build() {
+			if (tmpStorage == null) {
+				tmpStorage = storage.resolve(tmpDirectoryName);
+			}
+			return new FileSystemImpl(eventLoop, executor, storage, tmpStorage, readerBufferSize, inProgressExtension);
+		}
+	}
+
+	public static final String DEFAULT_IN_PROGRESS_EXTENSION = ".partial";
+	public static final String DEFAULT_TMP_FOLDER_NAME = "tmp";
+	public static final int DEFAULT_READER_BUFFER_SIZE = 256 * 1024;
+
 	private static final Logger logger = LoggerFactory.getLogger(FileSystemImpl.class);
 	private final String inProgressExtension;
 	private final int bufferSize;
@@ -46,15 +95,23 @@ final class FileSystemImpl implements FileSystem {
 	private final Path fileStorage;
 	private final Path tmpStorage;
 
-	public FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
-	                      Path fileStorage, Path tmpStorage, int bufferSize,
-	                      String inProgressExtension) {
+	private FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
+	                       Path fileStorage, Path tmpStorage, int bufferSize,
+	                       String inProgressExtension) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.fileStorage = fileStorage;
 		this.tmpStorage = tmpStorage;
 		this.bufferSize = bufferSize;
 		this.inProgressExtension = inProgressExtension;
+	}
+
+	public static FileSystemImpl createInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
+		return buildInstance(eventloop, executor, storage).build();
+	}
+
+	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
+		return new Builder(eventloop, executor, storage);
 	}
 
 	@Override
@@ -91,8 +148,8 @@ final class FileSystemImpl implements FileSystem {
 			return;
 		}
 		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true);
-		diskWrite.setFlushCallback(callback);
 		producer.streamTo(diskWrite);
+		diskWrite.setFlushCallback(callback);
 	}
 
 	@Override
@@ -168,6 +225,16 @@ final class FileSystemImpl implements FileSystem {
 		}
 	}
 
+	@Override
+	public long exists(String filePath) {
+		File file = fileStorage.resolve(filePath).toFile();
+		if (!file.exists() || file.isDirectory()) {
+			return -1l;
+		} else {
+			return file.length();
+		}
+	}
+
 	private void listFiles(Path parent, Set<String> files, String previousPath) throws IOException {
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent)) {
 			for (Path path : directoryStream) {
@@ -238,7 +305,11 @@ final class FileSystemImpl implements FileSystem {
 		}
 	}
 
-	private void ensureInfrastructure() throws IOException {
+	@Override
+	public void ensureInfrastructure() throws IOException {
+		if (!Files.exists(fileStorage)) {
+			Files.createDirectories(fileStorage);
+		}
 		if (Files.exists(tmpStorage)) {
 			cleanFolder(tmpStorage);
 		} else {

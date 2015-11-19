@@ -26,6 +26,7 @@ import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.NioWorkerModule;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerId;
@@ -69,13 +70,13 @@ public class HelloWorldGuiceTest {
 		}
 
 		@Provides
-		@Singleton
+		@SingletonService
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@Singleton
+		@SingletonService
 		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
 		                                  NioWorkerScopeFactory nioWorkerScope,
 		                                  @WorkerThread Provider<AsyncHttpServer> itemProvider) {
@@ -114,7 +115,7 @@ public class HelloWorldGuiceTest {
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -135,7 +136,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 			Closeables.close(socket0, true);
@@ -149,7 +150,7 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -157,7 +158,7 @@ public class HelloWorldGuiceTest {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 		}

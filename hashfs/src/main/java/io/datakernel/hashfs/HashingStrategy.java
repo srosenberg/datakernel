@@ -19,6 +19,6 @@ package io.datakernel.hashfs;
 import java.util.Collection;
 import java.util.List;
 
-public interface HashingStrategy {
+interface HashingStrategy {
 	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
 }
