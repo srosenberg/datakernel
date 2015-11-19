@@ -35,6 +35,7 @@
         <module>hashfs</module>
         <module>simplefs</module>
         <module>servicegraph</module>
+        <module>config</module>
     </modules>
 
     <licenses>
