@@ -26,7 +26,6 @@
         <module>codegen</module>
         <module>datagraph</module>
         <module>eventloop</module>
-        <module>guice</module>
         <module>http</module>
         <module>aggregation-db</module>
         <module>cube</module>
@@ -34,8 +33,7 @@
         <module>serializer</module>
         <module>hashfs</module>
         <module>simplefs</module>
-        <module>servicegraph</module>
-        <module>config</module>
+        <module>boot</module>
     </modules>
 
     <licenses>
