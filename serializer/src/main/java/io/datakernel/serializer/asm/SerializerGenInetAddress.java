@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.net.InetAddress;
@@ -56,7 +57,7 @@ public class SerializerGenInetAddress implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return call(arg(0), "write", call(value, "getAddress"));
+		return callStatic(SerializationOutputHelper.class, "write", arg(0), arg(1), call(value, "getAddress"));
 	}
 
 	@Override

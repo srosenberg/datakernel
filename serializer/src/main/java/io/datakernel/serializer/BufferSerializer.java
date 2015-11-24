@@ -17,9 +17,11 @@
 package io.datakernel.serializer;
 
 public interface BufferSerializer<T> {
-
-	void serialize(SerializationOutputBuffer output, T item);
+	int serialize(byte[] byteArray, int pos, T item);
 
 	T deserialize(SerializationInputBuffer input);
+//	int deserialize(byte[] byteArray, int startPos, T ref);
+//	 T deserialize(byte[] byteArray, int startPosContainerForPosition container);
+//	 int deserialize(byte[] byteArray, int startPos, T ref); Ref<T>
 
 }

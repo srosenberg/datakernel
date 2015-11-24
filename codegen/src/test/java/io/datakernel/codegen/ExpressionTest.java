@@ -820,4 +820,18 @@ public class ExpressionTest {
 
 		assertEquals(strings, strings2);
 	}
+
+	public interface ChangeArg {
+		int changeArg0(int arg0, int arg1);
+	}
+
+	@org.junit.Test
+	public void testChangeArg() {
+		ChangeArg changeArg0 = new AsmBuilder<>(new DefiningClassLoader(), ChangeArg.class)
+				.method("changeArg0", sequence(set(arg(0), add(arg(0), arg(1))), arg(0)))
+				.newInstance();
+
+		assertEquals(3, changeArg0.changeArg0(1, 2));
+	}
+
 }

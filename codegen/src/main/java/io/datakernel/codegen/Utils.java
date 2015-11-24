@@ -253,12 +253,6 @@ public class Utils {
 		return new VarLocal(local);
 	}
 
-//	public static VarLocal newLocal(Context ctx, Type type, String name) {
-//		VarLocal varLocal = newLocal(ctx, type);
-//		ctx.putLocal(name, varLocal);
-//		return varLocal;
-//	}
-
 	public static Expression argumentVar(int argument) {
 		return new VarArg(argument);
 	}

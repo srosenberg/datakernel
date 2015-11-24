@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -33,8 +32,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
-		serializer.serialize(output, testData1);
+		serializer.serialize(array, 0, testData1);
 		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
 		return deserializer.deserialize(input);
 	}
@@ -92,9 +90,9 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer2);
+		int off = 0;
+		off = serializer.serialize(buffer, off, testBuffer1);
+		off = serializer.serialize(buffer, off, testBuffer2);
 
 		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
 		ByteBuffer testBuffer3 = serializer.deserialize(input);
@@ -127,9 +125,9 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer2);
+		int off = 0;
+		off = serializer.serialize(buffer, off, testBuffer1);
+		off = serializer.serialize(buffer, off, testBuffer2);
 
 		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
 		ByteBuffer testBuffer3 = serializer.deserialize(input);
@@ -181,10 +179,10 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer0);
-		serializer.serialize(output, testBuffer2);
+		int off = 0;
+		off = serializer.serialize(buffer, off, testBuffer1);
+		off = serializer.serialize(buffer, off, testBuffer0);
+		off = serializer.serialize(buffer, off, testBuffer2);
 
 		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
 		TestByteBufferData testBuffer3 = serializer.deserialize(input);
@@ -218,10 +216,10 @@ public class CodeGenSerializerGenByteBufferTest {
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
-		serializer.serialize(output, testBuffer1);
-		serializer.serialize(output, testBuffer0);
-		serializer.serialize(output, testBuffer2);
+		int off = 0;
+		off = serializer.serialize(buffer, off, testBuffer1);
+		off = serializer.serialize(buffer, off, testBuffer0);
+		off = serializer.serialize(buffer, off, testBuffer2);
 
 		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
 		TestByteBufferData testBuffer3 = serializer.deserialize(input);

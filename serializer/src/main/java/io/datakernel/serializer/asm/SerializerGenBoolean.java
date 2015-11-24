@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -29,7 +30,7 @@ public final class SerializerGenBoolean extends SerializerGenPrimitive {
 
 	@Override
 	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return call(arg(0), "writeBoolean", cast(value, boolean.class));
+		return callStatic(SerializationOutputHelper.class, "writeBoolean", arg(0), arg(1), cast(value, boolean.class));
 	}
 
 	@Override

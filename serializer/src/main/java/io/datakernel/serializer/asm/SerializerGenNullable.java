@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -53,10 +54,10 @@ public class SerializerGenNullable implements SerializerGen {
 	@Override
 	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return choice(ifNotNull(value),
-				sequence(call(arg(0), "writeByte", value((byte) 1)),
-						serializer.serialize(value, version, staticMethods),
-						voidExp()),
-				sequence(call(arg(0), "writeByte", value((byte) 0)), voidExp())
+				sequence(set(arg(1), callStatic(SerializationOutputHelper.class, "writeByte", arg(0), arg(1), value((byte) 1))),
+						set(arg(1), serializer.serialize(value, version, staticMethods)),
+						arg(1)),
+				sequence(set(arg(1), callStatic(SerializationOutputHelper.class, "writeByte", arg(0), arg(1), value((byte) 0))), arg(1))
 		);
 	}
 

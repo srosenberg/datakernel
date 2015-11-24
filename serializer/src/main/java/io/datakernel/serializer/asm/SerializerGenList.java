@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.StoreDef;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Arrays;
@@ -59,15 +60,15 @@ public final class SerializerGenList implements SerializerGen {
 	@Override
 	public Expression serialize(final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression length = let(length(value));
-		Expression len = call(arg(0), "writeVarInt", length);
+		Expression len = set(arg(1), callStatic(SerializationOutputHelper.class, "writeVarInt", arg(0), arg(1), length));
 		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return valueSerializer.serialize(it, version, staticMethods);
+				return set(arg(1), valueSerializer.serialize(it, version, staticMethods));
 			}
 		});
 
-		return sequence(len, forEach);
+		return sequence(length, len, forEach, arg(1));
 	}
 
 	@Override

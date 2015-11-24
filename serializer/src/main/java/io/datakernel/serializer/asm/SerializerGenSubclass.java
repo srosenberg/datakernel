@@ -18,9 +18,13 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -84,17 +88,17 @@ public class SerializerGenSubclass implements SerializerGen {
 			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods);
 			listKey.add(value(subclass.getName()));
 			listValue.add(sequence(
-					call(arg(0), "writeByte", value(subClassN++)),
-					subclassSerializer.serialize(cast(arg(1), subclassSerializer.getRawType()), version, staticMethods),
-					voidExp()));
+					set(arg(1), callStatic(SerializationOutputHelper.class, "writeByte", arg(0), arg(1), value(subClassN++))),
+					set(arg(1), subclassSerializer.serialize(cast(arg(2), subclassSerializer.getRawType()), version, staticMethods)),
+					arg(1)));
 		}
 		staticMethods.registerStaticSerializeMethod(this, version,
-				switchForKey(cast(call(call(cast(arg(1), Object.class), "getClass"), "getName"), Object.class), listKey, listValue));
+				switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue));
 	}
 
 	@Override
 	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticSerializeMethod(this, version, arg(0), value);
+		return staticMethods.callStaticSerializeMethod(this, version, arg(0), arg(1), value);
 	}
 
 	@Override

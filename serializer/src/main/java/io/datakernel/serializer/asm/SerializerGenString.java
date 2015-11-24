@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.StringFormat;
 
@@ -93,24 +94,24 @@ public class SerializerGenString implements SerializerGen {
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF16", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeNullableUTF16", arg(0), arg(1), expression));
 			else
-				list.add(call(arg(0), "writeUTF16", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeUTF16", arg(0), arg(1), expression));
 		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableIso88591", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeNullableIso88591", arg(0), arg(1), expression));
 			else
-				list.add(call(arg(0), "writeIso88591", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeIso88591", arg(0), arg(1), expression));
 		} else if (format == StringFormat.UTF8) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableJavaUTF8", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeNullableJavaUTF8", arg(0), arg(1), expression));
 			else
-				list.add(call(arg(0), "writeJavaUTF8", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeJavaUTF8", arg(0), arg(1), expression));
 		} else {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF8", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeNullableUTF8", arg(0), arg(1), expression));
 			else
-				list.add(call(arg(0), "writeUTF8", expression));
+				list.add(callStatic(SerializationOutputHelper.class, "writeUTF8", arg(0), arg(1), expression));
 		}
 
 		return sequence(list);

@@ -20,7 +20,6 @@ import com.google.common.reflect.TypeToken;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -73,8 +72,7 @@ public class RpcMessageSerializeTest {
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
-		serializer.serialize(output, testData1);
+		serializer.serialize(array, 0, testData1);
 		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
 		return deserializer.deserialize(input);
 	}

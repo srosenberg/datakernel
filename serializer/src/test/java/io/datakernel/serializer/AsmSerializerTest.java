@@ -40,9 +40,8 @@ public class AsmSerializerTest {
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
-		serializer.serialize(output, testData1);
-		SerializationInputBuffer input = new SerializationInputBuffer(output.array(), 0);
+		serializer.serialize(array, 0, testData1);
+		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
 		return deserializer.deserialize(input);
 	}
 

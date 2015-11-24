@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
 
@@ -51,7 +52,10 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return call(arg(0), "writeByte", cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE));
+		return callStatic(SerializationOutputHelper.class, "writeByte",
+				arg(0),
+				arg(1),
+				cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE));
 	}
 
 	@Override

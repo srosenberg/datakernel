@@ -292,19 +292,20 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (fieldGen.field != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
-				list.add(fieldGen.serializer.serialize(cast(getter(arg(1), fieldName), type), version, staticMethods));
+				list.add(sequence(set(arg(1), fieldGen.serializer.serialize(cast(getter(arg(2), fieldName), type), version, staticMethods)), arg(1)));
 			} else if (fieldGen.method != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
-				list.add(fieldGen.serializer.serialize(cast(call(arg(1), fieldGen.method.getName()), type), version, staticMethods));
+				list.add(sequence(set(arg(1), fieldGen.serializer.serialize(cast(call(arg(2), fieldGen.method.getName()), type), version, staticMethods)), arg(1)));
 			} else throw new AssertionError();
 		}
+		list.add(arg(1));
 
 		staticMethods.registerStaticSerializeMethod(this, version, sequence(list));
 	}
 
 	@Override
 	public Expression serialize(Expression field, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticSerializeMethod(this, version, arg(0), field);
+		return staticMethods.callStaticSerializeMethod(this, version, arg(0), arg(1), field);
 	}
 
 	@Override
@@ -339,9 +340,9 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = _insertCallConstructor(this.getRawType(), map, version);
+			constructor = callConstructor(this.getRawType(), map, version);
 		} else {
-			constructor = _insertCallFactory(map);
+			constructor = callFactory(map);
 		}
 
 		Expression local = let(constructor);
@@ -392,7 +393,7 @@ public class SerializerGenClass implements SerializerGen {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
-	private Expression _insertCallFactory(Map<String, Expression> map) {
+	private Expression callFactory(Map<String, Expression> map) {
 		Expression[] param = new Expression[factoryParams.size()];
 		int i = 0;
 		for (String fieldName : factoryParams) {
@@ -401,7 +402,7 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
+	private Expression callConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
 		Expression[] param;
 		if (constructorParams == null) {
 			param = new Expression[0];

@@ -27,7 +27,6 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.util.Stopwatch;
@@ -108,18 +107,17 @@ public final class CumulativeBenchmark {
 		System.out.println("Request timeout    : " + requestTimeout + " ms");
 		BufferSerializer<RpcMessage> serializer = serializerFor(ValueMessage.class).createSerializer();
 		int defaultBufferSize = 100;
-		SerializationOutputBuffer output;
+		int position;
 		while (true) {
 			try {
 				byte[] array = new byte[defaultBufferSize];
-				output = new SerializationOutputBuffer(array);
-				serializer.serialize(output, new RpcMessage(12345, incrementMessage));
+				position = serializer.serialize(array, 0, new RpcMessage(12345, incrementMessage));
 				break;
 			} catch (ArrayIndexOutOfBoundsException e) {
 				defaultBufferSize = defaultBufferSize * 2;
 			}
 		}
-		System.out.println("RpcMessage size    : " + output.position() + " bytes");
+		System.out.println("RpcMessage size    : " + position + " bytes");
 	}
 
 	private void run() throws Exception {

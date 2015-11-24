@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.nio.ByteBuffer;
@@ -58,9 +59,9 @@ public class SerializerGenByteBuffer implements SerializerGen {
 		Expression array = call(cast(value, ByteBuffer.class), "array");
 		Expression position = call(cast(value, ByteBuffer.class), "position");
 		Expression remaining = let(call(cast(value, ByteBuffer.class), "remaining"));
-		Expression writeLength = call(arg(0), "writeVarInt", remaining);
+		Expression writeLength = set(arg(1), callStatic(SerializationOutputHelper.class, "writeVarInt", arg(0), arg(1), remaining));
 
-		return sequence(writeLength, call(arg(0), "write", array, position, remaining));
+		return sequence(writeLength, set(arg(1), callStatic(SerializationOutputHelper.class, "write", array, position, arg(0), arg(1), remaining)), arg(1));
 	}
 
 	@Override

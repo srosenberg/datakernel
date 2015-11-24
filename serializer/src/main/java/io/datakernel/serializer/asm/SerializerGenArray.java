@@ -19,6 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -74,16 +75,16 @@ public final class SerializerGenArray implements SerializerGen {
 			length = length(castedValue);
 		}
 
-		Expression writeLength = call(arg(0), "writeVarInt", length);
+		Expression writeLength = set(arg(1), callStatic(SerializationOutputHelper.class, "writeVarInt", arg(0), arg(1), length));
 		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(writeLength, call(arg(0), "write", castedValue));
+			return sequence(writeLength, callStatic(SerializationOutputHelper.class, "write", arg(0), arg(1), castedValue));
 		} else {
 			return sequence(writeLength, expressionFor(length, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return valueSerializer.serialize(get(castedValue, it), version, staticMethods);
+					return sequence(set(arg(1), valueSerializer.serialize(get(castedValue, it), version, staticMethods)));
 				}
-			}));
+			}), arg(1));
 		}
 	}
 

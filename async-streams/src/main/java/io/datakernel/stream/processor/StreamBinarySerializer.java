@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
@@ -73,7 +72,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		// TODO (dvolvach): queue of serialized buffers
 		private ByteBuf byteBuf;
-		private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
+		private int outputBufferPos;
 		private int estimatedMessageSize;
 
 		private final int flushDelayMillis;
@@ -121,12 +120,12 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		private void allocateBuffer() {
 			byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
-			outputBuffer.set(byteBuf.array(), 0);
+			outputBufferPos = 0;
 		}
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
 			byteBuf.position(0);
-			int size = outputBuffer.position();
+			int size = outputBufferPos;
 			if (size != 0) {
 				byteBuf.limit(size);
 				jmxBytes += size;
@@ -141,7 +140,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void ensureSize(int size) {
-			if (outputBuffer.remaining() < size) {
+			if (byteBuf.array().length - outputBufferPos < size) {
 				flushBuffer(outputProducer.getDownstreamDataReceiver());
 			}
 		}
@@ -178,19 +177,19 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			assert jmxItems != ++jmxItems;
 			for (; ; ) {
 				ensureSize(headerSize + estimatedMessageSize);
-				int positionBegin = outputBuffer.position();
+				int positionBegin = outputBufferPos;
 				int positionItem = positionBegin + headerSize;
 				try {
-					outputBuffer.position(positionItem);
-					serializer.serialize(outputBuffer, value);
-					int positionEnd = outputBuffer.position();
+					outputBufferPos = positionItem;
+					outputBufferPos = serializer.serialize(byteBuf.array(), outputBufferPos, value);
+					int positionEnd = outputBufferPos;
 					int messageSize = positionEnd - positionItem;
 					assert messageSize != 0;
 					if (messageSize > maxMessageSize) {
 						handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 						return;
 					}
-					writeSize(outputBuffer.array(), positionBegin, messageSize);
+					writeSize(byteBuf.array(), positionBegin, messageSize);
 					messageSize += messageSize >>> 2;
 					if (messageSize > estimatedMessageSize)
 						estimatedMessageSize = messageSize;
@@ -198,8 +197,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 						estimatedMessageSize -= estimatedMessageSize >>> 8;
 					break;
 				} catch (ArrayIndexOutOfBoundsException e) {
-					outputBuffer.position(positionBegin);
-					int messageSize = outputBuffer.array().length - positionItem;
+					outputBufferPos = positionBegin;
+					int messageSize = byteBuf.array().length - positionItem;
 					if (messageSize >= maxMessageSize) {
 						handleSerializationError(e);
 						return;
@@ -219,7 +218,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			flushBuffer(outputProducer.getDownstreamDataReceiver());
 			byteBuf.recycle();
 			byteBuf = null;
-			outputBuffer.set(null, 0);
 			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
 			outputProducer.sendEndOfStream();
 		}

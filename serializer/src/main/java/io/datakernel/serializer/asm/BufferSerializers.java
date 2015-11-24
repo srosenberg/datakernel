@@ -18,7 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializationOutputHelper;
 
 public final class BufferSerializers {
 	private BufferSerializers() {
@@ -26,8 +26,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Byte> BYTE_SERIALIZER = new BufferSerializer<Byte>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Byte item) {
-			output.writeByte(item);
+		public int serialize(byte[] byteArray, int pos, Byte item) {
+			return SerializationOutputHelper.writeByte(byteArray, pos, item);
 		}
 
 		@Override
@@ -38,9 +38,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, byte[] item) {
-			output.writeVarInt(item.length);
-			output.write(item);
+		public int serialize(byte[] byteArray, int pos, byte[] item) {
+			pos = SerializationOutputHelper.writeVarInt(byteArray, pos, item.length);
+			return SerializationOutputHelper.write(byteArray, pos, item);
 		}
 
 		@Override
@@ -54,8 +54,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Short item) {
-			output.writeShort(item);
+		public int serialize(byte[] byteArray, int pos, Short item) {
+			return SerializationOutputHelper.writeShort(byteArray, pos, item);
 		}
 
 		@Override
@@ -66,8 +66,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeInt(item);
+		public int serialize(byte[] byteArray, int pos, Integer item) {
+			return SerializationOutputHelper.writeInt(byteArray, pos, item);
 		}
 
 		@Override
@@ -78,8 +78,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeVarInt(item);
+		public int serialize(byte[] byteArray, int pos, Integer item) {
+			return SerializationOutputHelper.writeVarInt(byteArray, pos, item);
 		}
 
 		@Override
@@ -90,8 +90,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeVarInt((item << 1) ^ (item >> 31));
+		public int serialize(byte[] byteArray, int pos, Integer item) {
+			return SerializationOutputHelper.writeVarInt(byteArray, pos, (item << 1) ^ (item >> 31));
 		}
 
 		@Override
@@ -103,8 +103,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeLong(item);
+		public int serialize(byte[] byteArray, int pos, Long item) {
+			return SerializationOutputHelper.writeLong(byteArray, pos, item);
 		}
 
 		@Override
@@ -115,8 +115,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeVarLong(item);
+		public int serialize(byte[] byteArray, int pos, Long item) {
+			return SerializationOutputHelper.writeVarLong(byteArray, pos, item);
 		}
 
 		@Override
@@ -127,8 +127,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeVarLong((item << 1) ^ (item >> 63));
+		public int serialize(byte[] byteArray, int pos, Long item) {
+			return SerializationOutputHelper.writeVarLong(byteArray, pos, (item << 1) ^ (item >> 63));
 		}
 
 		@Override
@@ -140,8 +140,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Float item) {
-			output.writeFloat(item);
+		public int serialize(byte[] byteArray, int pos, Float item) {
+			return SerializationOutputHelper.writeFloat(byteArray, pos, item);
 		}
 
 		@Override
@@ -152,8 +152,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Double item) {
-			output.writeDouble(item);
+		public int serialize(byte[] byteArray, int pos, Double item) {
+			return SerializationOutputHelper.writeDouble(byteArray, pos, item);
 		}
 
 		@Override
@@ -164,8 +164,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Character item) {
-			output.writeChar(item);
+		public int serialize(byte[] byteArray, int pos, Character item) {
+			return SerializationOutputHelper.writeChar(byteArray, pos, item);
 		}
 
 		@Override
@@ -176,8 +176,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeUTF8(item);
+		public int serialize(byte[] byteArray, int pos, String item) {
+			return SerializationOutputHelper.writeUTF8(byteArray, pos, item);
 		}
 
 		@Override
@@ -188,8 +188,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeUTF16(item);
+		public int serialize(byte[] byteArray, int pos, String item) {
+			return SerializationOutputHelper.writeUTF16(byteArray, pos, item);
 		}
 
 		@Override
@@ -200,8 +200,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Boolean item) {
-			output.writeBoolean(item);
+		public int serialize(byte[] byteArray, int pos, Boolean item) {
+			return SerializationOutputHelper.writeBoolean(byteArray, pos, item);
 		}
 
 		@Override
@@ -212,8 +212,8 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeIso88591(item);
+		public int serialize(byte[] byteArray, int pos, String item) {
+			return SerializationOutputHelper.writeIso88591(byteArray, pos, item);
 		}
 
 		@Override

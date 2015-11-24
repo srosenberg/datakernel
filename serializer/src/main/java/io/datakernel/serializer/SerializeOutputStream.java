@@ -35,7 +35,8 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	private final BufferSerializer<T> serializer;
 	private OutputStream outputStream;
 
-	private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
+	private int outputBufferPos;
+	private byte[] buf;
 
 	private final boolean skipSerializationErrors;
 	private final int maxMessageSize;
@@ -94,37 +95,36 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	}
 
 	private void ensureSize(int size) throws IOException {
-		if (outputBuffer.remaining() < size) {
+		if (buf.length - outputBufferPos < size) {
 			write();
 		}
 	}
 
 	private void allocateBuffer() {
 		int max = max(bufferSize, headerSize + estimatedMessageSize);
-		if (outputBuffer.array() == null || max > outputBuffer.array().length) {
-			outputBuffer.set(new byte[max], 0);
-		} else {
-			outputBuffer.position(0);
+		if (buf == null || max > buf.length) {
+			buf = new byte[max];
 		}
+		outputBufferPos = 0;
 	}
 
 	@Override
 	public void write(T value) throws IOException {
 		for (; ; ) {
-			int positionBegin = outputBuffer.position();
+			int positionBegin = outputBufferPos;
 			int positionItem = positionBegin + headerSize;
 			try {
 				ensureSize(headerSize + estimatedMessageSize);
-				outputBuffer.position(positionItem);
-				serializer.serialize(outputBuffer, value);
-				int positionEnd = outputBuffer.position();
+				outputBufferPos = positionItem;
+				outputBufferPos = serializer.serialize(buf, outputBufferPos, value);
+				int positionEnd = outputBufferPos;
 				int messageSize = positionEnd - positionItem;
 				assert messageSize != 0;
 				if (messageSize > maxMessageSize) {
 					handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
 					return;
 				}
-				writeSize(outputBuffer.array(), positionBegin, messageSize);
+				writeSize(buf, positionBegin, messageSize);
 				messageSize += messageSize >>> 2;
 				if (messageSize > estimatedMessageSize)
 					estimatedMessageSize = messageSize;
@@ -132,8 +132,8 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 					estimatedMessageSize -= estimatedMessageSize >>> 8;
 				break;
 			} catch (ArrayIndexOutOfBoundsException e) {
-				outputBuffer.position(positionBegin);
-				int messageSize = outputBuffer.array().length - positionItem;
+				outputBufferPos = positionBegin;
+				int messageSize = buf.length - positionItem;
 				if (messageSize >= maxMessageSize) {
 					handleSerializationError(e);
 					return;
@@ -155,9 +155,9 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	}
 
 	public void write() throws IOException {
-		int size = outputBuffer.position();
+		int size = outputBufferPos;
 		if (size != 0) {
-			outputStream.write(outputBuffer.array(), 0, size);
+			outputStream.write(buf, 0, size);
 		}
 		allocateBuffer();
 	}

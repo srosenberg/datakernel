@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import com.carrotsearch.hppc.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Test;
@@ -31,8 +30,7 @@ public class CodeGenSerializerGenHppcSetTest {
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer) {
 		byte[] array = new byte[1000];
-		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
-		serializer.serialize(output, testData1);
+		serializer.serialize(array, 0, testData1);
 		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
 		return serializer.deserialize(input);
 	}
