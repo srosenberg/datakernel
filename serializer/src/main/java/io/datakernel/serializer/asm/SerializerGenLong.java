@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -62,15 +63,9 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (varLength) {
-			if (targetType.isPrimitive())
-				return call(arg(0), "readVarLong");
-			else
-				return cast(call(arg(0), "readVarLong"), Long.class);
+			return callStatic(SerializationInputHelper.class, "readVarLong", arg(0), arg(1), arg(2));
 		} else {
-			if (targetType.isPrimitive())
-				return call(arg(0), "readLong");
-			else
-				return cast(call(arg(0), "readLong"), Long.class);
+			return callStatic(SerializationInputHelper.class, "readLong", arg(0), arg(1), arg(2));
 		}
 	}
 }

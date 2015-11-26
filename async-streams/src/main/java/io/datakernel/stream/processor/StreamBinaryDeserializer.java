@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.Ref;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -65,9 +65,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		private final int buffersPoolSize;
 
-		private final SerializationInputBuffer arrayInputBuffer = new SerializationInputBuffer();
 		private ByteBuf buf;
 		private byte[] buffer;
+		private Ref ref;
 
 		private int dataSize;
 
@@ -82,6 +82,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			this.buffersPoolSize = buffersPoolSize;
 			this.buf = buf;
 			this.buffer = buffer;
+			this.ref = new Ref();
 		}
 
 		@Override
@@ -152,9 +153,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 					// read message body:
 					T item;
 					if (bufferPos == 0 && len >= dataSize) {
-						arrayInputBuffer.set(b, off);
-						item = valueSerializer.deserialize(arrayInputBuffer);
-						if ((arrayInputBuffer.position() - off) != dataSize)
+						int newPos = valueSerializer.deserialize(b, off, ref);
+						item = ((T) ref.get());
+						if ((newPos - off) != dataSize)
 							throw new IllegalArgumentException("Deserialized size != parsed data size");
 						len -= dataSize;
 						off += dataSize;
@@ -167,9 +168,9 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						off += readSize;
 						if (bufferPos != dataSize)
 							break;
-						arrayInputBuffer.set(buffer, 0);
-						item = valueSerializer.deserialize(arrayInputBuffer);
-						if (arrayInputBuffer.position() != dataSize)
+						int newPos = valueSerializer.deserialize(buffer, 0, ref);
+						item = ((T) ref.get());
+						if (newPos != dataSize)
 							throw new IllegalArgumentException("Deserialized size != parsed data size");
 						bufferPos = 0;
 						dataSize = 0;

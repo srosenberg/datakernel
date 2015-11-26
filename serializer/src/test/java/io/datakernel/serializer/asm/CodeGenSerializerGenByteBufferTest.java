@@ -17,7 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.Ref;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -33,8 +33,9 @@ public class CodeGenSerializerGenByteBufferTest {
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
 		serializer.serialize(array, 0, testData1);
-		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
-		return deserializer.deserialize(input);
+		Ref ref = new Ref();
+		deserializer.deserialize(array, 0, ref);
+		return (T) ref.get();
 	}
 
 	@Test
@@ -94,9 +95,12 @@ public class CodeGenSerializerGenByteBufferTest {
 		off = serializer.serialize(buffer, off, testBuffer1);
 		off = serializer.serialize(buffer, off, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		ByteBuffer testBuffer3 = serializer.deserialize(input);
-		ByteBuffer testBuffer4 = serializer.deserialize(input);
+		off = 0;
+		Ref ref = new Ref();
+		off = serializer.deserialize(buffer, off, ref);
+		ByteBuffer testBuffer3 = ((ByteBuffer) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		ByteBuffer testBuffer4 = ((ByteBuffer) ref.get());
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer4);
@@ -129,9 +133,12 @@ public class CodeGenSerializerGenByteBufferTest {
 		off = serializer.serialize(buffer, off, testBuffer1);
 		off = serializer.serialize(buffer, off, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		ByteBuffer testBuffer3 = serializer.deserialize(input);
-		ByteBuffer testBuffer4 = serializer.deserialize(input);
+		off = 0;
+		Ref ref = new Ref();
+		off = serializer.deserialize(buffer, off, ref);
+		ByteBuffer testBuffer3 = ((ByteBuffer) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		ByteBuffer testBuffer4 = ((ByteBuffer) ref.get());
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer4);
@@ -184,10 +191,14 @@ public class CodeGenSerializerGenByteBufferTest {
 		off = serializer.serialize(buffer, off, testBuffer0);
 		off = serializer.serialize(buffer, off, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		TestByteBufferData testBuffer3 = serializer.deserialize(input);
-		TestByteBufferData testBuffer00 = serializer.deserialize(input);
-		TestByteBufferData testBuffer4 = serializer.deserialize(input);
+		off = 0;
+		Ref ref = new Ref();
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer3 = ((TestByteBufferData) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer00 = ((TestByteBufferData) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer4 = ((TestByteBufferData) ref.get());
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer00);
@@ -221,10 +232,14 @@ public class CodeGenSerializerGenByteBufferTest {
 		off = serializer.serialize(buffer, off, testBuffer0);
 		off = serializer.serialize(buffer, off, testBuffer2);
 
-		SerializationInputBuffer input = new SerializationInputBuffer(buffer, 0);
-		TestByteBufferData testBuffer3 = serializer.deserialize(input);
-		TestByteBufferData testBuffer00 = serializer.deserialize(input);
-		TestByteBufferData testBuffer4 = serializer.deserialize(input);
+		off = 0;
+		Ref ref = new Ref();
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer3 = ((TestByteBufferData) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer00 = ((TestByteBufferData) ref.get());
+		off = serializer.deserialize(buffer, off, ref);
+		TestByteBufferData testBuffer4 = ((TestByteBufferData) ref.get());
 
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer00);

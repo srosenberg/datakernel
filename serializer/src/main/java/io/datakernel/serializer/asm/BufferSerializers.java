@@ -17,7 +17,8 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.Ref;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 
 public final class BufferSerializers {
@@ -31,8 +32,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Byte deserialize(SerializationInputBuffer input) {
-			return input.readByte();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readByte(byteArray, pos, ref);
 		}
 	};
 
@@ -44,11 +45,9 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public byte[] deserialize(SerializationInputBuffer input) {
-			int size = input.readVarInt();
-			byte[] result = new byte[size];
-			input.read(result);
-			return result;
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
+			return SerializationInputHelper.read(byteArray, pos, (Integer)ref.get(), ref);
 		}
 	};
 
@@ -59,8 +58,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Short deserialize(SerializationInputBuffer input) {
-			return input.readShort();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readShort(byteArray, pos, ref);
 		}
 	};
 
@@ -71,8 +70,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
-			return input.readInt();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readInt(byteArray, pos, ref);
 		}
 	};
 
@@ -83,8 +82,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
-			return input.readVarInt();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readVarInt(byteArray, pos, ref);
 		}
 	};
 
@@ -95,9 +94,11 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Integer deserialize(SerializationInputBuffer input) {
-			int n = input.readVarInt();
-			return (n >>> 1) ^ -(n & 1);
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
+			int n = ((Integer) ref.get());
+			ref.set((n >>> 1) ^ -(n & 1));
+			return pos;
 		}
 	};
 
@@ -108,8 +109,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
-			return input.readLong();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readLong(byteArray, pos, ref);
 		}
 	};
 
@@ -120,8 +121,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
-			return input.readVarLong();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readVarLong(byteArray, pos, ref);
 		}
 	};
 
@@ -132,9 +133,11 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Long deserialize(SerializationInputBuffer input) {
-			long n = input.readVarLong();
-			return (n >>> 1) ^ -(n & 1);
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			pos = SerializationInputHelper.readVarLong(byteArray, pos, ref);
+			int n = ((Integer) ref.get());
+			ref.set((n >>> 1) ^ -(n & 1));
+			return pos;
 		}
 	};
 
@@ -145,8 +148,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Float deserialize(SerializationInputBuffer input) {
-			return input.readFloat();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readFloat(byteArray, pos, ref);
 		}
 	};
 
@@ -157,8 +160,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Double deserialize(SerializationInputBuffer input) {
-			return input.readDouble();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readDouble(byteArray, pos, ref);
 		}
 	};
 
@@ -169,11 +172,10 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Character deserialize(SerializationInputBuffer input) {
-			return input.readChar();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readChar(byteArray, pos, ref);
 		}
 	};
-
 	private static final BufferSerializer<String> UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public int serialize(byte[] byteArray, int pos, String item) {
@@ -181,11 +183,10 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
-			return input.readUTF8();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readUTF8(byteArray, pos, ref);
 		}
 	};
-
 	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public int serialize(byte[] byteArray, int pos, String item) {
@@ -193,8 +194,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
-			return input.readUTF16();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readUTF16(byteArray, pos, ref);
 		}
 	};
 
@@ -205,8 +206,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public Boolean deserialize(SerializationInputBuffer input) {
-			return input.readBoolean();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readBoolean(byteArray, pos, ref);
 		}
 	};
 
@@ -217,8 +218,8 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public String deserialize(SerializationInputBuffer input) {
-			return input.readIso88591();
+		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+			return SerializationInputHelper.readIso88591(byteArray, pos, ref);
 		}
 	};
 

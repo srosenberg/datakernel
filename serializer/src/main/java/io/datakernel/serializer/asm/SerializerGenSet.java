@@ -19,6 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -83,31 +84,35 @@ public class SerializerGenSet implements SerializerGen {
 	}
 
 	private Expression deserializeEnumSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression len = let(call(arg(0), "readVarInt"));
-		final Expression container = let(newArray(Object[].class, len));
-		Expression array = expressionFor(len, new ForVar() {
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getInt = let(cast(call(arg(2), "get"), int.class));
+		final Expression container = let(newArray(Object[].class, getInt));
+		Expression array = expressionFor(getInt, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods));
+				return sequence(set(arg(1), valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods)),
+						setArrayItem(container, it, cast(call(arg(2), "get"), Object.class)));
 			}
 		});
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
 		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
-		return sequence(len, container, array, list, enumSet);
+		return sequence(pos, container, array, list, call(arg(2), "set", cast(enumSet, Object.class)), arg(1));
 	}
 
 	private Expression deserializeSimpleSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression container = let(constructor(LinkedHashSet.class, length));
-		return sequence(length, container, expressionFor(length, new ForVar() {
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getInt = let(cast(call(arg(2), "get"), int.class));
+		final Expression container = let(constructor(LinkedHashSet.class, getInt));
+		return sequence(pos, container, expressionFor(getInt, new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return sequence(
-								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)),
+								set(arg(1), valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods)),
+								call(container, "add", cast(call(arg(2), "get"), Object.class)),
 								voidExp()
 						);
 					}
-				}), container
+				}), call(arg(2), "set", cast(container, Object.class)), arg(1)
 		);
 	}
 }

@@ -17,11 +17,15 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -148,20 +152,29 @@ public final class SerializerGenHppcMap implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = let(call(arg(0), "readVarInt"));
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getLength = cast(call(arg(2), "get"), int.class);
 		final Expression map = let(constructor(hashMapType));
 		final Class<?> valueType = valueSerializer.getRawType();
 		final Class<?> keyType = keySerializer.getRawType();
-		return sequence(length, map, expressionFor(length, new ForVar() {
+		return sequence(pos, map, expressionFor(getLength, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return sequence(call(map, "put",
-								cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
-								cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)
-						), voidExp()
-				);
+				List<Expression> list = new ArrayList<>();
+
+				list.add(set(arg(1), keySerializer.deserialize(keyType, version, staticMethods)));
+				ExpressionLet varKey = let(cast(call(arg(2), "get"), SerializerGenHppcMap.this.keyType));
+				list.add(varKey);
+
+				list.add(set(arg(1), valueSerializer.deserialize(valueType, version, staticMethods)));
+				ExpressionLet varValue = let(cast(call(arg(2), "get"), SerializerGenHppcMap.this.valueType));
+				list.add(varValue);
+
+				list.add(call(map, "put", varKey, varValue));
+				list.add(voidExp());
+				return sequence(list);
 			}
-		}), map);
+		}), call(arg(2), "set", cast(map, Object.class)), arg(1));
 	}
 
 	@Override

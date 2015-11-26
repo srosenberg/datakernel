@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -111,16 +112,21 @@ public class SerializerGenSubclass implements SerializerGen {
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods), this.getRawType()));
+			list.add(sequence(
+					set(arg(1), subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods)),
+					cast(call(arg(2), "get"), this.getRawType()),
+					arg(1)
+			));
 		}
 
 		staticMethods.registerStaticDeserializeMethod(this, version,
-				cast(switchForPosition(call(arg(0), "readByte"), list), this.getRawType()));
+				sequence(set(arg(1), callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1), arg(2))),
+						(switchForPosition(cast(call(arg(2), "get"), byte.class), list))));
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
+		return staticMethods.callStaticDeserializeMethod(this, version, arg(0), arg(1), arg(2));
 	}
 
 	@Override

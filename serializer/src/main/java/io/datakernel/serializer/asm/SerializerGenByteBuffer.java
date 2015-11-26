@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -71,17 +72,19 @@ public class SerializerGenByteBuffer implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = let(call(arg(0), "readVarInt"));
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getLength = let(cast(call(arg(2), "get"), int.class));
 
 		if (!wrapped) {
-			Expression array = let(newArray(byte[].class, length));
-			return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
+			return sequence(pos,
+					set(arg(1), callStatic(SerializationInputHelper.class, "read", arg(0), arg(1), getLength, arg(2))),
+					call(arg(2), "set", cast(callStatic(ByteBuffer.class, "wrap", cast(call(arg(2), "get"), byte[].class)), Object.class)),
+					arg(1));
 		} else {
-			Expression inputBuffer = call(arg(0), "array");
-			Expression position = let(call(arg(0), "position"));
-			Expression setPosition = call(arg(0), "position", add(position, length));
 
-			return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
+			return sequence(pos,
+					call(arg(2), "set", cast(callStatic(ByteBuffer.class, "wrap", arg(0), arg(1), getLength), Object.class)),
+					add(arg(1), getLength));
 		}
 	}
 }

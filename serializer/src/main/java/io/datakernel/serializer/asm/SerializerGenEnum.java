@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
@@ -65,7 +66,9 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return get(callStatic(nameOfEnum, "values"), call(arg(0), "readByte"));
+		// TODO (vsavchuk) make beautiful, and other
+		return sequence(set(arg(1), callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1), arg(2))),
+				call(arg(2), "set", cast(get(callStatic(nameOfEnum, "values"), cast(call(arg(2), "get"), byte.class)), Object.class)), arg(1));
 	}
 
 	@Override

@@ -19,7 +19,11 @@ package io.datakernel.serializer;
 public interface BufferSerializer<T> {
 	int serialize(byte[] byteArray, int pos, T item);
 
-	T deserialize(SerializationInputBuffer input);
+//	T deserialize(SerializationInputBuffer input);
+
+	// TODO (vsavchuk) T deserialize(byte[] byteArray, Position pos) mb this is better???
+	int deserialize(byte[] byteArray, int pos, Ref ref);
+
 //	int deserialize(byte[] byteArray, int startPos, T ref);
 //	 T deserialize(byte[] byteArray, int startPosContainerForPosition container);
 //	 int deserialize(byte[] byteArray, int startPos, T ref); Ref<T>

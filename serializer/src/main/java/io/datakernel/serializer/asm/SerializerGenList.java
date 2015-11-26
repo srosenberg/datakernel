@@ -19,7 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
-import io.datakernel.codegen.StoreDef;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -78,16 +78,17 @@ public final class SerializerGenList implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression len = let(call(arg(0), "readVarInt"));
-		final Expression array = let(Expressions.newArray(Object[].class, len));
-		Expression forEach = expressionFor(len, new ForVar() {
+		Expression len = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		final Expression array = let(Expressions.newArray(Object[].class, cast(call(arg(2), "get"), int.class)));
+		Expression forEach = expressionFor(cast(call(arg(2), "get"), int.class), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return setArrayItem(array, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods));
+				return sequence(set(arg(1), valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods)),
+						setArrayItem(array, it, cast(call(arg(2), "get"), valueSerializer.getRawType())));
 			}
 		});
 
-		return sequence(array, forEach, set((StoreDef) array, callStatic(Arrays.class, "asList", array)), array);
+		return sequence(len, array, forEach, call(arg(2), "set", cast(callStatic(Arrays.class, "asList", array), Object.class)), arg(1));
 	}
 
 	@Override

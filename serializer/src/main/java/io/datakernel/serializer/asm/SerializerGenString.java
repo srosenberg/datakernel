@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.StringFormat;
@@ -127,24 +128,24 @@ public class SerializerGenString implements SerializerGen {
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				return call(arg(0), "readNullableUTF16");
+				return callStatic(SerializationInputHelper.class, "readNullableUTF16", arg(0), arg(1), arg(2));
 			else
-				return call(arg(0), "readUTF16");
+				return callStatic(SerializationInputHelper.class, "readUTF16", arg(0), arg(1), arg(2));
 		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
-				return call(arg(0), "readNullableIso88591");
+				return callStatic(SerializationInputHelper.class, "readNullableIso88591", arg(0), arg(1), arg(2));
 			else
-				return call(arg(0), "readIso88591");
+				return callStatic(SerializationInputHelper.class, "readIso88591", arg(0), arg(1), arg(2));
 		} else if (format == StringFormat.UTF8) {
 			if (nullable)
-				return call(arg(0), "readNullableJavaUTF8");
+				return callStatic(SerializationInputHelper.class, "readNullableJavaUTF8", arg(0), arg(1), arg(2));
 			else
-				return call(arg(0), "readJavaUTF8");
+				return callStatic(SerializationInputHelper.class, "readJavaUTF8", arg(0), arg(1), arg(2));
 		} else {
 			if (nullable)
-				return call(arg(0), "readNullableUTF8");
+				return callStatic(SerializationInputHelper.class, "readNullableUTF8", arg(0), arg(1), arg(2));
 			else
-				return call(arg(0), "readUTF8");
+				return callStatic(SerializationInputHelper.class, "readUTF8", arg(0), arg(1), arg(2));
 		}
 	}
 

@@ -25,10 +25,10 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 
 	private InputStream inputStream;
 	private final BufferSerializer<T> bufferSerializer;
-	private final SerializationInputBuffer inputBuffer = new SerializationInputBuffer();
 	private final int maxMessageSize;
 	private byte[] buffer;
 	private int off;
+	private Ref ref;
 
 	private int dataSize;
 	private int bufferLastPos;
@@ -42,8 +42,8 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 		this.inputStream = inputStream;
 		this.bufferSerializer = bufferSerializer;
 		this.buffer = new byte[bufferSize];
-		this.inputBuffer.set(buffer, 0);
 		this.maxMessageSize = maxMessageSize;
+		this.ref = new Ref();
 	}
 
 	public void changeInputStream(InputStream inputStream) throws IOException {
@@ -104,13 +104,12 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 			}
 			// read message body:
 			if (readBytes >= dataSize || bufferLastPos - messageStart >= dataSize) {
-				inputBuffer.set(buffer, off);
-				T item = bufferSerializer.deserialize(inputBuffer);
-				if ((inputBuffer.position() - off) != dataSize)
+				int newOff = bufferSerializer.deserialize(buffer, off, ref);
+				if ((newOff - off) != dataSize)
 					throw new IllegalArgumentException("Deserialized size != parsed data size");
 				off += dataSize;
 				dataSize = 0;
-				return item;
+				return (T) ref.get();
 			} else {
 				replaceInStart();
 				resizeBuffer(dataSize);
@@ -167,6 +166,5 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 	@Override
 	public void close() throws IOException {
 		inputStream.close();
-		this.inputBuffer.set(null, 0);
 	}
 }

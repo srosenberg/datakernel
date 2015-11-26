@@ -899,8 +899,8 @@ public final class SerializerBuilder {
 		for (StaticMethods.Key key : staticMethods.mapDeserialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapDeserialize.get(key);
 			asmFactory.staticMethod(value.method,
-					key.serializerGen.getRawType(),
-					asList(SerializationInputBuffer.class),
+					int.class,
+					asList(byte[].class, int.class, Ref.class),
 					value.expression);
 		}
 
@@ -918,7 +918,7 @@ public final class SerializerBuilder {
 	}
 
 	private void defineDeserializeVersion(SerializerGen serializerGen, AsmBuilder asmFactory, int version, StaticMethods staticMethods) {
-		asmFactory.method("deserializeVersion" + String.valueOf(version), serializerGen.getRawType(), asList(SerializationInputBuffer.class), sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods)));
+		asmFactory.method("deserializeVersion" + String.valueOf(version), int.class, asList(byte[].class, int.class, Ref.class), sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods)));
 	}
 
 	private void defineDeserializeEarlierVersion(SerializerGen serializerGen, AsmBuilder asmFactory, List<Integer> allVersions, StaticMethods staticMethods) {
@@ -928,9 +928,9 @@ public final class SerializerBuilder {
 			int version = allVersions.get(i);
 			listKey.add(value(version));
 			serializerGen.prepareDeserializeStaticMethods(version, staticMethods);
-			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0)));
+			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0), arg(1), arg(3)));
 		}
-		asmFactory.method("deserializeEarlierVersions", serializerGen.getRawType(), asList(SerializationInputBuffer.class, int.class),
+		asmFactory.method("deserializeEarlierVersions", int.class, asList(byte[].class, int.class, int.class, Ref.class),
 				switchForKey(arg(1), listKey, listValue));
 	}
 
@@ -940,10 +940,11 @@ public final class SerializerBuilder {
 			asmFactory.method("deserialize", serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods));
 		} else {
 			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods);
-			Expression version = let(call(arg(0), "readVarInt"));
-			asmFactory.method("deserialize", sequence(version, choice(cmpEq(version, value(latestVersion)),
+			Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+			Expression version = let(cast(call(arg(2), "get"), int.class));
+			asmFactory.method("deserialize", sequence(pos, version, choice(cmpEq(version, value(latestVersion)),
 					serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods),
-					call(self(), "deserializeEarlierVersions", arg(0), version))));
+					call(self(), "deserializeEarlierVersions", arg(0), arg(1), version, arg(2))), arg(1)));
 		}
 	}
 

@@ -19,6 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -95,18 +96,27 @@ public final class SerializerGenArray implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		final Expression len = let(call(arg(0), "readVarInt"));
+		final Expression len = callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2));
+		final Expression setPos = set(arg(1), len);
 
-		final Expression array = let(Expressions.newArray(type, len));
+		final Expression array = let(Expressions.newArray(type, cast(call(arg(2), "get"), int.class)));
 		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(call(arg(0), "read", array), array);
+			return sequence(setPos,
+					set(arg(1),
+							callStatic(SerializationInputHelper.class, "read",
+									arg(0), arg(1), cast(call(arg(2), "get"), int.class), arg(2)
+							)
+					),
+					arg(1)
+			);
 		} else {
-			return sequence(array, expressionFor(len, new ForVar() {
+			return sequence(setPos, array, expressionFor(cast(call(arg(2), "get"), int.class), new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods), type.getComponentType()));
+					return sequence(set(arg(1), valueSerializer.deserialize(type.getComponentType(), version, staticMethods)),
+							setArrayItem(array, it, cast(call(arg(2), "get"), type.getComponentType())));
 				}
-			}), array);
+			}), call(arg(2), "set", cast(array, Object.class)), arg(1));
 		}
 	}
 

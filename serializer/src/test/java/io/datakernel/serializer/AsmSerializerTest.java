@@ -41,8 +41,10 @@ public class AsmSerializerTest {
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
 		serializer.serialize(array, 0, testData1);
-		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
-		return deserializer.deserialize(input);
+		Ref ref = new Ref();
+		deserializer.deserialize(array, 0, ref);
+		return (T) ref.get();
+//		return null;
 	}
 
 	public static class TestDataScalars {
@@ -382,7 +384,6 @@ public class AsmSerializerTest {
 		}
 
 		assertEquals(testData1.mapOfNullableInt2NullableString, testData2.mapOfNullableInt2NullableString);
-
 	}
 
 	public interface TestDataInterface {

@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -123,17 +124,19 @@ public class SerializerGenHppcSet implements SerializerGen {
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		final Class<?> valueType = valueSerializer.getRawType();
-		Expression length = let(call(arg(0), "readVarInt"));
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getLength = let(cast(call(arg(2), "get"), int.class));
 		final Expression set = let(constructor(hashSetType));
-		return sequence(set, expressionFor(length, new ForVar() {
+		return sequence(set, pos, expressionFor(getLength, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(
-						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcSet.this.valueType)),
+						set(arg(1), valueSerializer.deserialize(valueType, version, staticMethods)),
+						call(set, "add", cast(call(arg(2), "get"), SerializerGenHppcSet.this.valueType)),
 						voidExp()
 				);
 			}
-		}), set);
+		}), call(arg(2), "set", cast(set, Object.class)), arg(1));
 	}
 
 	@Override

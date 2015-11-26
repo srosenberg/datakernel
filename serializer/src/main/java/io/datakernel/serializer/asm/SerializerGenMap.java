@@ -17,13 +17,13 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
 
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -94,33 +94,55 @@ public final class SerializerGenMap implements SerializerGen {
 	}
 
 	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression local = let(constructor(LinkedHashMap.class, length));
-		Expression forEach = expressionFor(length, new ForVar() {
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getInt = let(cast(call(arg(2), "get"), int.class));
+		final Expression local = let(constructor(LinkedHashMap.class, getInt));
+		Expression forEach = expressionFor(getInt, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return sequence(call(local, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
-				), voidExp());
+				List<Expression> list = new ArrayList<>();
+
+				list.add(set(arg(1), keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods)));
+				ExpressionLet varKey = let(cast(call(arg(2), "get"), Object.class));
+				list.add(varKey);
+
+				list.add(set(arg(1), valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods)));
+				ExpressionLet varValue = let(cast(call(arg(2), "get"), Object.class));
+				list.add(varValue);
+
+				list.add(call(local, "put", varKey, varValue));
+				list.add(voidExp());
+
+				return sequence(list);
 			}
 		});
-		return sequence(length, local, forEach, local);
+		return sequence(pos, local, forEach, call(arg(2), "set", cast(local, Object.class)), arg(1));
 	}
 
 	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = let(call(arg(0), "readVarInt"));
+		Expression pos = set(arg(1), callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2)));
+		Expression getInt = let(cast(call(arg(2), "get"), int.class));
 		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
-		Expression forEach = expressionFor(length, new ForVar() {
+		Expression forEach = expressionFor(getInt, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return sequence(call(localMap, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
-				), voidExp());
+				List<Expression> list = new ArrayList<>();
+
+				list.add(set(arg(1), keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods)));
+				ExpressionLet varKey = let(cast(call(arg(2), "get"), Object.class));
+				list.add(varKey);
+
+				list.add(set(arg(1), valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods)));
+				ExpressionLet varValue = let(cast(call(arg(2), "get"), Object.class));
+				list.add(varValue);
+
+				list.add(call(localMap, "put", varKey, varValue));
+				list.add(voidExp());
+
+				return sequence(list);
 			}
 		});
-		return sequence(length, localMap, forEach, localMap);
+		return sequence(pos, localMap, forEach, call(arg(2), "set", cast(localMap, Object.class)), arg(1));
 	}
 
 	@Override

@@ -333,9 +333,12 @@ public class SerializerGenClass implements SerializerGen {
 			if (!fieldGen.hasVersion(version)) continue;
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			Expression expression = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
-			list.add(expression);
-			map.put(fieldName, cast(expression, fieldGen.getRawType()));
+			Expression read = set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
+			Expression var = let(cast(call(arg(2), "get"), fieldGen.getRawType()));
+
+			list.add(read);
+			list.add(var);
+			map.put(fieldName, var);
 		}
 
 		Expression constructor;
@@ -384,13 +387,14 @@ public class SerializerGenClass implements SerializerGen {
 			list.add(set(field, map.get(fieldName)));
 		}
 
-		list.add(local);
+		list.add(call(arg(2), "set", cast(local, Object.class)));
+		list.add(arg(1));
 		staticMethods.registerStaticDeserializeMethod(this, version, sequence(list));
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
+		return staticMethods.callStaticDeserializeMethod(this, version, arg(0), arg(1), arg(2));
 	}
 
 	private Expression callFactory(Map<String, Expression> map) {
@@ -448,11 +452,12 @@ public class SerializerGenClass implements SerializerGen {
 			VarField field = getter(local, fieldName);
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			Expression expression = fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods);
-			list.add(set(field, expression));
+			list.add(set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
+			list.add(set(field, cast(call(arg(2), "get"), fieldGen.getRawType())));
 		}
 
-		list.add(local);
+		list.add(call(arg(2), "set", cast(local, Object.class)));
+		list.add(arg(1));
 		return sequence(list);
 	}
 
@@ -468,9 +473,11 @@ public class SerializerGenClass implements SerializerGen {
 
 			VarField field = getter(local, fieldName);
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(set(field, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
+			list.add(set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
+			list.add(set(field, cast(call(arg(2), "get"), fieldGen.getRawType())));
 		}
-		list.add(local);
+		list.add(call(arg(2), "set", cast(local, Object.class)));
+		list.add(arg(1));
 		return sequence(list);
 	}
 
@@ -479,11 +486,11 @@ public class SerializerGenClass implements SerializerGen {
 			case BOOLEAN:
 				return value(false);
 			case CHAR:
-				return value((char)0);
+				return value((char) 0);
 			case BYTE:
-				return value((byte)0);
+				return value((byte) 0);
 			case SHORT:
-				return value((short)0);
+				return value((short) 0);
 			case INT:
 				return value(0);
 			case Type.LONG:
