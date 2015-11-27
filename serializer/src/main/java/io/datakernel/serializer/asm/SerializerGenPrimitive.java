@@ -67,7 +67,7 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	@Override
 	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-
+		staticMethods.registerDeserializeClass(primitiveType);
 	}
 
 	@Override

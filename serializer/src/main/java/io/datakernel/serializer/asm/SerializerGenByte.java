@@ -36,6 +36,6 @@ public final class SerializerGenByte extends SerializerGenPrimitive {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1), arg(2));
+		return callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1));
 	}
 }

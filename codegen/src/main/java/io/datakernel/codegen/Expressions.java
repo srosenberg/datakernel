@@ -95,6 +95,7 @@ public final class Expressions {
 	 * @param field name of the field which will be returned
 	 * @return new instance of the VarField
 	 */
+	// TODO (vsavchuk) make three only field, only method, both
 	public static VarField getter(Expression owner, String field) {
 		return new VarField(owner, field);
 	}

@@ -21,67 +21,68 @@ import java.io.UnsupportedEncodingException;
 public class SerializationInputHelper {
 //	TODO (vsavchuk) Ref в собі тримає і обєкт і логіку ensureCharArray, і просто Ref не Ref<T>, Ref створюється на топ левелі один раз
 
-	public static int readByte(byte[] buf, int pos, Ref ref) {
-		ref.set(buf[pos]);
-		return pos + 1;
+	private static char[] charArray;
+
+	public static char[] getCharArray(int length) {
+		if (charArray == null || charArray.length < length) {
+			charArray = new char[length + (length >>> 2)];
+		}
+		return charArray;
 	}
 
-	private static byte readByte(byte[] buf, int pos) {
+	public static PairOffByte readByte(byte[] buf, int pos) {
+		return new PairOffByte(pos + 1, buf[pos]);
+	}
+
+	private static byte readSimpleByte(byte[] buf, int pos) {
 		return buf[pos];
 	}
 
-	public static int read(byte[] buffer, Ref ref) {
-		return read(buffer, 0, buffer.length, ref);
+	public static PairOffByteArray read(byte[] buffer, int len) {
+		return read(buffer, 0, len);
 	}
 
-	public static int read(byte[] buffer, int pos, int len, Ref ref) {
+	public static PairOffByteArray read(byte[] buffer, int pos, int len) {
 		byte[] bytes = new byte[len];
 		System.arraycopy(buffer, pos, bytes, 0, len);
-		ref.set(bytes);
-		return pos + len;
+		return new PairOffByteArray(pos + len, bytes);
 	}
 
-	public static int readBoolean(byte[] buf, int pos, Ref ref) {
-		ref.set(buf[pos] != 0);
-		return pos + 1;
+	public static PairOffBoolean readBoolean(final byte[] buf, final int pos) {
+		return new PairOffBoolean(pos + 1, buf[pos] != 0);
 	}
 
-	public static int readChar(byte[] buf, int pos, Ref ref) {
-		int ch1 = readByte(buf, pos);
-		int ch2 = readByte(buf, pos + 1);
+	public static PairOffChar readChar(byte[] buf, int pos) {
+		int ch1 = readSimpleByte(buf, pos);
+		int ch2 = readSimpleByte(buf, pos + 1);
 		int code = (ch1 << 8) + (ch2 & 0xFF);
-		ref.set((char) code);
-		return pos + 2;
+		return new PairOffChar(pos + 2, (char) code);
 	}
 
-	public static int readDouble(byte[] buf, int pos, Ref ref) {
-		pos = readLong(buf, pos, ref);
-		ref.set(Double.longBitsToDouble(((Long) ref.get())));
-		return pos;
+	public static PairOffDouble readDouble(byte[] buf, int pos) {
+		PairOffLong pairOffLong = readLong(buf, pos);
+		return new PairOffDouble(pairOffLong.off, Double.longBitsToDouble(pairOffLong.instance));
 	}
 
-	public static int readFloat(byte[] buf, int pos, Ref ref) {
-		pos = readInt(buf, pos, ref);
-		ref.set(Float.intBitsToFloat(((Integer) ref.get())));
-		return pos;
+	public static PairOffFloat readFloat(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readInt(buf, pos);
+		return new PairOffFloat(pairOffInt.off, Float.intBitsToFloat(pairOffInt.instance));
 	}
 
-	public static int readInt(byte[] buf, int pos, Ref ref) {
+	public static PairOffInt readInt(byte[] buf, int pos) {
 		int result = ((buf[pos] & 0xFF) << 24)
 				| ((buf[pos + 1] & 0xFF) << 16)
 				| ((buf[pos + 2] & 0xFF) << 8)
 				| (buf[pos + 3] & 0xFF);
-		ref.set(result);
-		return pos + 4;
+		return new PairOffInt(pos + 4, result);
 	}
 
 	// TODO (vsavchuk) improve without Ref
-	public static int readVarInt(byte[] buf, int pos, Ref ref) {
+	public static PairOffInt readVarInt(byte[] buf, int pos) {
 		int result;
 		byte b = buf[pos];
 		if (b >= 0) {
-			ref.set(((int) b));
-			return pos + 1;
+			return new PairOffInt(pos + 1, b);
 		} else {
 			result = b & 0x7f;
 			if ((b = buf[pos + 1]) >= 0) {
@@ -108,11 +109,10 @@ public class SerializationInputHelper {
 				}
 			}
 		}
-		ref.set(result);
-		return pos;
+		return new PairOffInt(pos, result);
 	}
 
-	public static int readLong(byte[] buf, int pos, Ref ref) {
+	public static PairOffLong readLong(byte[] buf, int pos) {
 		long result = ((long) buf[pos] << 56)
 				| ((long) (buf[pos + 1] & 0xFF) << 48)
 				| ((long) (buf[pos + 2] & 0xFF) << 40)
@@ -122,39 +122,33 @@ public class SerializationInputHelper {
 				| ((buf[pos + 6] & 0xFF) << 8)
 				| ((buf[pos + 7] & 0xFF));
 
-		ref.set(result);
-		return pos + 8;
+		return new PairOffLong(pos + 8, result);
 
 	}
 
-	public static int readShort(byte[] buf, int pos, Ref ref) {
+	public static PairOffShort readShort(byte[] buf, int pos) {
 		short result = (short) (((buf[pos] & 0xFF) << 8)
 				| ((buf[pos + 1] & 0xFF)));
 
-		ref.set(result);
-		return pos + 2;
+		return new PairOffShort(pos + 2, result);
 	}
 
-	public static int readIso88591(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		int newPos = readVarInt(buf, pos, length);
-		return doReadIso88591(buf, newPos, (Integer) length.get(), ref);
+	public static PairOffString readIso88591(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		return doReadIso88591(buf, pairOffInt.off, pairOffInt.instance);
 	}
 
-	public static int readNullableIso88591(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		int newPos = readVarInt(buf, pos, length);
-		if (length.get() == 0) {
-			ref.set(null);
-			return newPos;
+	public static PairOffString readNullableIso88591(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		if (pairOffInt.instance == 0) {
+			return new PairOffString(pairOffInt.off, null);
 		}
-		return doReadIso88591(buf, newPos, ((Integer) length.get() - 1), ref);
+		return doReadIso88591(buf, pairOffInt.off, pairOffInt.instance - 1);
 	}
 
-	public static int doReadIso88591(byte[] buf, int pos, int length, Ref ref) {
+	public static PairOffString doReadIso88591(byte[] buf, int pos, int length) {
 		if (length == 0) {
-			ref.set("");
-			return pos;
+			return new PairOffString(pos, "");
 		}
 
 		if (length > remaining(buf, pos))
@@ -163,101 +157,90 @@ public class SerializationInputHelper {
 //      TODO (vsavchuk) check isRemoved in java 9?
 //      public static String(byte[] ascii, int hibyte, int offset, int count) {
 
-		char[] chars = ref.getCharArray(length);
+		char[] chars = getCharArray(length);
 		for (int i = 0; i < length; i++) {
-			int c = readByte(buf, pos + i) & 0xff;
+			int c = readSimpleByte(buf, pos + i) & 0xff;
 			chars[i] = (char) c;
 		}
 
 		// TODO (vsavchuk) replace by String(byte[] ascii, int hibyte, int offset, int count) with hibyte == 0
-		ref.set(new String(chars, 0, length));
-
-		return pos + length;
+		return new PairOffString(pos + length, new String(chars, 0, length));
 	}
 
 	private static int remaining(byte[] bytes, int pos) {
 		return bytes.length - pos;
 	}
 
-	public static int readUTF8(byte[] buf, int pos, Ref ref) {
+	public static PairOffString readUTF8(byte[] buf, int pos) {
 		// TODO (vsavchuk) mb use ref from arg???
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		return doReadUTF8(buf, pos, (Integer) length.get(), ref);
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		return doReadUTF8(buf, pairOffInt.off, pairOffInt.instance);
 	}
 
-	public static int readNullableUTF8(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		if (length.get() == 0) {
-			ref.set(null);
-			return pos;
+	public static PairOffString readNullableUTF8(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		if (pairOffInt.instance == 0) {
+			return new PairOffString(pos, null);
 		}
-		return doReadUTF8(buf, pos, (Integer) length.get() - 1, ref);
+		return doReadUTF8(buf, pairOffInt.off, pairOffInt.instance - 1);
 	}
 
-	private static int doReadUTF8(byte[] buf, int pos, int length, Ref ref) {
+	private static PairOffString doReadUTF8(byte[] buf, int pos, int length) {
 		if (length == 0) {
-			ref.set("");
-			return pos;
+			// TODO (vsavchuk) check all ifs
+			return new PairOffString(pos, "");
 		}
 		if (length > remaining(buf, pos))
 			throw new IllegalArgumentException();
-		char[] chars = ref.getCharArray(length);
+		char[] chars = getCharArray(length);
 		for (int i = 0; i < length; i++) {
-			int c = readByte(buf, pos) & 0xff;
+			int c = readSimpleByte(buf, pos) & 0xff;
 			pos += 1;
 			if (c < 0x80) {
 				chars[i] = (char) c;
 			} else if (c < 0xE0) {
-				chars[i] = (char) ((c & 0x1F) << 6 | readByte(buf, pos + 1) & 0x3F);
+				chars[i] = (char) ((c & 0x1F) << 6 | readSimpleByte(buf, pos + 1) & 0x3F);
 				pos += 2;
 			} else {
-				chars[i] = (char) ((c & 0x0F) << 12 | (readByte(buf, pos + 1) & 0x3F) << 6 | (readByte(buf, pos + 2) & 0x3F));
+				chars[i] = (char) ((c & 0x0F) << 12 | (readSimpleByte(buf, pos + 1) & 0x3F) << 6 | (readSimpleByte(buf, pos + 2) & 0x3F));
 				pos += 3;
 			}
 		}
-		ref.set(new String(chars, 0, length));
-		return pos;
+		return new PairOffString(pos, new String(chars, 0, length));
 	}
 
-	public static int readUTF16(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		return doReadUTF16(buf, pos, ((Integer) length.get()), ref);
+	public static PairOffString readUTF16(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		return doReadUTF16(buf, pairOffInt.off, pairOffInt.instance);
 	}
 
-	public static int readNullableUTF16(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		if (length.get() == 0) {
-			ref.set(null);
-			return pos;
+	public static PairOffString readNullableUTF16(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		if (pairOffInt.instance == 0) {
+			return new PairOffString(pos, null);
 		}
-		return doReadUTF16(buf, pos, ((Integer) length.get() - 1), ref);
+		return doReadUTF16(buf, pairOffInt.off, pairOffInt.instance - 1);
 	}
 
-	private static int doReadUTF16(byte[] buf, int pos, int length, Ref ref) {
+	private static PairOffString doReadUTF16(byte[] buf, int pos, int length) {
 		if (length == 0) {
-			ref.set(null);
-			return pos;
+			return new PairOffString(pos, null);
 		}
 		if (length * 2 > remaining(buf, pos))
 			throw new IllegalArgumentException();
 
-		char[] chars = ref.getCharArray(length);
+		char[] chars = getCharArray(length);
 		for (int i = 0; i < length; i++) {
-			chars[i] = (char) ((readByte(buf, pos) << 8) + (readByte(buf, pos + 1)));
+			chars[i] = (char) ((readSimpleByte(buf, pos) << 8) + (readSimpleByte(buf, pos + 1)));
 			pos += 2;
 		}
-		ref.set(new String(chars, 0, length));
-		return pos;
+		return new PairOffString(pos, new String(chars, 0, length));
 	}
 
 	public static int readVarLong(byte[] buf, int pos, Ref ref) {
 		long result = 0;
 		for (int offset = 0; offset < 64; offset += 7) {
-			byte b = readByte(buf, pos);
+			byte b = readSimpleByte(buf, pos);
 			pos += 1;
 			result |= (long) (b & 0x7F) << offset;
 			if ((b & 0x80) == 0) {
@@ -268,34 +251,29 @@ public class SerializationInputHelper {
 		throw new IllegalArgumentException();
 	}
 
-	public static int readJavaUTF8(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		return doReadJavaUTF8(buf, pos, (Integer) length.get(), ref);
+	public static PairOffString readJavaUTF8(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		return doReadJavaUTF8(buf, pairOffInt.off, pairOffInt.instance);
 	}
 
-	public static int readNullableJavaUTF8(byte[] buf, int pos, Ref ref) {
-		Ref length = new Ref();
-		pos = readVarInt(buf, pos, length);
-		if (length.get() == 0) {
-			ref.set(null);
-			return pos;
+	public static PairOffString readNullableJavaUTF8(byte[] buf, int pos) {
+		PairOffInt pairOffInt = readVarInt(buf, pos);
+		if (pairOffInt.instance == 0) {
+			return new PairOffString(pos, null);
 		}
-		return doReadJavaUTF8(buf, pos, ((Integer) length.get() - 1), ref);
+		return doReadJavaUTF8(buf, pairOffInt.off, pairOffInt.instance - 1);
 	}
 
-	public static int doReadJavaUTF8(byte[] buf, int pos, int length, Ref ref) {
+	public static PairOffString doReadJavaUTF8(byte[] buf, int pos, int length) {
 		if (length == 0) {
-			ref.set("");
-			return pos;
+			return new PairOffString(pos, "");
 		}
 		if (length > remaining(buf, pos))
 			throw new IllegalArgumentException();
 		pos += length;
 
 		try {
-			ref.set(new String(buf, pos - length, length, "UTF-8"));
-			return pos;
+			return new PairOffString(pos, new String(buf, pos - length, length, "UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}

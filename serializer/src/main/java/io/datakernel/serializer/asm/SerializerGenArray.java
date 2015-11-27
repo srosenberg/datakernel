@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.serializer.SerializationInputHelper;
@@ -92,31 +93,32 @@ public final class SerializerGenArray implements SerializerGen {
 	@Override
 	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+		staticMethods.registerDeserializeClass(type);
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		final Expression len = callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1), arg(2));
-		final Expression setPos = set(arg(1), len);
+		final Expression len = let(callStatic(SerializationInputHelper.class, "readVarInt", arg(0), arg(1)));
+		final Expression setPos = set(arg(1), getter(len, "off"));
 
-		final Expression array = let(Expressions.newArray(type, cast(call(arg(2), "get"), int.class)));
+		final Expression array = let(Expressions.newArray(type, getter(len, "instance")));
 		if (type.getComponentType() == Byte.TYPE) {
 			return sequence(setPos,
-					set(arg(1),
 							callStatic(SerializationInputHelper.class, "read",
-									arg(0), arg(1), cast(call(arg(2), "get"), int.class), arg(2)
+									arg(0), arg(1), getter(len, "instance")
 							)
-					),
-					arg(1)
-			);
+					);
 		} else {
-			return sequence(setPos, array, expressionFor(cast(call(arg(2), "get"), int.class), new ForVar() {
+			ExpressionLet constructor = let(constructor(staticMethods.getClassPairHolder(type)));
+			return sequence(len, setPos, array, expressionFor(getter(len, "instance"), new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return sequence(set(arg(1), valueSerializer.deserialize(type.getComponentType(), version, staticMethods)),
-							setArrayItem(array, it, cast(call(arg(2), "get"), type.getComponentType())));
+					ExpressionLet item = let(valueSerializer.deserialize(type.getComponentType(), version, staticMethods));
+					return sequence(item, set(arg(1), getter(item, "off")),
+							setArrayItem(array, it, getter(item, "instance")),
+							voidExp());
 				}
-			}), call(arg(2), "set", cast(array, Object.class)), arg(1));
+			}), constructor, setter(constructor, "off", arg(1)), setter(constructor, "instance", array), constructor);
 		}
 	}
 

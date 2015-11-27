@@ -36,6 +36,6 @@ public final class SerializerGenChar extends SerializerGenPrimitive {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return callStatic(SerializationInputHelper.class, "readChar", arg(0), arg(1), arg(2));
+		return callStatic(SerializationInputHelper.class, "readChar", arg(0), arg(1));
 	}
 }

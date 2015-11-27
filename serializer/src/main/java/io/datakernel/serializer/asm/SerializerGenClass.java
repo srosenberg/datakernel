@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.VarField;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.SerializerBuilder;
@@ -314,6 +315,7 @@ public class SerializerGenClass implements SerializerGen {
 			return;
 		}
 
+		staticMethods.registerDeserializeClass(this.getRawType());
 		if (!implInterface && dataTypeIn.isInterface()) {
 			Expression expression = deserializeInterface(this.getRawType(), version, staticMethods);
 			staticMethods.registerStaticDeserializeMethod(this, version, expression);
@@ -333,10 +335,11 @@ public class SerializerGenClass implements SerializerGen {
 			if (!fieldGen.hasVersion(version)) continue;
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			Expression read = set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
-			Expression var = let(cast(call(arg(2), "get"), fieldGen.getRawType()));
+			ExpressionLet readPair = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
 
-			list.add(read);
+			list.add(readPair);
+			list.add(set(arg(1), getter(readPair, "off")));
+			ExpressionLet var = let(getter(readPair, "instance"));
 			list.add(var);
 			map.put(fieldName, var);
 		}
@@ -387,14 +390,18 @@ public class SerializerGenClass implements SerializerGen {
 			list.add(set(field, map.get(fieldName)));
 		}
 
-		list.add(call(arg(2), "set", cast(local, Object.class)));
-		list.add(arg(1));
+		ExpressionLet letHolder = let(constructor(staticMethods.getClassPairHolder(this.getRawType())));
+		list.add(letHolder);
+		list.add(setter(letHolder, "off", arg(1)));
+		list.add(setter(letHolder, "instance", local));
+		list.add(letHolder);
+
 		staticMethods.registerStaticDeserializeMethod(this, version, sequence(list));
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticDeserializeMethod(this, version, arg(0), arg(1), arg(2));
+		return staticMethods.callStaticDeserializeMethod(this, version, arg(0), arg(1));
 	}
 
 	private Expression callFactory(Map<String, Expression> map) {
@@ -447,17 +454,22 @@ public class SerializerGenClass implements SerializerGen {
 
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
-			if (!fieldGen.hasVersion(version))
-				continue;
-			VarField field = getter(local, fieldName);
-
+			if (!fieldGen.hasVersion(version)) continue;
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
-			list.add(set(field, cast(call(arg(2), "get"), fieldGen.getRawType())));
+
+			VarField field = getter(local, fieldName);
+			ExpressionLet pairDeserialize = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
+			list.add(pairDeserialize);
+			list.add(set(arg(1), getter(pairDeserialize, "off")));
+			list.add(set(field, getter(pairDeserialize, "instance")));
 		}
 
-		list.add(call(arg(2), "set", cast(local, Object.class)));
-		list.add(arg(1));
+		ExpressionLet letHolder = let(constructor(staticMethods.getClassPairHolder(this.getRawType())));
+		list.add(letHolder);
+		list.add(setter(letHolder, "off", arg(1)));
+		list.add(setter(letHolder, "instance", local));
+		list.add(letHolder);
+
 		return sequence(list);
 	}
 
@@ -470,14 +482,21 @@ public class SerializerGenClass implements SerializerGen {
 			FieldGen fieldGen = fields.get(fieldName);
 
 			if (!fieldGen.hasVersion(version)) continue;
+			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
 
 			VarField field = getter(local, fieldName);
-			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(set(arg(1), fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
-			list.add(set(field, cast(call(arg(2), "get"), fieldGen.getRawType())));
+			ExpressionLet pairDeserialize = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
+			list.add(pairDeserialize);
+			list.add(set(arg(1), getter(pairDeserialize, "off")));
+			list.add(set(field, getter(pairDeserialize, "instance")));
 		}
-		list.add(call(arg(2), "set", cast(local, Object.class)));
-		list.add(arg(1));
+		// TODO (vsavchuk) pairDeserialize without methods, just field
+		ExpressionLet letHolder = let(constructor(staticMethods.getClassPairHolder(this.getRawType())));
+		list.add(letHolder);
+		list.add(setter(letHolder, "off", arg(1)));
+		list.add(setter(letHolder, "instance", local));
+		list.add(letHolder);
+
 		return sequence(list);
 	}
 

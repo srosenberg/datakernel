@@ -104,7 +104,9 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 			}
 			// read message body:
 			if (readBytes >= dataSize || bufferLastPos - messageStart >= dataSize) {
-				int newOff = bufferSerializer.deserialize(buffer, off, ref);
+//				TODO (vsavchuk) fix this
+//				int newOff = bufferSerializer.deserialize(buffer, off, );
+				int newOff = 0;
 				if ((newOff - off) != dataSize)
 					throw new IllegalArgumentException("Deserialized size != parsed data size");
 				off += dataSize;

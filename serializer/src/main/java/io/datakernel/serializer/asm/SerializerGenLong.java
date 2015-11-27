@@ -63,9 +63,9 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (varLength) {
-			return callStatic(SerializationInputHelper.class, "readVarLong", arg(0), arg(1), arg(2));
+			return callStatic(SerializationInputHelper.class, "readVarLong", arg(0), arg(1));
 		} else {
-			return callStatic(SerializationInputHelper.class, "readLong", arg(0), arg(1), arg(2));
+			return callStatic(SerializationInputHelper.class, "readLong", arg(0), arg(1));
 		}
 	}
 }

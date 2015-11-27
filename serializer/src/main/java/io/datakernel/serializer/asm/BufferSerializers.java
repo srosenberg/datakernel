@@ -17,8 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.Ref;
-import io.datakernel.serializer.SerializationInputHelper;
+import io.datakernel.serializer.PairDeserialize;
 import io.datakernel.serializer.SerializationOutputHelper;
 
 public final class BufferSerializers {
@@ -32,9 +31,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readByte(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readByte(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
@@ -45,10 +49,15 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
-			return SerializationInputHelper.read(byteArray, pos, (Integer)ref.get(), ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
+//			return SerializationInputHelper.read(byteArray, pos, (Integer)ref.get(), ref);
+//		}
 	};
 
 	private static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
@@ -58,9 +67,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readShort(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readShort(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
@@ -70,9 +84,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readInt(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readInt(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
@@ -82,9 +101,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readVarInt(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readVarInt(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
@@ -94,12 +118,17 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
-			int n = ((Integer) ref.get());
-			ref.set((n >>> 1) ^ -(n & 1));
-			return pos;
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			pos = SerializationInputHelper.readVarInt(byteArray, pos, ref);
+//			int n = ((Integer) ref.get());
+//			ref.set((n >>> 1) ^ -(n & 1));
+//			return pos;
+//		}
 	};
 
 	private static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
@@ -109,9 +138,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readLong(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readLong(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
@@ -121,9 +155,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readVarLong(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readVarLong(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
@@ -133,12 +172,17 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			pos = SerializationInputHelper.readVarLong(byteArray, pos, ref);
-			int n = ((Integer) ref.get());
-			ref.set((n >>> 1) ^ -(n & 1));
-			return pos;
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			pos = SerializationInputHelper.readVarLong(byteArray, pos, ref);
+//			int n = ((Integer) ref.get());
+//			ref.set((n >>> 1) ^ -(n & 1));
+//			return pos;
+//		}
 	};
 
 	private static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
@@ -148,9 +192,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readFloat(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readFloat(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
@@ -160,9 +209,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readDouble(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readDouble(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
@@ -172,9 +226,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readChar(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readChar(byteArray, pos, ref);
+//		}
 	};
 	private static final BufferSerializer<String> UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
@@ -183,9 +242,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readUTF8(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readUTF8(byteArray, pos, ref);
+//		}
 	};
 	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
@@ -194,9 +258,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readUTF16(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readUTF16(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
@@ -206,9 +275,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readBoolean(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readBoolean(byteArray, pos, ref);
+//		}
 	};
 
 	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
@@ -218,9 +292,14 @@ public final class BufferSerializers {
 		}
 
 		@Override
-		public int deserialize(byte[] byteArray, int pos, Ref ref) {
-			return SerializationInputHelper.readIso88591(byteArray, pos, ref);
+		public PairDeserialize deserialize(byte[] bytes, int pos) {
+			return null;
 		}
+
+//		@Override
+//		public int deserialize(byte[] byteArray, int pos, Ref ref) {
+//			return SerializationInputHelper.readIso88591(byteArray, pos, ref);
+//		}
 	};
 
 	public static BufferSerializer<Byte> byteSerializer() {

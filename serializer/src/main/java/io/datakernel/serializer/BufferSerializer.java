@@ -22,7 +22,15 @@ public interface BufferSerializer<T> {
 //	T deserialize(SerializationInputBuffer input);
 
 	// TODO (vsavchuk) T deserialize(byte[] byteArray, Position pos) mb this is better???
-	int deserialize(byte[] byteArray, int pos, Ref ref);
+//	int deserialize(byte[] byteArray, int pos, Ref ref);
+
+	PairDeserialize deserialize(byte[] bytes, int pos);
+
+	// третій метод який створює контекст(контейнер) в якому будуть всі поля
+
+	// TODO (vsavchuk)
+	// escape analise метод вертає локальний клас який є контейнером, контейнер створюється через codegen.
+	//
 
 //	int deserialize(byte[] byteArray, int startPos, T ref);
 //	 T deserialize(byte[] byteArray, int startPosContainerForPosition container);

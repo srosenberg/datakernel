@@ -51,7 +51,8 @@ public class ExpressionCallStatic implements Expression {
 
 		Type returnType;
 		try {
-			Method method = owner.getMethod(name, arguments);
+			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), getType(owner));
+			Method method = ownerJavaType.getMethod(name, argumentClasses.toArray(new Class<?>[]{}));
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {

@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
@@ -48,7 +49,7 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-
+		staticMethods.registerDeserializeClass(nameOfEnum);
 	}
 
 	@Override
@@ -67,8 +68,14 @@ public class SerializerGenEnum implements SerializerGen {
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		// TODO (vsavchuk) make beautiful, and other
-		return sequence(set(arg(1), callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1), arg(2))),
-				call(arg(2), "set", cast(get(callStatic(nameOfEnum, "values"), cast(call(arg(2), "get"), byte.class)), Object.class)), arg(1));
+		Expression readPair = let(callStatic(SerializationInputHelper.class, "readByte", arg(0), arg(1)));
+		Class classPairHolder = staticMethods.getClassPairHolder(nameOfEnum);
+		ExpressionLet holder = let(constructor(classPairHolder));
+		return sequence(readPair,
+				setter(holder, "off", getter(readPair, "off")),
+				setter(holder, "instance", get(callStatic(nameOfEnum, "values"), getter(readPair, "instance"))),
+				holder
+		);
 	}
 
 	@Override

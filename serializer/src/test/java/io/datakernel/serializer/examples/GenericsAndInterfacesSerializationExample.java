@@ -126,7 +126,7 @@ public class GenericsAndInterfacesSerializationExample {
 		byte[] array = new byte[1000];
 		serializer.serialize(array, 0, testData1);
 		Ref ref = new Ref();
-		deserializer.deserialize(array, 0, ref);
+//		deserializer.deserialize(array, 0, ref);
 		return (T) ref.get();
 	}
 }

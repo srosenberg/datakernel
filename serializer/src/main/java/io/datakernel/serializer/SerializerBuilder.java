@@ -29,14 +29,18 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.net.InetAddress;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
+import static io.datakernel.codegen.Utils.isWrapperType;
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
+import static org.objectweb.asm.Type.getType;
 
 /**
  * Scans fields of classes for serialization.
@@ -812,6 +816,7 @@ public final class SerializerBuilder {
 
 		private Map<Key, Value> mapSerialize = new HashMap<>();
 		private Map<Key, Value> mapDeserialize = new HashMap<>();
+		private Map<Class, Class> mapClassHolder = new HashMap<>();
 
 		public boolean startSerializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapSerialize.containsKey(new Key(serializerGen, version));
@@ -831,10 +836,36 @@ public final class SerializerBuilder {
 			return b;
 		}
 
+		public void registerDeserializeClass(Class clazz) {
+			if (isPrimitiveType(getType(clazz)) || isWrapperType(getType(clazz))) {
+				return;
+			}
+			if (!mapClassHolder.containsKey(clazz)) {
+//				mapClassHolder.put(clazz, new AsmBuilder<>(definingClassLoader, Object.class)
+//				.setBytecodeSaveDir(Paths.get("/home/vsavchuk/Desktop/new/datakernel/serializer/forGen"))
+//						.field("off", int.class)
+//						.field("instance", clazz)
+//						.defineClass());
+//
+				mapClassHolder.put(clazz, new AsmBuilder<>(definingClassLoader, PairDeserialize.class)
+						.field("off", int.class)
+						.field("instance", clazz)
+						.setBytecodeSaveDir(Paths.get("/home/vsavchuk/Desktop/new/datakernel/serializer/forGen"))
+						.method("getOff", getter(self(), "off"))
+						.method("getInstance", getter(self(), "instance"))
+						.defineClass());
+			}
+		}
+
 		public void registerStaticSerializeMethod(SerializerGen serializerGen, int version, Expression expression) {
 			Key key = new Key(serializerGen, version);
 			Value value = mapSerialize.get(key);
 			value.expression = expression;
+		}
+
+		// TODO (vsavchuk) rename
+		public Class getClassPairHolder(Class clazz) {
+			return mapClassHolder.get(clazz);
 		}
 
 		public void registerStaticDeserializeMethod(SerializerGen serializerGen, int version, Expression expression) {
@@ -899,8 +930,8 @@ public final class SerializerBuilder {
 		for (StaticMethods.Key key : staticMethods.mapDeserialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapDeserialize.get(key);
 			asmFactory.staticMethod(value.method,
-					int.class,
-					asList(byte[].class, int.class, Ref.class),
+					PairDeserialize.class,
+					asList(byte[].class, int.class),
 					value.expression);
 		}
 

@@ -17,6 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.serializer.SerializationInputHelper;
 import io.datakernel.serializer.SerializationOutputHelper;
 import io.datakernel.serializer.SerializerBuilder;
@@ -62,14 +63,19 @@ public class SerializerGenInetAddress implements SerializerGen {
 
 	@Override
 	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-
+		staticMethods.registerDeserializeClass(InetAddress.class);
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return sequence(set(arg(1), callStatic(SerializationInputHelper.class, "read", arg(0), arg(1), value(4), arg(2))),
-				call(arg(2), "set", cast(callStatic(targetType, "getByAddress", cast(call(arg(2), "get"), byte[].class)), Object.class)),
-				arg(1));
+		ExpressionLet letPair = let(callStatic(SerializationInputHelper.class, "read", arg(0), arg(1), value(4)));
+		ExpressionLet addressHolder = let(constructor(staticMethods.getClassPairHolder(InetAddress.class)));
+		return sequence(
+				letPair,
+				setter(addressHolder, "off", getter(letPair, "off")),
+				setter(addressHolder, "instance", callStatic(targetType, "getByAddress", getter( letPair, "instance"))),
+				addressHolder
+				);
 	}
 
 }

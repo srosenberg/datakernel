@@ -128,24 +128,24 @@ public class SerializerGenString implements SerializerGen {
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				return callStatic(SerializationInputHelper.class, "readNullableUTF16", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readNullableUTF16", arg(0), arg(1));
 			else
-				return callStatic(SerializationInputHelper.class, "readUTF16", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readUTF16", arg(0), arg(1));
 		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
-				return callStatic(SerializationInputHelper.class, "readNullableIso88591", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readNullableIso88591", arg(0), arg(1));
 			else
-				return callStatic(SerializationInputHelper.class, "readIso88591", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readIso88591", arg(0), arg(1));
 		} else if (format == StringFormat.UTF8) {
 			if (nullable)
-				return callStatic(SerializationInputHelper.class, "readNullableJavaUTF8", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readNullableJavaUTF8", arg(0), arg(1));
 			else
-				return callStatic(SerializationInputHelper.class, "readJavaUTF8", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readJavaUTF8", arg(0), arg(1));
 		} else {
 			if (nullable)
-				return callStatic(SerializationInputHelper.class, "readNullableUTF8", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readNullableUTF8", arg(0), arg(1));
 			else
-				return callStatic(SerializationInputHelper.class, "readUTF8", arg(0), arg(1), arg(2));
+				return callStatic(SerializationInputHelper.class, "readUTF8", arg(0), arg(1));
 		}
 	}
 

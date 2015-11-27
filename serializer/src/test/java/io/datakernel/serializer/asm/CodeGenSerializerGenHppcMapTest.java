@@ -32,7 +32,7 @@ public class CodeGenSerializerGenHppcMapTest {
 		byte[] array = new byte[1000];
 		serializer.serialize(array, 0, testData1);
 		Ref ref = new Ref();
-		serializer.deserialize(array, 0, ref);
+//		serializer.deserialize(array, 0, ref);
 		return (T) ref.get();
 	}
 
