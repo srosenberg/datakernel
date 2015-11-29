@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.hash;
+package io.datakernel.serializer;
 
-public interface BucketHashFunction {
-	int hash(Object shardId, int bucket);
+import java.io.IOException;
+
+public interface ObjectReader<T> {
+	T read();
+
+	void close() throws IOException;
 }

@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender;
+package io.datakernel.serializer;
 
-import io.datakernel.rpc.client.RpcClientConnectionPool;
+import java.io.IOException;
 
-public interface RpcSingleSenderStrategy {
-	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
+public interface ObjectWriter<T> {
+	void write(T value) throws IOException;
+
+	void flush() throws IOException;
+
+	void close() throws IOException;
 }

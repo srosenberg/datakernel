@@ -14,31 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client;
+package io.datakernel.rpc.hash;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-
-public interface RpcClientConnectionPoolMBean {
-	void startMonitoring();
-
-	void stopMonitoring();
-
-	boolean isMonitoring();
-
-	void resetStats();
-
-	int getConnectionsCount();
-
-	CompositeData[] getConnections() throws OpenDataException;
-
-	long getTotalSuccessfulRequests();
-
-	long getTotalPendingRequests();
-
-	long getTotalRejectedRequests();
-
-	long getTotalFailedRequests();
-
-	long getTotalExpiredRequests();
+public interface HashBucketFunction {
+	int hash(Object shardId, int bucket);
 }
