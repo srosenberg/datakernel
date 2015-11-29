@@ -25,6 +25,9 @@ import java.net.InetSocketAddress;
 import java.net.URISyntaxException;
 import java.util.List;
 
+/**
+ * This example shows Config class usage
+ */
 public class ConfigExample {
 	private static final String CONFIGS_FILE_NAME = "config-example.properties";
 
