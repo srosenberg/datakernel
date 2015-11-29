@@ -33,11 +33,6 @@
             <artifactId>async-streams</artifactId>
             <version>${version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>servicegraph</artifactId>
-            <version>${version}</version>
-        </dependency>
 
         <dependency>
             <groupId>ch.qos.logback</groupId>
