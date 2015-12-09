@@ -16,74 +16,111 @@
 
 package io.datakernel.example;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Provides;
-import io.datakernel.async.CompletionCallback;
+import com.google.inject.Singleton;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
+import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import io.datakernel.guice.servicegraph.SingletonService;
+import io.datakernel.guice.workers.NioWorkerModule;
+import io.datakernel.guice.workers.NioWorkerScopeFactory;
+import io.datakernel.guice.workers.WorkerId;
+import io.datakernel.guice.workers.WorkerThread;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.service.ServiceGraph;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
-import org.slf4j.LoggerFactory;
 
-import java.util.Date;
+import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 /**
- * Example of booting application which depends on several services.
- *
- * Application calls method of {@link io.datakernel.example.ServiceWithDependencies},
- * which depends on {@link io.datakernel.example.BasicServiceA} and {@link io.datakernel.example.BasicServiceB}.
- * {@link io.datakernel.example.LauncherExample.ServicesLauncher} extends {@link io.datakernel.launcher.Launcher}
- * which helps to load configurations, manage services and start them in proper order.
- *
+ * This example shows how to launch simple http server with several working threads, using configurations
  */
 public class LauncherExample {
 
+
+
 	public static void main(String[] args) throws Exception {
-		disableExternalLoggers();
 		Launcher.run(ServicesLauncher.class, args);
 	}
 
 	public static class ServicesLauncher extends Launcher {
-
-		@Inject
-		private ServiceWithDependencies rootService;
-
 		@Override
 		protected void configure() {
+			useProductionMode();
 			configs("launcher-example-config.properties");
-			modules(new ServiceGraphModule()
-							.register(ServiceWithDependencies.class, AsyncServiceAdapters.forNioService())
-							.register(BasicServiceA.class, AsyncServiceAdapters.forNioService())
-							.register(BasicServiceB.class, AsyncServiceAdapters.forNioService())
+			modules(new NioWorkerModule(),
+					new ServiceGraphModule()
+							.register(NioServer.class, AsyncServiceAdapters.forNioServer())
 							.register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop()),
 					new LauncherExampleModule());
 
 		}
-
-		@Override
-		protected void doRun() throws Exception {
-			rootService.makeComputation();
-		}
 	}
 
-	private static void disableExternalLoggers() {
-		Logger serviceGraphModuleLogger = (Logger) LoggerFactory.getLogger(ServiceGraphModule.class);
-		serviceGraphModuleLogger.setLevel(Level.OFF);
-		Logger serviceGraphLogger = (Logger) LoggerFactory.getLogger(ServiceGraph.class);
-		serviceGraphLogger.setLevel(Level.OFF);
-		Logger eventloopLogger = (Logger) LoggerFactory.getLogger(NioEventloop.class);
-		eventloopLogger.setLevel(Level.OFF);
-		Logger launcherLogger = (Logger) LoggerFactory.getLogger(ServicesLauncher.class);
-		launcherLogger.setLevel(Level.OFF);
+	public static class LauncherExampleModule extends AbstractModule {
+
+		@Override
+		protected void configure() {
+		}
+
+		@Provides
+		@SingletonService
+		NioEventloop primaryEventloop() {
+			return new NioEventloop();
+		}
+
+		@Provides
+		@SingletonService
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,List<AsyncHttpServer> workerHttpServers,
+		                                  Config config) {
+			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
+			primaryNioServer.workerNioServers(workerHttpServers);
+			int port = ConfigConverters.ofInteger().get(config.getChild("port"));
+			primaryNioServer.setListenPort(port);
+			return primaryNioServer;
+		}
+
+		@Provides
+		@WorkerThread
+		NioEventloop workerEventloop() {
+			return new NioEventloop();
+		}
+
+		@Provides
+		@WorkerThread
+		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId,
+		                                 Config config) {
+			final String responseMessage = ConfigConverters.ofString().get(config.getChild("responseMessage"));
+			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+				@Override
+				public void serveAsync(HttpRequest request,
+				                       ResultCallback<HttpResponse> callback) {
+					HttpResponse httpResponse = HttpResponse.create(200);
+					httpResponse.body(ByteBuf.wrap(encodeAscii(
+							"Worker server #" + workerId + ". Message: " + responseMessage + "\n")));
+					callback.onResult(httpResponse);
+				}
+			});
+		}
+
+		@Provides
+		@Singleton
+		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope,
+		                                        @WorkerThread Provider<AsyncHttpServer> itemProvider, Config config) {
+			int workers = ConfigConverters.ofInteger().get(config.getChild("workers"));
+			return nioWorkerScope.getList(workers, itemProvider);
+		}
 	}
 }

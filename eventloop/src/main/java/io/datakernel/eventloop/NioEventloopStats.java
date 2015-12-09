@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
+import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Marker;
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 
 public final class NioEventloopStats implements NioEventloopStatsMBean {
 	private static final long DEFAULT_LONGLOOP_TIME = 500; // 500 ms
+	private static final double DEFAULT_STATS_WINDOW = 10.0; // 10 seconds
+	private static final double DEFAULT_STATS_PRECISION = 0.1; // 0.1 seconds
 
 	private static final class DurationRunnable {
 		private Runnable runnable;
@@ -56,29 +59,29 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		}
 	}
 
-	private final DynamicStatsCounter selectorSelectTimeStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter businessLogicTimeStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter selectedKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter invalidKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter acceptKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter connectKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter readKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter writeKeysStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter localTasksStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter concurrentTasksStats = new DynamicStatsCounter(1 << 16);
-	private final DynamicStatsCounter scheduledTasksStats = new DynamicStatsCounter(1 << 16);
+	private final DynamicStatsCounter selectorSelectTimeStats;
+	private final DynamicStatsCounter businessLogicTimeStats;
+	private final DynamicStatsCounter selectedKeysStats;
+	private final DynamicStatsCounter invalidKeysStats;
+	private final DynamicStatsCounter acceptKeysStats;
+	private final DynamicStatsCounter connectKeysStats;
+	private final DynamicStatsCounter readKeysStats;
+	private final DynamicStatsCounter writeKeysStats;
+	private final DynamicStatsCounter localTasksStats;
+	private final DynamicStatsCounter concurrentTasksStats;
+	private final DynamicStatsCounter scheduledTasksStats;
 
-	private final StatsCounter localTaskDuration = new StatsCounter();
-	private final DurationRunnable lastLongestLocalRunnable = new DurationRunnable();
-	private final StatsCounter concurrentTaskDuration = new StatsCounter();
-	private final DurationRunnable lastLongestConcurrentRunnable = new DurationRunnable();
-	private final StatsCounter scheduledTaskDuration = new StatsCounter();
-	private final DurationRunnable lastLongestScheduledRunnable = new DurationRunnable();
+	private final DynamicStatsCounter localTaskDuration;
+	private final DurationRunnable lastLongestLocalRunnable;
+	private final DynamicStatsCounter concurrentTaskDuration;
+	private final DurationRunnable lastLongestConcurrentRunnable;
+	private final DynamicStatsCounter scheduledTaskDuration;
+	private final DurationRunnable lastLongestScheduledRunnable;
 
-	private final StatsCounter selectedKeysTimeStats = new StatsCounter();
-	private final StatsCounter localTasksTimeStats = new StatsCounter();
-	private final StatsCounter concurrentTasksTimeStats = new StatsCounter();
-	private final StatsCounter scheduledTasksTimeStats = new StatsCounter();
+	private final DynamicStatsCounter selectedKeysTimeStats;
+	private final DynamicStatsCounter localTasksTimeStats;
+	private final DynamicStatsCounter concurrentTasksTimeStats;
+	private final DynamicStatsCounter scheduledTasksTimeStats;
 
 	private boolean monitoring;
 	private long monitoringTimestamp;
@@ -86,14 +89,49 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	// long loop monitoring
 	private volatile long longLoopMillis = DEFAULT_LONGLOOP_TIME;
-	private final RateCounter longLoopsRate = new RateCounter();
-	private final StatsCounter longLoopLocalTasksStats = new StatsCounter();
-	private final StatsCounter longLoopConcurrentTasksStats = new StatsCounter();
-	private final StatsCounter longLoopScheduledTasksStats = new StatsCounter();
+	private final DynamicRateCounter longLoopsRate;
+	private final DynamicStatsCounter longLoopLocalTasksStats;
+	private final DynamicStatsCounter longLoopConcurrentTasksStats;
+	private final DynamicStatsCounter longLoopScheduledTasksStats;
 	private String longLoopLongestLocalTask;
 	private String longLoopLongestConcurrentTask;
 	private String longLoopLongestScheduledTask;
 	private StatsSnapshot lastLongLoopStats;
+
+	public NioEventloopStats(CurrentTimeProvider timeProvider) {
+		this.selectorSelectTimeStats = createDynamicStatsCounter(timeProvider);
+		this.businessLogicTimeStats = createDynamicStatsCounter(timeProvider);
+		this.selectedKeysStats = createDynamicStatsCounter(timeProvider);
+		this.invalidKeysStats = createDynamicStatsCounter(timeProvider);
+		this.acceptKeysStats = createDynamicStatsCounter(timeProvider);
+		this.connectKeysStats = createDynamicStatsCounter(timeProvider);
+		this.readKeysStats = createDynamicStatsCounter(timeProvider);
+		this.writeKeysStats = createDynamicStatsCounter(timeProvider);
+		this.localTasksStats = createDynamicStatsCounter(timeProvider);
+		this.concurrentTasksStats = createDynamicStatsCounter(timeProvider);
+		this.scheduledTasksStats = createDynamicStatsCounter(timeProvider);
+
+		this.localTaskDuration = createDynamicStatsCounter(timeProvider);
+		this.lastLongestLocalRunnable = new DurationRunnable();
+		this.concurrentTaskDuration = createDynamicStatsCounter(timeProvider);
+		this.lastLongestConcurrentRunnable = new DurationRunnable();
+		this.scheduledTaskDuration = createDynamicStatsCounter(timeProvider);
+		this.lastLongestScheduledRunnable = new DurationRunnable();
+
+		this.selectedKeysTimeStats = createDynamicStatsCounter(timeProvider);
+		this.localTasksTimeStats = createDynamicStatsCounter(timeProvider);
+		this.concurrentTasksTimeStats = createDynamicStatsCounter(timeProvider);
+		this.scheduledTasksTimeStats = createDynamicStatsCounter(timeProvider);
+
+		this.longLoopsRate = new DynamicRateCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
+		this.longLoopLocalTasksStats = createDynamicStatsCounter(timeProvider);
+		this.longLoopConcurrentTasksStats = createDynamicStatsCounter(timeProvider);
+		this.longLoopScheduledTasksStats = createDynamicStatsCounter(timeProvider);
+	}
+
+	private static DynamicStatsCounter createDynamicStatsCounter(CurrentTimeProvider timeProvider) {
+		return new DynamicStatsCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
+	}
 
 	void incMonitoringLoop() {
 		if (isMonitoring()) {
@@ -107,7 +145,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		if (!isMonitoring())
 			return;
 		if (businessLogicTime > longLoopMillis) {
-			longLoopsRate.incNumerator();
+			longLoopsRate.recordEvent();
 			longLoopLocalTasksStats.add(localTasksStats.getLastValue());
 			longLoopConcurrentTasksStats.add(concurrentTasksStats.getLastValue());
 			longLoopScheduledTasksStats.add(scheduledTasksStats.getLastValue());
@@ -115,10 +153,6 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 			longLoopLongestConcurrentTask = lastLongestConcurrentRunnable.toString();
 			longLoopLongestScheduledTask = lastLongestScheduledRunnable.toString();
 			lastLongLoopStats = getStatsSnapshot(timestamp);
-		}
-		longLoopsRate.incDenominator();
-		if (longLoopsRate.getDenominator() < 0) {
-			longLoopsRate.reset();
 		}
 	}
 
@@ -140,7 +174,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 			selectedKeysTimeStats.add((int) sw.elapsed(TimeUnit.MILLISECONDS));
 	}
 
-	private void updateTaskDuration(StatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
+	private void updateTaskDuration(DynamicStatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
 		if (sw != null) {
 			int elapsed = (int) sw.elapsed(TimeUnit.MICROSECONDS);
 			counter.add(elapsed);
@@ -266,19 +300,19 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		private StatsSnapshot(long timestamp) {
 			this.timestamp = timestamp;
 			this.numberLoop = monitoringLoop;
-			this.selectorSelectTime = selectorSelectTimeStats.getLastValue();
-			this.selectedKeysTime = selectedKeysTimeStats.getLast();
-			this.acceptKeys = acceptKeysStats.getLastValue();
-			this.connectKeys = connectKeysStats.getLastValue();
-			this.readKeys = readKeysStats.getLastValue();
-			this.writeKeys = writeKeysStats.getLastValue();
-			this.invalidKeys = invalidKeysStats.getLastValue();
-			this.localRunnables = localTasksStats.getLastValue();
-			this.concurrentRunnables = concurrentTasksStats.getLastValue();
-			this.scheduledRunnables = scheduledTasksStats.getLastValue();
-			this.localRunnablesTime = localTasksTimeStats.getLast();
-			this.concurrentRunnablesTime = concurrentTasksTimeStats.getLast();
-			this.scheduledRunnablesTime = scheduledTasksTimeStats.getLast();
+			this.selectorSelectTime = (long)selectorSelectTimeStats.getLastValue();
+			this.selectedKeysTime = (long)selectedKeysTimeStats.getLastValue();
+			this.acceptKeys = (long)acceptKeysStats.getLastValue();
+			this.connectKeys = (long)connectKeysStats.getLastValue();
+			this.readKeys = (long)readKeysStats.getLastValue();
+			this.writeKeys = (long)writeKeysStats.getLastValue();
+			this.invalidKeys = (long)invalidKeysStats.getLastValue();
+			this.localRunnables = (long)localTasksStats.getLastValue();
+			this.concurrentRunnables = (long)concurrentTasksStats.getLastValue();
+			this.scheduledRunnables = (long)scheduledTasksStats.getLastValue();
+			this.localRunnablesTime = (long)localTasksTimeStats.getLastValue();
+			this.concurrentRunnablesTime = (long)concurrentTasksTimeStats.getLastValue();
+			this.scheduledRunnablesTime = (long)scheduledTasksTimeStats.getLastValue();
 		}
 
 		public long getTimestamp() {
@@ -422,32 +456,32 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getSelectedKeys() {
-		return selectedKeysStats.getLastValue();
+		return (int)selectedKeysStats.getLastValue();
 	}
 
 	@Override
 	public long getInvalidKeys() {
-		return invalidKeysStats.getLastValue();
+		return (long)invalidKeysStats.getLastValue();
 	}
 
 	@Override
 	public long getAcceptKeys() {
-		return acceptKeysStats.getLastValue();
+		return (long)acceptKeysStats.getLastValue();
 	}
 
 	@Override
 	public long getConnectKeys() {
-		return connectKeysStats.getLastValue();
+		return (long)connectKeysStats.getLastValue();
 	}
 
 	@Override
 	public long getReadKeys() {
-		return readKeysStats.getLastValue();
+		return (long)readKeysStats.getLastValue();
 	}
 
 	@Override
 	public long getWriteKeys() {
-		return writeKeysStats.getLastValue();
+		return (long)writeKeysStats.getLastValue();
 	}
 
 	@Override
@@ -482,7 +516,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getSelectedKeysMillis() {
-		return selectedKeysTimeStats.getLast();
+		return (int)selectedKeysTimeStats.getLastValue();
 	}
 
 	@Override
@@ -492,7 +526,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public long getBusinessLogicMillis() {
-		return businessLogicTimeStats.getLastValue();
+		return (long)businessLogicTimeStats.getLastValue();
 	}
 
 	@Override
@@ -502,7 +536,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public long getSelectorSelectMillis() {
-		return selectorSelectTimeStats.getLastValue();
+		return (long)selectorSelectTimeStats.getLastValue();
 	}
 
 	@Override
@@ -524,7 +558,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 	// Tasks stats
 	@Override
 	public int getLocalTaskMicros() {
-		return localTaskDuration.getLast();
+		return (int)localTaskDuration.getLastValue();
 	}
 
 	@Override
@@ -539,7 +573,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getLocalTasksMillis() {
-		return localTasksTimeStats.getLast();
+		return (int)localTasksTimeStats.getLastValue();
 	}
 
 	@Override
@@ -549,7 +583,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getLocalTasksPerLoop() {
-		return localTasksStats.getLastValue();
+		return (int)localTasksStats.getLastValue();
 	}
 
 	@Override
@@ -559,7 +593,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getConcurrentTaskMicros() {
-		return concurrentTaskDuration.getLast();
+		return (int)concurrentTaskDuration.getLastValue();
 	}
 
 	@Override
@@ -574,7 +608,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getConcurrentTasksMillis() {
-		return concurrentTasksTimeStats.getLast();
+		return (int)concurrentTasksTimeStats.getLastValue();
 	}
 
 	@Override
@@ -584,7 +618,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getConcurrentTasksPerLoop() {
-		return concurrentTasksStats.getLastValue();
+		return (int)concurrentTasksStats.getLastValue();
 	}
 
 	@Override
@@ -594,7 +628,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getScheduledTaskMicros() {
-		return scheduledTaskDuration.getLast();
+		return (int)scheduledTaskDuration.getLastValue();
 	}
 
 	@Override
@@ -609,7 +643,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getScheduledTasksMillis() {
-		return scheduledTasksTimeStats.getLast();
+		return (int)scheduledTasksTimeStats.getLastValue();
 	}
 
 	@Override
@@ -619,7 +653,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public int getScheduledTasksPerLoop() {
-		return scheduledTasksStats.getLastValue();
+		return (int)scheduledTasksStats.getLastValue();
 	}
 
 	@Override
@@ -640,12 +674,12 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public String getLongLoopsRate() {
-		return longLoopsRate.toString();
+		return String.valueOf(longLoopsRate.getRate());
 	}
 
 	@Override
 	public long getLongLoopLocalTasks() {
-		return longLoopLocalTasksStats.getLast();
+		return (long)longLoopLocalTasksStats.getLastValue();
 	}
 
 	@Override
@@ -660,7 +694,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public long getLongLoopConcurrentTasks() {
-		return longLoopConcurrentTasksStats.getLast();
+		return (long)longLoopConcurrentTasksStats.getLastValue();
 	}
 
 	@Override
@@ -675,7 +709,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public long getLongLoopScheduledTasks() {
-		return longLoopScheduledTasksStats.getLast();
+		return (long)longLoopScheduledTasksStats.getLastValue();
 	}
 
 	@Override

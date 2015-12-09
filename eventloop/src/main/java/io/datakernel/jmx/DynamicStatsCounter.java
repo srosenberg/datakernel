@@ -16,97 +16,163 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.time.CurrentTimeProvider;
+
 import static io.datakernel.util.Preconditions.check;
-import static java.lang.Integer.bitCount;
-import static java.lang.Integer.numberOfTrailingZeros;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static java.lang.Math.*;
 
-// Single-threaded
+/**
+ * Counts dynamic average of values using exponential smoothing algorithm
+ *
+ * Class is supposed to work in single thread
+ */
 public final class DynamicStatsCounter {
-	private final int log2Period;
-	private long dynamicMax = Long.MIN_VALUE;
-	private long dynamicMin = Long.MAX_VALUE;
-	private long dynamicAvg = 0;
-	private long dynamicStdDeviation = 0;
-	private long dynamicAbsDeviation = 0;
-	private int lastValue;
 
-	public DynamicStatsCounter(int period) {
-		check(bitCount(period) == 1, "Period must be power of two");
-		this.log2Period = numberOfTrailingZeros(period);
+	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
+	private static final double DEFAULT_INITIAL_DYNAMIC_AVG = 0.0;
+	private static final double DEFAULT_INITIAL_DYNAMIC_VARIANCE = 0.0;
+
+	private final CurrentTimeProvider timeProvider;
+	private double windowE;
+	private double precision;
+	private long lastTimestampMillis;
+	private double lastValuesSum;
+	private int lastValuesAmount;
+	private double lastValue;
+	private double maxValue;
+	private double minValue;
+	private double dynamicAvg;
+	private double dynamicVariance;
+
+	/**
+	 * Creates {@link DynamicStatsCounter} with specified parameters
+	 *
+	 * @param window time in seconds at which weight of appropriate value is 0.5
+	 * @param precision time in seconds to update dynamic average
+	 * @param timeProvider provider of current time
+	 */
+	public DynamicStatsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
+		this.timeProvider = timeProvider;
+		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
 
-	private long weightLong(long v) {
-		return v - (v >> log2Period);
+	/**
+	 * Resets stats and sets new parameters
+	 *
+	 * @param window time in seconds at which weight of appropriate value is 0.5
+	 * @param precision time in seconds to update dynamic average
+	 */
+	public void reset(double window, double precision) {
+		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
 
-	public void add(int value) {
+	/**
+	 * Resets stats and sets initial value to zero
+	 *
+	 */
+	public void reset() {
+		resetValues(windowE, precision);
+	}
+
+	private void resetValues(double windowE, double precisionInMillis) {
+		this.windowE = windowE;
+		this.precision = precisionInMillis;
+		this.dynamicAvg = DEFAULT_INITIAL_DYNAMIC_AVG;
+		this.dynamicVariance = DEFAULT_INITIAL_DYNAMIC_VARIANCE;
+		this.lastTimestampMillis = timeProvider.currentTimeMillis();
+		this.lastValuesSum = 0.0;
+		this.lastValuesAmount = 0;
+		this.maxValue = Double.MIN_VALUE;
+		this.minValue = Double.MAX_VALUE;
+	}
+
+	/**
+	 * Adds value
+	 */
+	public void add(double value) {
 		lastValue = value;
-		long lvalue = value;
-		lvalue = lvalue << 32;
-
-		if (dynamicMin == Long.MAX_VALUE) {
-			assert dynamicMax == Long.MIN_VALUE;
-			dynamicMin = lvalue;
-			dynamicMax = lvalue;
-		} else {
-			long delta = dynamicMax - dynamicMin;
-			delta = delta >> log2Period;
-
-			dynamicMax -= delta;
-			if (dynamicMax < lvalue)
-				dynamicMax = lvalue;
-
-			dynamicMin += delta;
-			if (dynamicMin > lvalue)
-				dynamicMin = lvalue;
+		if (value > maxValue) {
+			maxValue = value;
+		}
+		if (value < minValue) {
+			minValue = value;
 		}
 
-		dynamicAvg = weightLong(dynamicAvg) + lvalue;
+		int timeElapsedMillis = (int)(timeProvider.currentTimeMillis() - lastTimestampMillis);
+		lastValuesSum += value;
+		++lastValuesAmount;
+		if (timeElapsedMillis >= precision) {
+			double lastValuesAvg = lastValuesSum / lastValuesAmount;
+			double weight = 1 - exp(-timeElapsedMillis / windowE);
 
-		long delta = lvalue - (dynamicAvg >> log2Period);
-		dynamicAbsDeviation = weightLong(dynamicAbsDeviation) + Math.abs(delta);
-		delta >>= 16;
-		dynamicStdDeviation = weightLong(dynamicStdDeviation) + delta * delta;
+			dynamicAvg += (lastValuesAvg - dynamicAvg) * weight;
+
+			double currentDeviationSquared = pow((dynamicAvg - lastValuesAvg), 2.0);
+			dynamicVariance += (currentDeviationSquared - dynamicVariance) * weight;
+
+			lastTimestampMillis += timeElapsedMillis;
+			lastValuesSum = 0;
+			lastValuesAmount = 0;
+		}
 	}
 
-	public int getLastValue() {
-		return lastValue;
-	}
-
-	public int getDynamicMax() {
-		if (dynamicMax == Long.MIN_VALUE)
-			return 0;
-		return (int) (dynamicMax >> 32);
-	}
-
-	public int getDynamicMin() {
-		if (dynamicMin == Long.MAX_VALUE)
-			return 0;
-		return (int) (dynamicMin >> 32);
-	}
-
+	/**
+	 * Returns dynamic average of added values
+	 *
+	 * @return dynamic average of added values
+	 */
 	public double getDynamicAvg() {
-		return ((double) dynamicAvg) / (1L << (32 + log2Period));
+		return dynamicAvg;
 	}
 
+	/**
+	 * Returns dynamic standard deviation
+	 *
+	 * @return dynamic standard deviation
+	 */
 	public double getDynamicStdDeviation() {
-		return Math.sqrt(((double) dynamicStdDeviation) / (1L << (32 + log2Period)));
+		return sqrt(dynamicVariance);
 	}
 
-	public double getDynamicAbsDeviation() {
-		return (((double) dynamicAbsDeviation) / (1L << (32 + log2Period)));
+	/**
+	 * Returns minimum of all added values
+	 *
+	 * @return minimum of all added values
+	 */
+	public double getMinValue() {
+		return minValue;
 	}
 
-	public void reset() {
-		dynamicMax = Long.MIN_VALUE;
-		dynamicMin = Long.MAX_VALUE;
-		dynamicAvg = dynamicStdDeviation = dynamicAbsDeviation = 0L;
-		lastValue = 0;
+	/**
+	 * Returns maximum of all added values
+	 *
+	 * @return maximum of all added values
+	 */
+	public double getMaxValue() {
+		return maxValue;
+	}
+
+	/**
+	 * Returns last added value
+	 *
+	 * @return last added value
+	 */
+	public double getLastValue() {
+		return lastValue;
 	}
 
 	@Override
 	public String toString() {
-		return String.format("last: %d;  dynamic{min: %d; max: %d; avg: %.2f std: ±%.3f abs: ±%.3f} of %d", getLastValue(), getDynamicMin(), getDynamicMax(),
-				getDynamicAvg(), getDynamicStdDeviation(), getDynamicAbsDeviation(), 1L << log2Period);
+		return String.format("%.2f±%.3f min: %.2f max: .2f",
+				getDynamicAvg(), getDynamicStdDeviation(), getMinValue(), getMaxValue());
+	}
+
+	private static double secondsToMillis(double precisionInSeconds) {
+		return precisionInSeconds * ONE_SECOND_IN_MILLIS;
+	}
+
+	private static double transformWindow(double windowBase2InSeconds) {
+		return windowBase2InSeconds * ONE_SECOND_IN_MILLIS / log(2);
 	}
 }

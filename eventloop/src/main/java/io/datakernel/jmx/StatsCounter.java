@@ -17,23 +17,23 @@
 package io.datakernel.jmx;
 
 public final class StatsCounter {
-	private int min = Integer.MAX_VALUE;
-	private int max = Integer.MIN_VALUE;
-	private int last;
+	private double min = Double.MAX_VALUE;
+	private double max = Double.MIN_VALUE;
+	private double last;
 	private int count;
-	private long sum;
-	private long sumSqr;
+	private double sum;
+	private double sumSqr;
 
 	public void reset() {
-		min = Integer.MAX_VALUE;
-		max = Integer.MIN_VALUE;
+		min = Double.MAX_VALUE;
+		max = Double.MIN_VALUE;
 		count = 0;
 		last = 0;
 		sumSqr = 0;
 		sum = 0;
 	}
 
-	public void add(int value) {
+	public void add(double value) {
 		setValue(value);
 		sum += value;
 		sumSqr += sqr(value);
@@ -52,7 +52,7 @@ public final class StatsCounter {
 		sumSqr = sumSqr - sqr(prevValue) + sqr(value);
 	}
 
-	private void setValue(int value) {
+	private void setValue(double value) {
 		last = value;
 		if (value < min)
 			min = value;
@@ -60,25 +60,25 @@ public final class StatsCounter {
 			max = value;
 	}
 
-	public int getLast() {
+	public double getLast() {
 		return last;
 	}
 
-	public int getMin() {
+	public double getMin() {
 		return min;
 	}
 
-	public int getMax() {
+	public double getMax() {
 		return max;
 	}
 
 	public double getAvg() {
 		if (count == 0)
 			return 0;
-		return (double) sum / count;
+		return sum / count;
 	}
 
-	public long getTotal() {
+	public double getTotal() {
 		return sum;
 	}
 
@@ -86,17 +86,17 @@ public final class StatsCounter {
 		if (count <= 1)
 			return 0;
 		double avg = getAvg();
-		return Math.sqrt((double) sumSqr / count - avg * avg);
+		return Math.sqrt( sumSqr / count - avg * avg);
 	}
 
-	private static long sqr(int v) {
-		return (long) v * v;
+	private static double sqr(double v) {
+		return v * v;
 	}
 
 	@Override
 	public String toString() {
 		if (count == 0)
 			return "";
-		return String.format("%.2f±%.3f min: %d max: %d", getAvg(), getStd(), getMin(), getMax());
+		return String.format("%.2f±%.3f min: %.3f max: .3f", getAvg(), getStd(), getMin(), getMax());
 	}
 }

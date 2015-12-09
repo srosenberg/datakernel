@@ -22,7 +22,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.StatsCounter;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.util.Stopwatch;
@@ -41,6 +40,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionMBean {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
+	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
+	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final int timeout;
@@ -90,10 +91,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	private boolean closing;
 
 	// JMX
-	private final DynamicStatsCounter pendingRequests = new DynamicStatsCounter(1 << 10);
-	private final StatsCounter timeProcessResult = new StatsCounter();
-	private final StatsCounter timeProcessException = new StatsCounter();
-	private final StatsCounter timeSendPacket = new StatsCounter();
+	private final DynamicStatsCounter pendingRequests;
+	private final DynamicStatsCounter timeProcessResult;
+	private final DynamicStatsCounter timeProcessException;
+	private final DynamicStatsCounter timeSendPacket;
 	private final LastExceptionCounter lastTimeoutException = new LastExceptionCounter("TimeoutException");
 	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
 	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
@@ -106,6 +107,13 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		this.eventloop = eventloop;
 		this.statusListener = statusListener;
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
+
+		// JMX
+		this.pendingRequests = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeProcessResult = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeProcessException = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeSendPacket = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+
 	}
 
 	@Override

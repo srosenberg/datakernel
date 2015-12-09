@@ -26,7 +26,6 @@ import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.StatsCounter;
 
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -40,6 +39,8 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
 public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> implements AsyncHttpServerMBean {
+	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
+	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
@@ -53,8 +54,8 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	//JMX
-	private final StatsCounter timeCheckExpired = new StatsCounter();
-	private final DynamicStatsCounter expiredConnections = new DynamicStatsCounter(1 << 10);
+	private final DynamicStatsCounter timeCheckExpired;
+	private final DynamicStatsCounter expiredConnections;
 	private boolean monitoring;
 
 	/**
@@ -73,6 +74,10 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+
+		// JMX
+		this.timeCheckExpired = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.expiredConnections = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -178,7 +183,7 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 
 	@Override
 	public int getTimeCheckExpiredMicros() {
-		return timeCheckExpired.getLast();
+		return (int)timeCheckExpired.getLastValue();
 	}
 
 	@Override

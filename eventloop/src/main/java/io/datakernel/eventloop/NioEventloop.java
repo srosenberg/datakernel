@@ -138,7 +138,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	private static final ExceptionMarker SCHEDULED_TASK_MARKER = NioEventloopStats.exceptionMarker(NioEventloop.class, "ScheduledTaskException");
 	private static final ExceptionMarker UNCHECKED_MARKER = NioEventloopStats.exceptionMarker(NioEventloop.class, "UncheckedException");
 
-	private final NioEventloopStats statsCounters = new NioEventloopStats();
+	private final NioEventloopStats statsCounters;
 
 	/**
 	 * Creates a new instance of Eventloop with default instance of ByteBufPool
@@ -155,6 +155,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	public NioEventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestampAndGet();
+		this.statsCounters = new NioEventloopStats(this);
 	}
 
 	private void openSelector() {
