@@ -23,7 +23,7 @@ import static java.lang.Math.log;
 
 /**
  * Computes dynamic rate using exponential smoothing algorithm
- *
+ * <p/>
  * Class is supposed to work in single thread
  */
 public final class DynamicRateCounter {
@@ -41,8 +41,8 @@ public final class DynamicRateCounter {
 	/**
 	 * Creates {@link DynamicRateCounter} with specified parameters and rate = 0
 	 *
-	 * @param window time in seconds at which weight of appropriate rate is 0.5
-	 * @param precision time in seconds to update dynamic rate
+	 * @param window       time in seconds at which weight of appropriate rate is 0.5
+	 * @param precision    time in seconds to update dynamic rate
 	 * @param timeProvider provider of current time
 	 */
 	public DynamicRateCounter(double window, double precision, CurrentTimeProvider timeProvider) {
@@ -53,10 +53,10 @@ public final class DynamicRateCounter {
 	/**
 	 * Resets rate to zero and sets new parameters
 	 *
-	 * @param window time in seconds at which weight of appropriate rate is 0.5
+	 * @param window    time in seconds at which weight of appropriate rate is 0.5
 	 * @param precision time in seconds to update dynamic rate
 	 */
-	public void reset( double window, double precision) {
+	public void reset(double window, double precision) {
 		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
 
@@ -80,7 +80,7 @@ public final class DynamicRateCounter {
 	 * Records event and updates rate
 	 */
 	public void recordEvent() {
-		int timeElapsedMillis = (int)(timeProvider.currentTimeMillis() - lastTimestampMillis);
+		int timeElapsedMillis = (int) (timeProvider.currentTimeMillis() - lastTimestampMillis);
 		++eventPerLastTimePeriod;
 		if (timeElapsedMillis >= precision) {
 			if (eventPerLastTimePeriod > 0) {
@@ -98,7 +98,7 @@ public final class DynamicRateCounter {
 
 	/**
 	 * Returns dynamic value of rate in events per second.
-	 *
+	 * <p/>
 	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
 	 *
 	 * @return dynamic value of rate in events per second

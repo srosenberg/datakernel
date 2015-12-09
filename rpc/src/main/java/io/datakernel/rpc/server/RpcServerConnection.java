@@ -21,7 +21,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.StatsCounter;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;

@@ -49,8 +49,6 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
  */
 public class LauncherExample {
 
-
-
 	public static void main(String[] args) throws Exception {
 		Launcher.run(ServicesLauncher.class, args);
 	}
@@ -83,7 +81,7 @@ public class LauncherExample {
 
 		@Provides
 		@SingletonService
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,List<AsyncHttpServer> workerHttpServers,
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, List<AsyncHttpServer> workerHttpServers,
 		                                  Config config) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);

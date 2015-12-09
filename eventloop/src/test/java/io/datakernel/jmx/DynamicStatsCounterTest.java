@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import java.util.Random;
 
-import static java.lang.Math.*;
+import static java.lang.Math.sqrt;
 import static org.junit.Assert.assertEquals;
 
 public class DynamicStatsCounterTest {
@@ -29,7 +29,6 @@ public class DynamicStatsCounterTest {
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
 	private static final Random RANDOM = new Random();
-
 
 	@Test
 	public void dynamicAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
@@ -61,7 +60,8 @@ public class DynamicStatsCounterTest {
 			MANUAL_TIME_PROVIDER.upgradeTime(100);
 			double currentValue = uniformRandom(minValue, maxValue);
 			counter.add(currentValue);
-		};
+		}
+		;
 
 		double expectedStandardDeviation = (maxValue - minValue) / sqrt(12);  // standard deviation of uniform distribution
 		double acceptableError = 0.1;

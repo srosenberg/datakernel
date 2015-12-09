@@ -104,17 +104,17 @@ public final class MBeanFormat {
 		int position = 0;
 
 		int indexOfSplitter = s.indexOf(SPLITTER_LN, position);
-		while(s.indexOf(SPLITTER_LN, position) != -1) {
+		while (s.indexOf(SPLITTER_LN, position) != -1) {
 
 			list.add(s.substring(position, indexOfSplitter));
-			position = indexOfSplitter+1;
+			position = indexOfSplitter + 1;
 
 			indexOfSplitter = s.indexOf(SPLITTER_LN, position);
 		}
 		if (position != s.length()) {
 			list.add(s.substring(position, s.length()));
 		}
-		if (s.charAt(s.length()-1) == SPLITTER_LN) {
+		if (s.charAt(s.length() - 1) == SPLITTER_LN) {
 			list.add("");
 		}
 

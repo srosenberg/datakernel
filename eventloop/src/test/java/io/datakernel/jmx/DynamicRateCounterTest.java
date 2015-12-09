@@ -19,13 +19,6 @@ package io.datakernel.jmx;
 import io.datakernel.time.CurrentTimeProvider;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Random;
-
-import static java.lang.Math.abs;
-import static java.lang.Math.pow;
-import static java.lang.Math.toIntExact;
-import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -67,7 +60,7 @@ public class DynamicRateCounterTest {
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
-		int periodInMillis = (int)(period * 1000);
+		int periodInMillis = (int) (period * 1000);
 
 		for (int i = 0; i < events; i++) {
 			dynamicRateCounter.recordEvent();
@@ -85,7 +78,7 @@ public class DynamicRateCounterTest {
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
-		int periodInMillis = (int)(period * 1000);
+		int periodInMillis = (int) (period * 1000);
 
 		for (int i = 0; i < events; i++) {
 			dynamicRateCounter.recordEvent();

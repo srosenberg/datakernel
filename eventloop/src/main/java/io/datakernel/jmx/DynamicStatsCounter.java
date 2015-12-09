@@ -18,13 +18,11 @@ package io.datakernel.jmx;
 
 import io.datakernel.time.CurrentTimeProvider;
 
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.*;
 
 /**
  * Counts dynamic average of values using exponential smoothing algorithm
- *
+ * <p/>
  * Class is supposed to work in single thread
  */
 public final class DynamicStatsCounter {
@@ -48,8 +46,8 @@ public final class DynamicStatsCounter {
 	/**
 	 * Creates {@link DynamicStatsCounter} with specified parameters
 	 *
-	 * @param window time in seconds at which weight of appropriate value is 0.5
-	 * @param precision time in seconds to update dynamic average
+	 * @param window       time in seconds at which weight of appropriate value is 0.5
+	 * @param precision    time in seconds to update dynamic average
 	 * @param timeProvider provider of current time
 	 */
 	public DynamicStatsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
@@ -60,7 +58,7 @@ public final class DynamicStatsCounter {
 	/**
 	 * Resets stats and sets new parameters
 	 *
-	 * @param window time in seconds at which weight of appropriate value is 0.5
+	 * @param window    time in seconds at which weight of appropriate value is 0.5
 	 * @param precision time in seconds to update dynamic average
 	 */
 	public void reset(double window, double precision) {
@@ -69,7 +67,6 @@ public final class DynamicStatsCounter {
 
 	/**
 	 * Resets stats and sets initial value to zero
-	 *
 	 */
 	public void reset() {
 		resetValues(windowE, precision);
@@ -99,7 +96,7 @@ public final class DynamicStatsCounter {
 			minValue = value;
 		}
 
-		int timeElapsedMillis = (int)(timeProvider.currentTimeMillis() - lastTimestampMillis);
+		int timeElapsedMillis = (int) (timeProvider.currentTimeMillis() - lastTimestampMillis);
 		lastValuesSum += value;
 		++lastValuesAmount;
 		if (timeElapsedMillis >= precision) {
