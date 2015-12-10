@@ -14,22 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.rpc.client.sender;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.rpc.protocol.RpcException;
 
-public abstract class HttpHeaderValue {
-	private final HttpHeader key;
+public class RpcNoSenderException extends RpcException {
 
-	public HttpHeaderValue(HttpHeader key) {
-		this.key = key;
-	}
-
-	public abstract int estimateSize();
-
-	public abstract void writeTo(ByteBuf buf);
-
-	public HttpHeader getKey() {
-		return key;
+	public RpcNoSenderException(String message) {
+		super(message);
 	}
 }

@@ -14,13 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender;
+package io.datakernel.serializer;
 
-import io.datakernel.rpc.protocol.RpcException;
+public enum CompatibilityLevel {
+	/**
+	 * Provides basic version of serializer
+	 */
+	@Deprecated LEVEL_1,
 
-public class RpcNoSenderAvailableException extends RpcException {
+	/**
+	 * Provides string optimization for ISO8859-1 and UTF8
+	 */
+	@Deprecated LEVEL_2,
 
-	public RpcNoSenderAvailableException(String message) {
-		super(message);
-	}
+	/**
+	 * Includes previous optimization and provides nullable enum and nullable subclass optimization
+	 */
+	LEVEL_3
 }

@@ -36,6 +36,36 @@ import static com.google.common.base.Strings.isNullOrEmpty;
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
+	public static class Pair<E> {
+		private E value;
+		private double quot;
+
+		public Pair(E value) {
+			this.value = value;
+		}
+
+		public Pair(E value, double quot) {
+			this.value = value;
+			this.quot = quot;
+		}
+
+		public E getValue() {
+			return value;
+		}
+
+		public void setValue(E value) {
+			this.value = value;
+		}
+
+		public double getQuot() {
+			return quot;
+		}
+
+		public void setQuot(double quot) {
+			this.quot = quot;
+		}
+	}
+
 	private static final Splitter splitCookies = Splitter.on("; ");
 	private static final Splitter splitComma = Splitter.on(',').trimResults();
 	private static final Splitter querySplitter = Splitter.on('&');
@@ -45,6 +75,13 @@ public final class HttpUtils {
 		SimpleDateFormat df = new SimpleDateFormat("EEE',' dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
 		df.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return df;
+	}
+
+	public static int skipSpaces(byte[] bytes, int pos, int end) {
+		while (pos < end && bytes[pos] == ' ') {
+			pos++;
+		}
+		return pos;
 	}
 
 	/**

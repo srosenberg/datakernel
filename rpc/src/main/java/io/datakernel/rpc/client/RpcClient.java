@@ -28,9 +28,9 @@ import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.sender.RpcNoSenderAvailableException;
-import io.datakernel.rpc.client.sender.RpcRequestSender;
-import io.datakernel.rpc.client.sender.RpcRequestSendingStrategy;
+import io.datakernel.rpc.client.sender.RpcNoSenderException;
+import io.datakernel.rpc.client.sender.RpcSender;
+import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.RpcSerializer;
 import org.slf4j.Logger;
@@ -47,6 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.async.AsyncCallbacks.postCompletion;
+import static io.datakernel.async.AsyncCallbacks.postException;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
@@ -59,16 +61,16 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
 	private final NioEventloop eventloop;
-	private RpcRequestSendingStrategy requestSendingStrategy;
+	private RpcStrategy strategy;
 	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
-	private final RpcSerializer serializerFactory;
+	private final RpcSerializer serializer;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 
-	private RpcRequestSender requestSender;
+	private RpcSender requestSender;
 
 	private CompletionCallback startCallback;
 	private boolean running;
@@ -88,17 +90,17 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 	};
 
-	private RpcClient(NioEventloop eventloop, RpcSerializer serializerFactory) {
+	private RpcClient(NioEventloop eventloop, RpcSerializer serializer) {
 		this.eventloop = eventloop;
-		this.serializerFactory = serializerFactory;
+		this.serializer = serializer;
 	}
 
 	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
 		return new RpcClient(eventloop, serializerFactory);
 	}
 
-	public RpcClient strategy(RpcRequestSendingStrategy requestSendingStrategy) {
-		this.requestSendingStrategy = requestSendingStrategy;
+	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
+		this.strategy = requestSendingStrategy;
 		this.addresses = new ArrayList<>(requestSendingStrategy.getAddresses());
 		return this;
 	}
@@ -117,9 +119,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		return socketSettings;
 	}
 
-	public RpcClient parentLogger(Logger parentLogger) {
-		checkNotNull(parentLogger, "Logger must not be null");
-		this.logger = LoggerFactory.getLogger(parentLogger.getName() + "$" + RpcClient.class.getSimpleName());
+	public RpcClient logger(Logger logger) {
+		this.logger = checkNotNull(logger);
 		return this;
 	}
 
@@ -152,7 +153,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 					if (running && startCallback != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						startCallback.onException(new InterruptedException(errorMsg));
+						postException(eventloop, startCallback, new InterruptedException(errorMsg));
 						running = false;
 						startCallback = null;
 					}
@@ -170,7 +171,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		checkState(running);
 		running = false;
 		if (startCallback != null) {
-			startCallback.onException(new InterruptedException("Start aborted"));
+			postException(eventloop, startCallback, new InterruptedException("Start aborted"));
 			startCallback = null;
 		}
 		closeConnections();
@@ -207,12 +208,12 @@ public final class RpcClient implements NioService, RpcClientMBean {
 					}
 				};
 				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel,
-						serializerFactory.createSerializer(), protocolFactory, statusListener);
+						serializer.createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
 				if (startCallback != null) {
-					startCallback.onComplete();
+					postCompletion(eventloop, startCallback);
 					startCallback = null;
 				}
 			}
@@ -244,14 +245,14 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			if (connection instanceof RpcClientConnectionMBean)
 				((RpcClientConnectionMBean) connection).startMonitoring();
 		}
-		RpcRequestSender sender = requestSendingStrategy.createSender(pool);
-		requestSender = sender != null ? sender : new RequestSenderError();
+		RpcSender sender = strategy.createSender(pool);
+		requestSender = sender != null ? sender : new Sender();
 	}
 
 	private void removeConnection(InetSocketAddress address) {
 		connections.remove(address);
-		RpcRequestSender sender = requestSendingStrategy.createSender(pool);
-		requestSender = sender != null ? sender : new RequestSenderError();
+		RpcSender sender = strategy.createSender(pool);
+		requestSender = sender != null ? sender : new Sender();
 	}
 
 	private void closeConnections() {
@@ -276,14 +277,14 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	}
 
 	// visible for testing
-	public RpcRequestSender getRequestSender() {
+	public RpcSender getRequestSender() {
 		return requestSender;
 	}
 
-	private static final class RequestSenderError implements RpcRequestSender {
+	static final class Sender implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
-				= new RpcNoSenderAvailableException("No senders available");
+		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderException("No senders available");
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
@@ -294,12 +295,10 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	// JMX
 	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
 		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()), this);
-		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()), connections);
 	}
 
 	public void unregisterMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
 		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()));
-		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()));
 	}
 
 	@Override

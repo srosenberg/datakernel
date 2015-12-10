@@ -14,19 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.servicegraph;
+package io.datakernel.codegen;
 
-import com.google.inject.ScopeAnnotation;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@ScopeAnnotation
-@Target({TYPE, METHOD})
-@Retention(RUNTIME)
-public @interface SingletonService {
+public interface Variable extends Expression, StoreDef {
 }

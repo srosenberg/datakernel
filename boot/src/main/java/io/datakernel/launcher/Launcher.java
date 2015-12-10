@@ -149,16 +149,18 @@ public abstract class Launcher {
 		serviceGraph.start();
 	}
 
-	protected void doRun() throws Exception {
-		addShutdownHook();
-		shutdownNotification.await();
-	}
+	abstract protected void doRun() throws Exception;
 
 	protected void doStop() throws Exception {
 		serviceGraph.stop();
 	}
 
-	protected void addShutdownHook() {
+	protected final void awaitShutdown() throws InterruptedException {
+		addShutdownHook();
+		shutdownNotification.await();
+	}
+
+	protected final void addShutdownHook() {
 		Runtime.getRuntime().addShutdownHook(new Thread("shutdownNotification") {
 			@Override
 			public void run() {
