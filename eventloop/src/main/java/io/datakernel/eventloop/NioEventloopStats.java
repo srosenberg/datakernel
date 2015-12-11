@@ -59,29 +59,29 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		}
 	}
 
-	private final DynamicStatsCounter selectorSelectTimeStats;
-	private final DynamicStatsCounter businessLogicTimeStats;
-	private final DynamicStatsCounter selectedKeysStats;
-	private final DynamicStatsCounter invalidKeysStats;
-	private final DynamicStatsCounter acceptKeysStats;
-	private final DynamicStatsCounter connectKeysStats;
-	private final DynamicStatsCounter readKeysStats;
-	private final DynamicStatsCounter writeKeysStats;
-	private final DynamicStatsCounter localTasksStats;
-	private final DynamicStatsCounter concurrentTasksStats;
-	private final DynamicStatsCounter scheduledTasksStats;
+	private final StatsCounter selectorSelectTimeStats;
+	private final StatsCounter businessLogicTimeStats;
+	private final StatsCounter selectedKeysStats;
+	private final StatsCounter invalidKeysStats;
+	private final StatsCounter acceptKeysStats;
+	private final StatsCounter connectKeysStats;
+	private final StatsCounter readKeysStats;
+	private final StatsCounter writeKeysStats;
+	private final StatsCounter localTasksStats;
+	private final StatsCounter concurrentTasksStats;
+	private final StatsCounter scheduledTasksStats;
 
-	private final DynamicStatsCounter localTaskDuration;
+	private final StatsCounter localTaskDuration;
 	private final DurationRunnable lastLongestLocalRunnable;
-	private final DynamicStatsCounter concurrentTaskDuration;
+	private final StatsCounter concurrentTaskDuration;
 	private final DurationRunnable lastLongestConcurrentRunnable;
-	private final DynamicStatsCounter scheduledTaskDuration;
+	private final StatsCounter scheduledTaskDuration;
 	private final DurationRunnable lastLongestScheduledRunnable;
 
-	private final DynamicStatsCounter selectedKeysTimeStats;
-	private final DynamicStatsCounter localTasksTimeStats;
-	private final DynamicStatsCounter concurrentTasksTimeStats;
-	private final DynamicStatsCounter scheduledTasksTimeStats;
+	private final StatsCounter selectedKeysTimeStats;
+	private final StatsCounter localTasksTimeStats;
+	private final StatsCounter concurrentTasksTimeStats;
+	private final StatsCounter scheduledTasksTimeStats;
 
 	private boolean monitoring;
 	private long monitoringTimestamp;
@@ -89,10 +89,10 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	// long loop monitoring
 	private volatile long longLoopMillis = DEFAULT_LONGLOOP_TIME;
-	private final DynamicRateCounter longLoopsRate;
-	private final DynamicStatsCounter longLoopLocalTasksStats;
-	private final DynamicStatsCounter longLoopConcurrentTasksStats;
-	private final DynamicStatsCounter longLoopScheduledTasksStats;
+	private final EventsCounter longLoopsRate;
+	private final StatsCounter longLoopLocalTasksStats;
+	private final StatsCounter longLoopConcurrentTasksStats;
+	private final StatsCounter longLoopScheduledTasksStats;
 	private String longLoopLongestLocalTask;
 	private String longLoopLongestConcurrentTask;
 	private String longLoopLongestScheduledTask;
@@ -123,14 +123,14 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		this.concurrentTasksTimeStats = createDynamicStatsCounter(timeProvider);
 		this.scheduledTasksTimeStats = createDynamicStatsCounter(timeProvider);
 
-		this.longLoopsRate = new DynamicRateCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
+		this.longLoopsRate = new EventsCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
 		this.longLoopLocalTasksStats = createDynamicStatsCounter(timeProvider);
 		this.longLoopConcurrentTasksStats = createDynamicStatsCounter(timeProvider);
 		this.longLoopScheduledTasksStats = createDynamicStatsCounter(timeProvider);
 	}
 
-	private static DynamicStatsCounter createDynamicStatsCounter(CurrentTimeProvider timeProvider) {
-		return new DynamicStatsCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
+	private static StatsCounter createDynamicStatsCounter(CurrentTimeProvider timeProvider) {
+		return new StatsCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
 	}
 
 	void incMonitoringLoop() {
@@ -174,7 +174,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 			selectedKeysTimeStats.add((int) sw.elapsed(TimeUnit.MILLISECONDS));
 	}
 
-	private void updateTaskDuration(DynamicStatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
+	private void updateTaskDuration(StatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
 		if (sw != null) {
 			int elapsed = (int) sw.elapsed(TimeUnit.MICROSECONDS);
 			counter.add(elapsed);

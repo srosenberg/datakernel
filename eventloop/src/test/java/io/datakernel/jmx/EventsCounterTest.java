@@ -22,7 +22,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-public class DynamicRateCounterTest {
+public class EventsCounterTest {
 
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
 
@@ -31,21 +31,21 @@ public class DynamicRateCounterTest {
 		double precision_1_inSeconds = 1.0;
 		double precision_2_inSeconds = 2.0;
 		int oneSecondInMillis = 1000;
-		DynamicRateCounter dynamicRateCounter_1 = new DynamicRateCounter(0.1, precision_1_inSeconds, MANUAL_TIME_PROVIDER);
-		DynamicRateCounter dynamicRateCounter_2 = new DynamicRateCounter(0.1, precision_2_inSeconds, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter_1 = new EventsCounter(0.1, precision_1_inSeconds, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter_2 = new EventsCounter(0.1, precision_2_inSeconds, MANUAL_TIME_PROVIDER);
 
-		double counter_1_initRate = dynamicRateCounter_1.getRate();
-		double counter_2_initRate = dynamicRateCounter_2.getRate();
+		double counter_1_initRate = eventsCounter_1.getRate();
+		double counter_2_initRate = eventsCounter_2.getRate();
 		MANUAL_TIME_PROVIDER.upgradeTime(oneSecondInMillis);
-		dynamicRateCounter_1.recordEvent();
-		dynamicRateCounter_2.recordEvent();
-		double counter_1_rateAfterUpgrade_1 = dynamicRateCounter_1.getRate();
-		double counter_2_rateAfterUpgrade_1 = dynamicRateCounter_2.getRate();
+		eventsCounter_1.recordEvent();
+		eventsCounter_2.recordEvent();
+		double counter_1_rateAfterUpgrade_1 = eventsCounter_1.getRate();
+		double counter_2_rateAfterUpgrade_1 = eventsCounter_2.getRate();
 		MANUAL_TIME_PROVIDER.upgradeTime(oneSecondInMillis);
-		dynamicRateCounter_1.recordEvent();
-		dynamicRateCounter_2.recordEvent();
-		double counter_1_rateAfterUpgrade_2 = dynamicRateCounter_1.getRate();
-		double counter_2_rateAfterUpgrade_2 = dynamicRateCounter_2.getRate();
+		eventsCounter_1.recordEvent();
+		eventsCounter_2.recordEvent();
+		double counter_1_rateAfterUpgrade_2 = eventsCounter_1.getRate();
+		double counter_2_rateAfterUpgrade_2 = eventsCounter_2.getRate();
 
 		double acceptableError = 1E-5;
 		assertNotEquals(counter_1_initRate, counter_1_rateAfterUpgrade_1, acceptableError);
@@ -56,43 +56,60 @@ public class DynamicRateCounterTest {
 
 	@Test
 	public void ifRateIsConstantCounterShouldApproximateThatRateAfterEnoughTimePassed() throws InterruptedException {
-		DynamicRateCounter dynamicRateCounter = new DynamicRateCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
 		int periodInMillis = (int) (period * 1000);
 
 		for (int i = 0; i < events; i++) {
-			dynamicRateCounter.recordEvent();
+			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ": " + dynamicRateCounter.getRate());
+//			System.out.println(i + ": " + eventsCounter.getRate());
 		}
 
 		double acceptableError = 1E-5;
-		assertEquals(rate, dynamicRateCounter.getRate(), acceptableError);
+		assertEquals(rate, eventsCounter.getRate(), acceptableError);
 	}
 
 	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
-		DynamicRateCounter dynamicRateCounter = new DynamicRateCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
 		int periodInMillis = (int) (period * 1000);
 
 		for (int i = 0; i < events; i++) {
-			dynamicRateCounter.recordEvent();
+			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ": " + dynamicRateCounter.getRate());
+//			System.out.println(i + ": " + eventsCounter.getRate());
 		}
-		double rateBeforeReset = dynamicRateCounter.getRate();
+		double rateBeforeReset = eventsCounter.getRate();
 		double initRateOfReset = 0.0;
-		dynamicRateCounter.reset();
-		double rateAfterReset = dynamicRateCounter.getRate();
+		eventsCounter.reset();
+		double rateAfterReset = eventsCounter.getRate();
 
 		double acceptableError = 1E-5;
 		assertEquals(rate, rateBeforeReset, acceptableError);
 		assertEquals(initRateOfReset, rateAfterReset, acceptableError);
+	}
+
+	@Test
+	public void counterShouldProperlyCountAllEvents() {
+		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		int events = 100;
+		double rate = 20.0;
+		double period = 1.0 / rate;
+		int periodInMillis = (int) (period * 1000);
+
+		for (int i = 0; i < events; i++) {
+			eventsCounter.recordEvent();
+			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
+//			System.out.println(i + ": " + eventsCounter.getRate());
+		}
+
+		assertEquals(events, eventsCounter.getEventsCount());
 	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {

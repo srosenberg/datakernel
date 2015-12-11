@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client;
+package io.datakernel.rpc.client.jmx;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 
-public interface RpcClientMBean {
+public interface RpcJmxStatsManagerMBean {
+
 	void startMonitoring();
 
 	void stopMonitoring();
@@ -27,6 +28,11 @@ public interface RpcClientMBean {
 	boolean isMonitoring();
 
 	void resetStats();
+
+	void resetStats(double smoothingWindow, double smoothingPrecision);
+
+	// TODO(vmykhalko): is such functionality needed?
+//	void resetStats(double shortTermWindow, double shortTermPrecision, double longTermWindow, double longTermPrecision);
 
 	String getAddresses();
 
@@ -50,6 +56,11 @@ public interface RpcClientMBean {
 
 	int getClosedConnects();
 
-	CompositeData getLastException();
+	CompositeData getLastServerException();
 
+	int getExceptionsCount();
+
+	double getRequestsRate();
+
+	double getAvgResponseTime();
 }

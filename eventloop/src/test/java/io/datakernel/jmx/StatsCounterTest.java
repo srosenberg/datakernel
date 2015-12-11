@@ -24,7 +24,7 @@ import java.util.Random;
 import static java.lang.Math.sqrt;
 import static org.junit.Assert.assertEquals;
 
-public class DynamicStatsCounterTest {
+public class StatsCounterTest {
 
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
@@ -34,24 +34,24 @@ public class DynamicStatsCounterTest {
 	public void dynamicAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
 		double window = 10.0;
 		double precision = 0.1;
-		DynamicStatsCounter dynamicStatsCounter = new DynamicStatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
 		double inputValue = 5.0;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			dynamicStatsCounter.add(inputValue);
+			statsCounter.add(inputValue);
 		}
 
 		double acceptableError = 10E-5;
-		assertEquals(inputValue, dynamicStatsCounter.getDynamicAvg(), acceptableError);
+		assertEquals(inputValue, statsCounter.getDynamicAvg(), acceptableError);
 	}
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
 		double window = 100.0;
 		double precision = 0.1;
-		DynamicStatsCounter counter = new DynamicStatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
 		int iterations = 10000;
 		double minValue = 0.0;
 		double maxValue = 10.0;
@@ -72,18 +72,18 @@ public class DynamicStatsCounterTest {
 	public void itShouldResetStatsAfterResetMethodCall() {
 		double window = 10.0;
 		double precision = 0.1;
-		DynamicStatsCounter dynamicStatsCounter = new DynamicStatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
 		double inputValue = 5.0;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			dynamicStatsCounter.add(inputValue);
+			statsCounter.add(inputValue);
 		}
 
-		double avgBeforeReset = dynamicStatsCounter.getDynamicAvg();
-		dynamicStatsCounter.reset();
-		double avgAfterReset = dynamicStatsCounter.getDynamicAvg();
+		double avgBeforeReset = statsCounter.getDynamicAvg();
+		statsCounter.reset();
+		double avgAfterReset = statsCounter.getDynamicAvg();
 
 		double acceptableError = 10E-5;
 		assertEquals(inputValue, avgBeforeReset, acceptableError);

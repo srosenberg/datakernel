@@ -56,7 +56,7 @@ public class LauncherExample {
 		@Override
 		protected void configure() {
 			useProductionMode();
-			configs("launcher-example-config.properties");
+			configs("launcher-example.properties");
 			modules(new NioWorkerModule(),
 					new ServiceGraphModule()
 							.register(NioServer.class, AsyncServiceAdapters.forNioServer())

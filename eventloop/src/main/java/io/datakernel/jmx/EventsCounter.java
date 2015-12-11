@@ -22,11 +22,11 @@ import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
 /**
- * Computes dynamic rate using exponential smoothing algorithm
+ * Computes total amount of events and dynamic rate using exponential smoothing algorithm
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class DynamicRateCounter {
+public final class EventsCounter {
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
 	private static final double DEFAULT_INITIAL_PERIOD = 0.0;
 
@@ -36,16 +36,17 @@ public final class DynamicRateCounter {
 	private long lastTimestampMillis;
 	private int eventPerLastTimePeriod;
 	private double dynamicPeriodMillis;
+	private long totalEvents;
 	private boolean calculationsStarted;
 
 	/**
-	 * Creates {@link DynamicRateCounter} with specified parameters and rate = 0
+	 * Creates {@link EventsCounter} with specified parameters and rate = 0
 	 *
 	 * @param window       time in seconds at which weight of appropriate rate is 0.5
 	 * @param precision    time in seconds to update dynamic rate
 	 * @param timeProvider provider of current time
 	 */
-	public DynamicRateCounter(double window, double precision, CurrentTimeProvider timeProvider) {
+	public EventsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
@@ -73,6 +74,7 @@ public final class DynamicRateCounter {
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.eventPerLastTimePeriod = 0;
 		this.dynamicPeriodMillis = DEFAULT_INITIAL_PERIOD;
+		this.totalEvents = 0;
 		this.calculationsStarted = false;
 	}
 
@@ -82,6 +84,7 @@ public final class DynamicRateCounter {
 	public void recordEvent() {
 		int timeElapsedMillis = (int) (timeProvider.currentTimeMillis() - lastTimestampMillis);
 		++eventPerLastTimePeriod;
+		++totalEvents;
 		if (timeElapsedMillis >= precision) {
 			if (eventPerLastTimePeriod > 0) {
 				double lastPeriodAvg = (double) (timeElapsedMillis) / eventPerLastTimePeriod;
@@ -109,6 +112,15 @@ public final class DynamicRateCounter {
 		} else {
 			return 0.0; // before any calculations were performed default period is 0, thus rate would be infinity, which is bad
 		}
+	}
+
+	/**
+	 * Returns total amount of recorded events
+	 *
+	 * @return total amount of recorded events
+	 */
+	public long getEventsCount() {
+		return totalEvents;
 	}
 
 	@Override

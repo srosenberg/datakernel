@@ -19,38 +19,40 @@ package io.datakernel.rpc.client;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 
-public interface RpcClientConnectionMBean {
-	void startMonitoring();
-
-	void stopMonitoring();
-
-	boolean isMonitoring();
-
-	void reset();
-
-	CompositeData getConnectionDetails() throws OpenDataException;
-
-	int getPendingRequests();
-
-	int getSuccessfulRequests();
-
-	int getFailedRequests();
-
-	int getRejectedRequests();
-
-	int getExpiredRequests();
-
-	String getPendingRequestsStats();
-
-	String getProcessResultTimeStats();
-
-	String getProcessExceptionTimeStats();
-
-	String getSendPacketTimeStats();
-
-	CompositeData getLastTimeoutException();
-
-	CompositeData getLastProtocolException();
-
-	CompositeData getLastRemoteException();
-}
+//public interface RpcClientConnectionMBean {
+//	void startMonitoring();
+//
+//	void stopMonitoring();
+//
+//	boolean isMonitoring();
+//
+//	void reset();
+//
+//	CompositeData getConnectionDetails() throws OpenDataException;
+//
+//	int getPendingRequests();
+//
+//	int getSuccessfulRequests();
+//
+//	int getFailedRequests();
+//
+//	int getRejectedRequests();
+//
+//	int getExpiredRequests();
+//
+//	String getPendingRequestsStats();
+//
+//	String getProcessResultTimeStats();
+//
+//	String getProcessExceptionTimeStats();
+//
+//	String getSendPacketTimeStats();
+//
+//	CompositeData getLastTimeoutException();
+//
+//	CompositeData getLastProtocolException();
+//
+//	CompositeData getLastRemoteException();
+//
+//	int getExceptionsAmount();
+//}

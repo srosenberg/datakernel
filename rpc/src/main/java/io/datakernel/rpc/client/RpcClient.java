@@ -22,12 +22,10 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.MBeanUtils;
+import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
+import io.datakernel.rpc.client.jmx.RpcClientJmx;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
@@ -53,10 +51,13 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements NioService, RpcClientMBean {
+public final class RpcClient implements NioService, RpcClientJmx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
+
+	private static final double RATE_COUNTER_DEFAULT_WINDOW = 10.0; // 10 seconds
+	private static final double RATE_COUNTER_DEFAULT_PRECISION = 0.1; // 0.1 seconds
 
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
@@ -77,8 +78,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	// JMX
 	private boolean monitoring;
-
 	private final LastExceptionCounter lastException = new LastExceptionCounter("LastException");
+	private final EventsCounter requestsRateCounter;
 	private int successfulConnects = 0;
 	private int failedConnects = 0;
 	private int closedConnects = 0;
@@ -93,6 +94,10 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private RpcClient(NioEventloop eventloop, RpcSerializer serializer) {
 		this.eventloop = eventloop;
 		this.serializer = serializer;
+
+		// JMX
+		requestsRateCounter =
+				new EventsCounter(RATE_COUNTER_DEFAULT_WINDOW, RATE_COUNTER_DEFAULT_PRECISION, eventloop);
 	}
 
 	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
@@ -263,6 +268,11 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		requestSender.sendRequest(request, timeout, callback);
+
+		// JMX
+		if (monitoring) {
+			requestsRateCounter.recordEvent();
+		}
 	}
 
 	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
@@ -457,5 +467,16 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			}
 		}
 		return result;
+	}
+
+	@Override
+	public double getRequestsRate() {
+		return requestsRateCounter.getRate();
+	}
+
+	@Override
+	public int getExceptionsAmount() {
+		// TODO(vmykhalko): implement
+		return 0;
 	}
 }

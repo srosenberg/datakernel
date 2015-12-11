@@ -20,8 +20,9 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.StatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.rpc.client.jmx.RpcClientConnectionJmx;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.util.Stopwatch;
@@ -38,10 +39,8 @@ import java.util.PriorityQueue;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionMBean {
+public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionJmx {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
-	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
-	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final int timeout;
@@ -91,10 +90,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	private boolean closing;
 
 	// JMX
-	private final DynamicStatsCounter pendingRequests;
-	private final DynamicStatsCounter timeProcessResult;
-	private final DynamicStatsCounter timeProcessException;
-	private final DynamicStatsCounter timeSendPacket;
+	private final StatsCounter pendingRequests;
+	private final StatsCounter timeProcessResult;
+	private final StatsCounter timeProcessException;
+	private final StatsCounter timeSendPacket;
 	private final LastExceptionCounter lastTimeoutException = new LastExceptionCounter("TimeoutException");
 	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
 	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
@@ -109,10 +108,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
 
 		// JMX
-		this.pendingRequests = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeProcessResult = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeProcessException = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeSendPacket = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.pendingRequests = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeProcessResult = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeProcessException = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeSendPacket = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 
 	}
 
@@ -397,5 +396,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	@Override
 	public CompositeData getLastRemoteException() {
 		return lastRemoteException.compositeData();
+	}
+
+	@Override
+	public int getExceptionsAmount() {
+		return lastRemoteException.getTotal();
 	}
 }

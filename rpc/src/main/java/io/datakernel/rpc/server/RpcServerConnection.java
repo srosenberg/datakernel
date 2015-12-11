@@ -19,7 +19,7 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.StatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -53,7 +53,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	// JMX
 	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
 	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
-	private final DynamicStatsCounter timeExecution;
+	private final StatsCounter timeExecution;
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
 	private boolean monitoring;
@@ -68,7 +68,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 		this.statusListener = statusListener;
 
 		// JMX
-		this.timeExecution = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeExecution = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public void apply(Object request, ResultCallback<Object> callback) {

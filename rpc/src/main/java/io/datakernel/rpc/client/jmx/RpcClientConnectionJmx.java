@@ -14,33 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.StatsCounter;
+public interface RpcClientConnectionJmx {
 
-public interface HttpClientImplMXBean {
+	void setRpcJmxStatsManager(RpcJmxStatsManager jmxStatsManager);
 
-	void resetStats();
 
-	void startMonitoring();
-
-	void stopMonitoring();
-
-	int getTimeCheckExpiredMicros();
-
-	String getTimeCheckExpiredMicrosStats();
-
-	StatsCounter getExpiredConnectionsStats(); // MXBean
-
-	int getConnectionsCount();
-
-	String[] getConnections();
-
-	String[] getAddressConnections();
-
-	int getPendingConnectsCount();
-
-	String[] getAddressPendingConnects();
-
-	String[] getBindExceptionBlockedHosts();
 }

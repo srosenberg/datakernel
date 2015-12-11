@@ -25,7 +25,7 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.http.ExposedLinkedList.Node;
-import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.StatsCounter;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
@@ -77,8 +77,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private int countPendingSocketConnect;
 
 	//JMX
-	private final DynamicStatsCounter timeCheckExpired;
-	private final DynamicStatsCounter expiredConnections;
+	private final StatsCounter timeCheckExpired;
+	private final StatsCounter expiredConnections;
 	private boolean monitoring;
 
 	private int inetAddressIdx = 0;
@@ -113,8 +113,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		this.headerChars = chars;
 
 		// JMX
-		this.timeCheckExpired = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.expiredConnections = new DynamicStatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeCheckExpired = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.expiredConnections = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public HttpClientImpl setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
@@ -513,7 +513,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	}
 
 	@Override
-	public DynamicStatsCounter getExpiredConnectionsStats() {
+	public StatsCounter getExpiredConnectionsStats() {
 		return expiredConnections;
 	}
 

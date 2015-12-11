@@ -21,11 +21,11 @@ import io.datakernel.time.CurrentTimeProvider;
 import static java.lang.Math.*;
 
 /**
- * Counts dynamic average of values using exponential smoothing algorithm
+ * Counts added values and computes dynamic average using exponential smoothing algorithm
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class DynamicStatsCounter {
+public final class StatsCounter {
 
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
 	private static final double DEFAULT_INITIAL_DYNAMIC_AVG = 0.0;
@@ -44,13 +44,13 @@ public final class DynamicStatsCounter {
 	private double dynamicVariance;
 
 	/**
-	 * Creates {@link DynamicStatsCounter} with specified parameters
+	 * Creates {@link StatsCounter} with specified parameters
 	 *
 	 * @param window       time in seconds at which weight of appropriate value is 0.5
 	 * @param precision    time in seconds to update dynamic average
 	 * @param timeProvider provider of current time
 	 */
-	public DynamicStatsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
+	public StatsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
