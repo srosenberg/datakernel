@@ -23,6 +23,7 @@ import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.time.CurrentTimeProvider;
 
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private List<RpcClient> rpcClients;
 
 	// stats per connection and per request class
-	private Map<RpcClientConnection, ParticularStats> statsPerConnection;
+	private Map<InetSocketAddress, RpcConnectionStatsManager> statsPerAddress;
 	private Map<Class<?>, ParticularStats> statsPerRequestClass;
 
 	// general stats
@@ -57,7 +58,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		this.timeProvider = timeProvider;
 		this.rpcClients = rpcClients;
 
-		this.statsPerConnection = new HashMap<>();
+		this.statsPerAddress = new HashMap<>();
 		this.statsPerRequestClass = new HashMap<>();
 
 		this.pendingRequests = new StatsCounter(smoothingWindow, smoothingPrecision, timeProvider);
@@ -70,51 +71,45 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	// stats manager api
-	public void recordNewRequest(RpcClientConnection connection, Class<?> requestClass) {
-		incrementStatsCounter(getConnectionStats(connection).getPendingRequests());
+	public void recordNewRequest(Class<?> requestClass) {
 		incrementStatsCounter(getRequestClassStats(requestClass).getPendingRequests());
 		incrementStatsCounter(pendingRequests);
 	}
 
-	public void recordSuccessfulRequest(RpcClientConnection connection, Class<?> requestClass, int responseTime) {
-		preprocessFinishedRequest(connection, requestClass);
-		updateResponseTime(connection, requestClass, responseTime);
+	public void recordSuccessfulRequest(Class<?> requestClass, int responseTime) {
+		preprocessFinishedRequest(requestClass);
+		updateResponseTime(requestClass, responseTime);
 
-		getConnectionStats(connection).getSuccessfulRequest().recordEvent();
-		getRequestClassStats(requestClass).getSuccessfulRequest().recordEvent();
 		successfulRequest.recordEvent();
+		getRequestClassStats(requestClass).getSuccessfulRequest().recordEvent();
 	}
 
-	public void recordFailedRequest(RpcClientConnection connection, Class<?> requestClass,
-	                                Exception exception, Object casedObject, int responseTime) {
-		preprocessFinishedRequest(connection, requestClass);
-		updateResponseTime(connection, requestClass, responseTime);
+	public void recordFailedRequest(Class<?> requestClass, Exception exception, Object causedObject, int responseTime) {
+		preprocessFinishedRequest(requestClass);
+		updateResponseTime(requestClass, responseTime);
 
-		getConnectionStats(connection).getFailedRequest().recordEvent();
-		getRequestClassStats(requestClass).getFailedRequest().recordEvent();
 		failedRequest.recordEvent();
+		getRequestClassStats(requestClass).getFailedRequest().recordEvent();
 
-		getConnectionStats(connection).getLastRemoteException()
-				.update(exception, casedObject, timeProvider.currentTimeMillis());
+		lastRemoteException.update(exception, causedObject, timeProvider.currentTimeMillis());
 		getRequestClassStats(requestClass).getLastRemoteException()
-				.update(exception, casedObject, timeProvider.currentTimeMillis());
-		lastRemoteException.update(exception, casedObject, timeProvider.currentTimeMillis());
+				.update(exception, causedObject, timeProvider.currentTimeMillis());
 	}
 
-	public void recordRejectedRequest(RpcClientConnection connection, Class<?> requestClass) {
-		preprocessFinishedRequest(connection, requestClass);
-
-		getConnectionStats(connection).getRejectedRequest().recordEvent();
-		getRequestClassStats(requestClass).getRejectedRequest().recordEvent();
+	public void recordRejectedRequest(Class<?> requestClass) {
+		preprocessFinishedRequest(requestClass);
 		rejectedRequest.recordEvent();
+		getRequestClassStats(requestClass).getRejectedRequest().recordEvent();
 	}
 
-	public void recordExpiredRequest(RpcClientConnection connection, Class<?> requestClass) {
-		preprocessFinishedRequest(connection, requestClass);
-
-		getConnectionStats(connection).getExpiredRequest().recordEvent();
-		getRequestClassStats(requestClass).getExpiredRequest().recordEvent();
+	public void recordExpiredRequest(Class<?> requestClass) {
+		preprocessFinishedRequest(requestClass);
 		expiredRequest.recordEvent();
+		getRequestClassStats(requestClass).getExpiredRequest().recordEvent();
+	}
+
+	public RpcConnectionStatsManager getConnectionStatsManager(InetSocketAddress address) {
+		return statsPerAddress.get(address);
 	}
 
 
@@ -130,10 +125,10 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// helper methods
 	private ParticularStats getConnectionStats(RpcClientConnection connection) {
-		if (!statsPerConnection.containsKey(connection)) {
-			statsPerConnection.put(connection, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
+		if (!statsPerAddress.containsKey(connection)) {
+			statsPerAddress.put(connection, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
 		}
-		return statsPerConnection.get(connection);
+		return statsPerAddress.get(connection);
 	}
 
 	private ParticularStats getRequestClassStats(Class<?> requestClass) {
@@ -151,21 +146,19 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		statsCounter.add(statsCounter.getLastValue() - 1);
 	}
 
-	private void preprocessFinishedRequest(RpcClientConnection connection, Class<?> requestClass) {
-		decrementStatsCounter(getConnectionStats(connection).getPendingRequests());
+	private void preprocessFinishedRequest(Class<?> requestClass) {
 		decrementStatsCounter(getRequestClassStats(requestClass).getPendingRequests());
 		decrementStatsCounter(pendingRequests);
 	}
 
-	private void updateResponseTime(RpcClientConnection connection, Class<?> requestClass, int responseTime) {
-		getConnectionStats(connection).getResponseTime().add(responseTime);
-		getRequestClassStats(requestClass).getResponseTime().add(responseTime);
+	private void updateResponseTime(Class<?> requestClass, int responseTime) {
+		getRequestClassStats(requestClass).getResponseTimeStats().add(responseTime);
 		responseTimeStats.add(responseTime);
 	}
 
 	private static class ParticularStats {
 		private final StatsCounter pendingRequests;
-		private final StatsCounter responseTime;
+		private final StatsCounter responseTimeStats;
 		private final EventsCounter successfulRequest;
 		private final EventsCounter failedRequest;
 		private final EventsCounter rejectedRequest;
@@ -174,7 +167,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		
 		public ParticularStats(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
-			this.responseTime = new StatsCounter(window, precision, timeProvider);
+			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
 			this.successfulRequest = new EventsCounter(window, precision, timeProvider);
 			this.failedRequest = new EventsCounter(window, precision, timeProvider);
 			this.rejectedRequest = new EventsCounter(window, precision, timeProvider);
@@ -186,8 +179,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			return pendingRequests;
 		}
 
-		public StatsCounter getResponseTime() {
-			return responseTime;
+		public StatsCounter getResponseTimeStats() {
+			return responseTimeStats;
 		}
 
 		public EventsCounter getSuccessfulRequest() {
@@ -211,7 +204,86 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		}
 	}
 
-	public static class ConnectionStatsManager {
+	public static class RpcConnectionStatsManager {
+		private final CurrentTimeProvider timeProvider;
 
+		private final StatsCounter pendingRequests;
+		private final StatsCounter responseTimeStats;
+		private final EventsCounter successfulRequest;
+		private final EventsCounter failedRequest;
+		private final EventsCounter rejectedRequest;
+		private final EventsCounter expiredRequest;
+		private final LastExceptionCounter lastRemoteException;
+
+		// TODO(vmykhalko): add fields for reconnects count and so on
+
+		public RpcConnectionStatsManager(double window, double precision, CurrentTimeProvider timeProvider) {
+			this.timeProvider = timeProvider;
+
+			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
+			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
+			this.successfulRequest = new EventsCounter(window, precision, timeProvider);
+			this.failedRequest = new EventsCounter(window, precision, timeProvider);
+			this.rejectedRequest = new EventsCounter(window, precision, timeProvider);
+			this.expiredRequest = new EventsCounter(window, precision, timeProvider);
+			this.lastRemoteException = new LastExceptionCounter("Remote Exception");
+		}
+
+		// public api
+		public void recordNewRequest() {
+			incrementStatsCounter(pendingRequests);
+		}
+
+		public void recordSuccessfulRequest(int responseTime) {
+			decrementStatsCounter(pendingRequests);
+			responseTimeStats.add(responseTime);
+			successfulRequest.recordEvent();
+		}
+
+		public void recordFailedRequest(Exception exception, Object causedObject, int responseTime) {
+			decrementStatsCounter(pendingRequests);
+			responseTimeStats.add(responseTime);
+			failedRequest.recordEvent();
+			lastRemoteException.update(exception, causedObject, timeProvider.currentTimeMillis());
+		}
+
+		public void recordRejectedRequest() {
+			decrementStatsCounter(pendingRequests);
+			rejectedRequest.recordEvent();
+		}
+
+		public void recordExpiredRequest() {
+			decrementStatsCounter(pendingRequests);
+			expiredRequest.recordEvent();
+		}
+
+		// private getters for RpcJmxStatsManager usage
+		private StatsCounter getPendingRequests() {
+			return pendingRequests;
+		}
+
+		private StatsCounter getResponseTimeStats() {
+			return responseTimeStats;
+		}
+
+		private EventsCounter getSuccessfulRequest() {
+			return successfulRequest;
+		}
+
+		private EventsCounter getFailedRequest() {
+			return failedRequest;
+		}
+
+		private EventsCounter getRejectedRequest() {
+			return rejectedRequest;
+		}
+
+		private EventsCounter getExpiredRequest() {
+			return expiredRequest;
+		}
+
+		private LastExceptionCounter getLastRemoteException() {
+			return lastRemoteException;
+		}
 	}
 }
