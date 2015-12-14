@@ -35,12 +35,12 @@ public class StatsCounterTest {
 		double window = 10.0;
 		double precision = 0.1;
 		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
-		double inputValue = 5.0;
+		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			statsCounter.add(inputValue);
+			statsCounter.recordValue(inputValue);
 		}
 
 		double acceptableError = 10E-5;
@@ -53,17 +53,17 @@ public class StatsCounterTest {
 		double precision = 0.1;
 		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
 		int iterations = 10000;
-		double minValue = 0.0;
-		double maxValue = 10.0;
+		int minValue = 0;
+		int maxValue = 10;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(100);
-			double currentValue = uniformRandom(minValue, maxValue);
-			counter.add(currentValue);
+			int currentValue = uniformRandom(minValue, maxValue);
+			counter.recordValue(currentValue);
 		}
-		;
 
-		double expectedStandardDeviation = (maxValue - minValue) / sqrt(12);  // standard deviation of uniform distribution
+		// standard deviation of uniform distribution
+		double expectedStandardDeviation = sqrt(((maxValue - minValue + 1) * (maxValue - minValue + 1) - 1)/ 12.0);
 		double acceptableError = 0.1;
 		assertEquals(expectedStandardDeviation, counter.getDynamicStdDeviation(), acceptableError);
 	}
@@ -73,12 +73,12 @@ public class StatsCounterTest {
 		double window = 10.0;
 		double precision = 0.1;
 		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
-		double inputValue = 5.0;
+		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			statsCounter.add(inputValue);
+			statsCounter.recordValue(inputValue);
 		}
 
 		double avgBeforeReset = statsCounter.getDynamicAvg();
@@ -89,6 +89,26 @@ public class StatsCounterTest {
 		assertEquals(inputValue, avgBeforeReset, acceptableError);
 		assertEquals(0.0, avgAfterReset, acceptableError);
 	}
+
+//	@Test
+//	public void example() {
+//		double window = 10.0;
+//		double precision = 0.001;
+//		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+//		int iterations = 1000;
+//		int minValue = 0;
+//		int maxValue = 500;
+//
+//		for (int i = 0; i < iterations; i++) {
+//			MANUAL_TIME_PROVIDER.upgradeTime(100);
+//			int currentValue = uniformRandom(minValue, maxValue);
+//			counter.recordValue(currentValue);
+//			System.out.printf("%4d:       value:%3d          dynamicAvg: %7.3f         " +
+//							"dynamicMin: %7.3f          dynamicMax: %7.3f      min:%3d      max:%3d\n",
+//					i, currentValue, counter.getDynamicAvg(), counter.getDynamicMin(), counter.getDynamicMax(),
+//					counter.getMinValue(), counter.getMaxValue());
+//		}
+//	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {
 
@@ -108,7 +128,7 @@ public class StatsCounterTest {
 		}
 	}
 
-	public static double uniformRandom(double min, double max) {
-		return min + (RANDOM.nextDouble() * (max - min));
+	public static int uniformRandom(int min, int max) {
+		return min + (Math.abs(RANDOM.nextInt()) % (max + 1));
 	}
 }

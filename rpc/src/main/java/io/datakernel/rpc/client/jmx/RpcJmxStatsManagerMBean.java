@@ -38,7 +38,9 @@ public interface RpcJmxStatsManagerMBean {
 
 	int getConnectionsCount();
 
-	CompositeData[] getConnections() throws OpenDataException;
+	CompositeData[] getAddressesStats() throws OpenDataException;
+
+	CompositeData[] getRequestClassStats() throws OpenDataException;
 
 	long getTotalSuccessfulRequests();
 

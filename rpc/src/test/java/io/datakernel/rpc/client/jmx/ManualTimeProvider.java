@@ -16,15 +16,22 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.rpc.client.RpcClientConnection;
+import io.datakernel.time.CurrentTimeProvider;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
+public final class ManualTimeProvider implements CurrentTimeProvider {
 
-public interface RpcClientJmx {
+	private long currentTime;
 
-	void setRpcJmxStatsManager(RpcJmxStatsManager jmxStatsManager);
+	public ManualTimeProvider(long currentTime) {
+		this.currentTime = currentTime;
+	}
 
-//	List<InetSocketAddress> getAddresses();
+	public void upgradeTime(int millis) {
+		currentTime += millis;
+	}
+
+	@Override
+	public long currentTimeMillis() {
+		return currentTime;
+	}
 }

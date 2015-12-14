@@ -28,7 +28,7 @@ import static java.lang.Math.log;
  */
 public final class EventsCounter {
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
-	private static final double DEFAULT_INITIAL_PERIOD = 0.0;
+	private static final double DEFAULT_INITIAL_PERIOD_IN_MILLIS = 1E9;
 
 	private final CurrentTimeProvider timeProvider;
 	private double windowE;
@@ -73,7 +73,7 @@ public final class EventsCounter {
 		this.precision = precisionInMillis;
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.eventPerLastTimePeriod = 0;
-		this.dynamicPeriodMillis = DEFAULT_INITIAL_PERIOD;
+		this.dynamicPeriodMillis = DEFAULT_INITIAL_PERIOD_IN_MILLIS;
 		this.totalEvents = 0;
 		this.calculationsStarted = false;
 	}

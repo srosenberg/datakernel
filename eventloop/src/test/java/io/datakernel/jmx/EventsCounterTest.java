@@ -97,7 +97,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void counterShouldProperlyCountAllEvents() {
-		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.01, 0.01, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
@@ -106,7 +106,7 @@ public class EventsCounterTest {
 		for (int i = 0; i < events; i++) {
 			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ": " + eventsCounter.getRate());
+			System.out.println(i + ": " + eventsCounter.getRate());
 		}
 
 		assertEquals(events, eventsCounter.getEventsCount());

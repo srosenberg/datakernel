@@ -117,7 +117,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 				if (startTime == 0)
 					return;
 				int value = (int) (System.currentTimeMillis() - startTime);
-				timeExecution.add(value);
+				timeExecution.recordValue(value);
 			}
 		});
 	}

@@ -141,7 +141,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookieCounter, timeout);
 		addTimeoutCookie(timeoutCookie);
 		requests.put(cookieCounter, callback);
-		pendingRequests.add(requests.size());
+		pendingRequests.recordValue(requests.size());
 		Stopwatch stopwatch = monitoring ? Stopwatch.createStarted() : null;
 		try {
 			protocol.sendMessage(new RpcMessage(cookieCounter, request));
@@ -152,7 +152,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 			returnProtocolError(requests.remove(cookieCounter), e);
 		} finally {
 			if (stopwatch != null)
-				timeSendPacket.add((int) stopwatch.elapsed(MICROSECONDS));
+				timeSendPacket.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 		}
 	}
 
@@ -224,7 +224,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 			Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
 			callback.onException(exception);
 			if (stopwatch != null)
-				timeProcessException.add((int) stopwatch.elapsed(MICROSECONDS));
+				timeProcessException.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 		}
 	}
 
@@ -254,7 +254,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		Stopwatch stopwatch = monitoring ? Stopwatch.createStarted() : null;
 		callback.onResult(message.getData());
 		if (stopwatch != null)
-			timeProcessResult.add((int) stopwatch.elapsed(MICROSECONDS));
+			timeProcessResult.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 	}
 
 	@SuppressWarnings("unchecked")

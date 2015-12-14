@@ -37,11 +37,15 @@ public final class StatsCounter {
 	private long lastTimestampMillis;
 	private double lastValuesSum;
 	private int lastValuesAmount;
-	private double lastValue;
-	private double maxValue;
-	private double minValue;
+	private int lastValue;
+	private int maxValue;
+	private int minValue;
+	private int maxValueAtLastStep;
+	private int minValueAtLastStep;
 	private double dynamicAvg;
 	private double dynamicVariance;
+	private double dynamicMin;
+	private double dynamicMax;
 
 	/**
 	 * Creates {@link StatsCounter} with specified parameters
@@ -80,37 +84,83 @@ public final class StatsCounter {
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.lastValuesSum = 0.0;
 		this.lastValuesAmount = 0;
-		this.maxValue = Double.MIN_VALUE;
-		this.minValue = Double.MAX_VALUE;
+		this.lastValue = 0;
+		this.maxValue = Integer.MIN_VALUE;
+		this.minValue = Integer.MAX_VALUE;
+		this.maxValueAtLastStep = this.maxValue;
+		this.minValueAtLastStep = this.minValue;
+		this.dynamicMax = this.maxValue;
+		this.dynamicMin = this.minValue;
 	}
 
 	/**
 	 * Adds value
 	 */
-	public void add(double value) {
+	public void recordValue(int value) {
 		lastValue = value;
-		if (value > maxValue) {
-			maxValue = value;
-		}
-		if (value < minValue) {
-			minValue = value;
-		}
+		updateMax(value);
+		updateMin(value);
 
 		int timeElapsedMillis = (int) (timeProvider.currentTimeMillis() - lastTimestampMillis);
 		lastValuesSum += value;
 		++lastValuesAmount;
 		if (timeElapsedMillis >= precision) {
-			double lastValuesAvg = lastValuesSum / lastValuesAmount;
-			double weight = 1 - exp(-timeElapsedMillis / windowE);
+			performComputations(timeElapsedMillis);
+		}
+	}
 
-			dynamicAvg += (lastValuesAvg - dynamicAvg) * weight;
+	private void updateMax(int value) {
+		if (value > maxValueAtLastStep) {
+			maxValueAtLastStep = value;
+			if (value > maxValue) {
+				maxValue = value;
+			}
+		}
+	}
 
-			double currentDeviationSquared = pow((dynamicAvg - lastValuesAvg), 2.0);
-			dynamicVariance += (currentDeviationSquared - dynamicVariance) * weight;
+	private void updateMin(int value) {
+		if (value < minValueAtLastStep) {
+			minValueAtLastStep = value;
+			if (value < minValue) {
+				minValue = value;
+			}
+		}
+	}
 
-			lastTimestampMillis += timeElapsedMillis;
-			lastValuesSum = 0;
-			lastValuesAmount = 0;
+	private void performComputations(int timeElapsedMillis) {
+		double weight = 1 - exp(-timeElapsedMillis / windowE);
+
+		updateDynamicAverageAndDeviation(weight);
+		updateDynamicMin(weight);
+		updateDynamicMax(weight);
+
+		lastTimestampMillis += timeElapsedMillis;
+		lastValuesSum = 0;
+		lastValuesAmount = 0;
+		minValueAtLastStep = Integer.MAX_VALUE;
+		maxValueAtLastStep = Integer.MIN_VALUE;
+	}
+
+	private void updateDynamicAverageAndDeviation(double weight) {
+		double lastValuesAvg = lastValuesSum / lastValuesAmount;
+		dynamicAvg += (lastValuesAvg - dynamicAvg) * weight;
+		double currentDeviationSquared = pow((dynamicAvg - lastValuesAvg), 2.0);
+		dynamicVariance += (currentDeviationSquared - dynamicVariance) * weight;
+	}
+
+	private void updateDynamicMin(double weight) {
+		if (minValueAtLastStep < dynamicMin) {
+			dynamicMin = minValueAtLastStep;
+		} else {
+			dynamicMin += (dynamicMax - dynamicMin) * weight;
+		}
+	}
+
+	private void updateDynamicMax(double weight) {
+		if (maxValueAtLastStep > dynamicMax) {
+			dynamicMax = maxValueAtLastStep;
+		} else {
+			dynamicMax += (dynamicMin - dynamicMax) * weight;
 		}
 	}
 
@@ -137,7 +187,7 @@ public final class StatsCounter {
 	 *
 	 * @return minimum of all added values
 	 */
-	public double getMinValue() {
+	public int getMinValue() {
 		return minValue;
 	}
 
@@ -146,7 +196,7 @@ public final class StatsCounter {
 	 *
 	 * @return maximum of all added values
 	 */
-	public double getMaxValue() {
+	public int getMaxValue() {
 		return maxValue;
 	}
 
@@ -155,8 +205,26 @@ public final class StatsCounter {
 	 *
 	 * @return last added value
 	 */
-	public double getLastValue() {
+	public int getLastValue() {
 		return lastValue;
+	}
+
+	/**
+	 * Returns dynamic max of added values
+	 *
+	 * @return dynamic max of added values
+	 */
+	public double getDynamicMax() {
+		return dynamicMax;
+	}
+
+	/**
+	 * Returns dynamic min of added values
+	 *
+	 * @return dynamic min of added values
+	 */
+	public double getDynamicMin() {
+		return dynamicMin;
 	}
 
 	@Override

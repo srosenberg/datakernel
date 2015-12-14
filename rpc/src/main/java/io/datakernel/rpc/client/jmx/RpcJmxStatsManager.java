@@ -19,10 +19,10 @@ package io.datakernel.rpc.client.jmx;
 import io.datakernel.jmx.EventsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.StatsCounter;
-import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.time.CurrentTimeProvider;
 
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +35,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private double smoothingWindow;
 	private double smoothingPrecision;
 	private CurrentTimeProvider timeProvider;
-	private List<RpcClient> rpcClients;
+	private List<RpcClientJmx> rpcClients;
 
 	// stats per connection and per request class
 	private Map<InetSocketAddress, RpcConnectionStatsManager> statsPerAddress;
@@ -50,7 +50,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private final EventsCounter expiredRequest;
 	private final LastExceptionCounter lastRemoteException;
 
-	public RpcJmxStatsManager(List<RpcClient> rpcClients, double smoothingWindow, double smoothingPrecision,
+	public RpcJmxStatsManager(List<RpcClientJmx> rpcClients, double smoothingWindow, double smoothingPrecision,
 	                          CurrentTimeProvider timeProvider) {
 		this.monitoring = false;
 		this.smoothingWindow = smoothingWindow;
@@ -72,6 +72,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// stats manager api
 	public void recordNewRequest(Class<?> requestClass) {
+		// if (monitoring == true)   // TODO
 		incrementStatsCounter(getRequestClassStats(requestClass).getPendingRequests());
 		incrementStatsCounter(pendingRequests);
 	}
@@ -109,8 +110,16 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	public RpcConnectionStatsManager getConnectionStatsManager(InetSocketAddress address) {
+//		return statsPerAddress.get(address);
+		if (!statsPerAddress.containsKey(address)) {
+			statsPerAddress.put(address, new RpcConnectionStatsManager(smoothingWindow, smoothingPrecision, timeProvider));
+		}
 		return statsPerAddress.get(address);
 	}
+
+
+
+
 
 
 
@@ -119,17 +128,157 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	// jmx api
 	// TODO(vmykhalko):
 
-
-
-
-
-	// helper methods
-	private ParticularStats getConnectionStats(RpcClientConnection connection) {
-		if (!statsPerAddress.containsKey(connection)) {
-			statsPerAddress.put(connection, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
+	@Override
+	public void startMonitoring() {
+		monitoring = true;
+		for (RpcClientJmx rpcClient : rpcClients) {
+			rpcClient.setRpcJmxStatsManager(this);
 		}
-		return statsPerAddress.get(connection);
 	}
+
+	@Override
+	public void stopMonitoring() {
+		monitoring = false;
+		for (RpcClientJmx rpcClient : rpcClients) {
+			rpcClient.setRpcJmxStatsManager(null);
+		}
+	}
+
+	@Override
+	public boolean isMonitoring() {
+		return monitoring;
+	}
+
+	@Override
+	public void resetStats() {
+		// TODO
+	}
+
+	@Override
+	public void resetStats(double smoothingWindow, double smoothingPrecision) {
+		// TODO
+	}
+
+	@Override
+	public String getAddresses() {
+		// TODO
+		return null;
+	}
+
+	@Override
+	public int getConnectionsCount() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public CompositeData[] getAddressesStats() throws OpenDataException {
+		// TODO
+		return new CompositeData[0];
+	}
+
+	@Override
+	public CompositeData[] getRequestClassStats() throws OpenDataException {
+		// TODO
+		return new CompositeData[0];
+	}
+
+	@Override
+	public long getTotalSuccessfulRequests() {
+		// TODO
+		return 1;
+	}
+
+	@Override
+	public long getTotalPendingRequests() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public long getTotalRejectedRequests() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public long getTotalFailedRequests() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public long getTotalExpiredRequests() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public int getSuccessfulConnects() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public int getFailedConnects() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public int getClosedConnects() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public CompositeData getLastServerException() {
+		// TODO
+		return null;
+	}
+
+	@Override
+	public int getExceptionsCount() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public double getRequestsRate() {
+		// TODO
+		return 0;
+	}
+
+	@Override
+	public double getAvgResponseTime() {
+		// TODO
+		return 0;
+	}
+
+	// TODO:  (end of jmx api, that needs to be implemented)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+//	// helper methods
+//	private ParticularStats getConnectionStats(RpcClientConnection connection) {
+//		if (!statsPerAddress.containsKey(connection)) {
+//			statsPerAddress.put(connection, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
+//		}
+//		return statsPerAddress.get(connection);
+//	}
 
 	private ParticularStats getRequestClassStats(Class<?> requestClass) {
 		if (!statsPerRequestClass.containsKey(requestClass)) {
@@ -139,11 +288,11 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	private static void incrementStatsCounter(StatsCounter statsCounter) {
-		statsCounter.add(statsCounter.getLastValue() + 1);
+		statsCounter.recordValue(statsCounter.getLastValue() + 1);
 	}
 
 	private static void decrementStatsCounter(StatsCounter statsCounter) {
-		statsCounter.add(statsCounter.getLastValue() - 1);
+		statsCounter.recordValue(statsCounter.getLastValue() - 1);
 	}
 
 	private void preprocessFinishedRequest(Class<?> requestClass) {
@@ -152,8 +301,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	private void updateResponseTime(Class<?> requestClass, int responseTime) {
-		getRequestClassStats(requestClass).getResponseTimeStats().add(responseTime);
-		responseTimeStats.add(responseTime);
+		getRequestClassStats(requestClass).getResponseTimeStats().recordValue(responseTime);
+		responseTimeStats.recordValue(responseTime);
 	}
 
 	private static class ParticularStats {
@@ -215,7 +364,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		private final EventsCounter expiredRequest;
 		private final LastExceptionCounter lastRemoteException;
 
-		// TODO(vmykhalko): add fields for reconnects count and so on
+		// TODO(vmykhalko): recordValue fields for reconnects count and so on
 
 		public RpcConnectionStatsManager(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.timeProvider = timeProvider;
@@ -236,13 +385,13 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 		public void recordSuccessfulRequest(int responseTime) {
 			decrementStatsCounter(pendingRequests);
-			responseTimeStats.add(responseTime);
+			responseTimeStats.recordValue(responseTime);
 			successfulRequest.recordEvent();
 		}
 
 		public void recordFailedRequest(Exception exception, Object causedObject, int responseTime) {
 			decrementStatsCounter(pendingRequests);
-			responseTimeStats.add(responseTime);
+			responseTimeStats.recordValue(responseTime);
 			failedRequest.recordEvent();
 			lastRemoteException.update(exception, causedObject, timeProvider.currentTimeMillis());
 		}

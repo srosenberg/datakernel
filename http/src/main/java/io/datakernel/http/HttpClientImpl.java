@@ -166,10 +166,10 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 				connection.close();
 				count++;
 			}
-			expiredConnections.add(count);
+			expiredConnections.recordValue(count);
 		} finally {
 			if (stopwatch != null)
-				timeCheckExpired.add((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
+				timeCheckExpired.recordValue((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
 		}
 		return count;
 	}

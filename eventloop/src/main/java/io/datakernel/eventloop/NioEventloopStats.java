@@ -140,15 +140,15 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 	}
 
 	void updateBusinessLogicTime(long timestamp, long businessLogicTime) {
-		businessLogicTimeStats.add((int) businessLogicTime);
+		businessLogicTimeStats.recordValue((int) businessLogicTime);
 
 		if (!isMonitoring())
 			return;
 		if (businessLogicTime > longLoopMillis) {
 			longLoopsRate.recordEvent();
-			longLoopLocalTasksStats.add(localTasksStats.getLastValue());
-			longLoopConcurrentTasksStats.add(concurrentTasksStats.getLastValue());
-			longLoopScheduledTasksStats.add(scheduledTasksStats.getLastValue());
+			longLoopLocalTasksStats.recordValue(localTasksStats.getLastValue());
+			longLoopConcurrentTasksStats.recordValue(concurrentTasksStats.getLastValue());
+			longLoopScheduledTasksStats.recordValue(scheduledTasksStats.getLastValue());
 			longLoopLongestLocalTask = lastLongestLocalRunnable.toString();
 			longLoopLongestConcurrentTask = lastLongestConcurrentRunnable.toString();
 			longLoopLongestScheduledTask = lastLongestScheduledRunnable.toString();
@@ -157,27 +157,27 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 	}
 
 	void updateSelectorSelectTime(long selectorSelectTime) {
-		selectorSelectTimeStats.add((int) selectorSelectTime);
+		selectorSelectTimeStats.recordValue((int) selectorSelectTime);
 	}
 
 	void updateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys, int connectKeys, int readKeys, int writeKeys) {
-		selectedKeysStats.add(lastSelectedKeys);
-		invalidKeysStats.add(invalidKeys);
-		acceptKeysStats.add(acceptKeys);
-		connectKeysStats.add(connectKeys);
-		readKeysStats.add(readKeys);
-		writeKeysStats.add(writeKeys);
+		selectedKeysStats.recordValue(lastSelectedKeys);
+		invalidKeysStats.recordValue(invalidKeys);
+		acceptKeysStats.recordValue(acceptKeys);
+		connectKeysStats.recordValue(connectKeys);
+		readKeysStats.recordValue(readKeys);
+		writeKeysStats.recordValue(writeKeys);
 	}
 
 	void updateSelectedKeysTimeStats(@Nullable Stopwatch sw) {
 		if (sw != null)
-			selectedKeysTimeStats.add((int) sw.elapsed(TimeUnit.MILLISECONDS));
+			selectedKeysTimeStats.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
 	}
 
 	private void updateTaskDuration(StatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
 		if (sw != null) {
 			int elapsed = (int) sw.elapsed(TimeUnit.MICROSECONDS);
-			counter.add(elapsed);
+			counter.recordValue(elapsed);
 			if (elapsed > longestCounter.getDuration()) {
 				longestCounter.update(runnable, elapsed);
 			}
@@ -190,8 +190,8 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	void updateLocalTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
-			localTasksTimeStats.add((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		localTasksStats.add(newTasks);
+			localTasksTimeStats.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
+		localTasksStats.recordValue(newTasks);
 	}
 
 	void updateConcurrentTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
@@ -200,8 +200,8 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	void updateConcurrentTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
-			concurrentTasksTimeStats.add((int) sw.elapsed(TimeUnit.MICROSECONDS));
-		concurrentTasksStats.add(newTasks);
+			concurrentTasksTimeStats.recordValue((int) sw.elapsed(TimeUnit.MICROSECONDS));
+		concurrentTasksStats.recordValue(newTasks);
 	}
 
 	void updateScheduledTaskDuration(Runnable runnable, @Nullable Stopwatch sw) {
@@ -210,8 +210,8 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	void updateScheduledTasksStats(int newTasks, @Nullable Stopwatch sw) {
 		if (sw != null)
-			scheduledTasksTimeStats.add((int) sw.elapsed(TimeUnit.MILLISECONDS));
-		scheduledTasksStats.add(newTasks);
+			scheduledTasksTimeStats.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
+		scheduledTasksStats.recordValue(newTasks);
 	}
 
 	// Exceptions stats
