@@ -471,7 +471,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 
 	@Override
 	public double getRequestsRate() {
-		return requestsRateCounter.getRate();
+		return requestsRateCounter.getSmoothedRate();
 	}
 
 	@Override

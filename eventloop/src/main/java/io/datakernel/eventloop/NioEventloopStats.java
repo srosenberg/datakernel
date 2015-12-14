@@ -674,7 +674,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 
 	@Override
 	public String getLongLoopsRate() {
-		return String.valueOf(longLoopsRate.getRate());
+		return String.valueOf(longLoopsRate.getSmoothedRate());
 	}
 
 	@Override

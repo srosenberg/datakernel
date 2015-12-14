@@ -103,10 +103,10 @@ public class StatsCounterTest {
 //			MANUAL_TIME_PROVIDER.upgradeTime(100);
 //			int currentValue = uniformRandom(minValue, maxValue);
 //			counter.recordValue(currentValue);
-//			System.out.printf("%4d:       value:%3d          dynamicAvg: %7.3f         " +
-//							"dynamicMin: %7.3f          dynamicMax: %7.3f      min:%3d      max:%3d\n",
-//					i, currentValue, counter.getDynamicAvg(), counter.getDynamicMin(), counter.getDynamicMax(),
-//					counter.getMinValue(), counter.getMaxValue());
+//			System.out.printf("%4d:       value:%3d          dynamicAvg: %7.3f        dynamicStdDeviation: %7.3f     " +
+//							"  dynamicMin: %7.3f          dynamicMax: %7.3f      min:%3d      max:%3d\n",
+//					i, currentValue, counter.getDynamicAvg(), counter.getDynamicStdDeviation(),
+//					counter.getDynamicMin(), counter.getDynamicMax(), counter.getMinValue(), counter.getMaxValue());
 //		}
 //	}
 

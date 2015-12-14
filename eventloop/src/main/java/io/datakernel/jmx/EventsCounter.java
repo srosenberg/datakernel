@@ -28,15 +28,17 @@ import static java.lang.Math.log;
  */
 public final class EventsCounter {
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
-	private static final double DEFAULT_INITIAL_PERIOD_IN_MILLIS = 1E9;
+	private static final double DEFAULT_INITIAL_PERIOD_IN_MILLIS = 1E6;
 
 	private final CurrentTimeProvider timeProvider;
 	private double windowE;
 	private double precision;
 	private long lastTimestampMillis;
 	private int eventPerLastTimePeriod;
-	private double dynamicPeriodMillis;
+	private double smoothedPeriod;
 	private long totalEvents;
+	private double smoothedMinRate;
+	private double smoothedMaxRate;
 	private boolean calculationsStarted;
 
 	/**
@@ -73,8 +75,10 @@ public final class EventsCounter {
 		this.precision = precisionInMillis;
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.eventPerLastTimePeriod = 0;
-		this.dynamicPeriodMillis = DEFAULT_INITIAL_PERIOD_IN_MILLIS;
+		this.smoothedPeriod = DEFAULT_INITIAL_PERIOD_IN_MILLIS;
 		this.totalEvents = 0;
+		this.smoothedMinRate = Double.MAX_VALUE;
+		this.smoothedMaxRate = Double.MIN_VALUE;
 		this.calculationsStarted = false;
 	}
 
@@ -89,7 +93,12 @@ public final class EventsCounter {
 			if (eventPerLastTimePeriod > 0) {
 				double lastPeriodAvg = (double) (timeElapsedMillis) / eventPerLastTimePeriod;
 				double weight = 1 - exp(-timeElapsedMillis / windowE);
-				dynamicPeriodMillis += (lastPeriodAvg - dynamicPeriodMillis) * weight;
+				smoothedPeriod += (lastPeriodAvg - smoothedPeriod) * weight;
+
+				double lastStepRate = (1.0 / lastPeriodAvg) * ONE_SECOND_IN_MILLIS;
+				updateSmoothedMin(weight, lastStepRate);
+				updateSmoothedMax(weight, lastStepRate);
+
 				lastTimestampMillis += timeElapsedMillis;
 				eventPerLastTimePeriod = 0;
 				calculationsStarted = true;
@@ -99,19 +108,53 @@ public final class EventsCounter {
 		}
 	}
 
+	private void updateSmoothedMax(double weight, double lastStepRate) {
+		if (lastStepRate > smoothedMaxRate) {
+			smoothedMaxRate = lastStepRate;
+		} else {
+			smoothedMaxRate += (smoothedMinRate - smoothedMaxRate) * weight;
+		}
+	}
+
+	private void updateSmoothedMin(double weight, double lastStepRate) {
+		if (lastStepRate < smoothedMinRate) {
+			smoothedMinRate = lastStepRate;
+		} else {
+			smoothedMinRate += (smoothedMaxRate - smoothedMinRate) * weight;
+		}
+	}
+
 	/**
-	 * Returns dynamic value of rate in events per second.
+	 * Returns smoothed value of rate in events per second.
 	 * <p/>
 	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
 	 *
 	 * @return dynamic value of rate in events per second
 	 */
-	public double getRate() {
-		if (calculationsStarted) {
-			return ONE_SECOND_IN_MILLIS / dynamicPeriodMillis;
-		} else {
-			return 0.0; // before any calculations were performed default period is 0, thus rate would be infinity, which is bad
-		}
+	public double getSmoothedRate() {
+		return calculationsStarted ? ONE_SECOND_IN_MILLIS / smoothedPeriod : 0.0;
+	}
+
+	/**
+	 * Returns smoothed minimum rate in events per second.
+	 * <p/>
+	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
+	 *
+	 * @return smoothed minimum rate in events per second.
+	 */
+	public double getSmoothedMinRate() {
+		return calculationsStarted ? smoothedMinRate : 0.0;
+	}
+
+	/**
+	 * Returns smoothed maximum rate in events per second.
+	 * <p/>
+	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
+	 *
+	 * @return smoothed maximum rate in events per second.
+	 */
+	public double getSmoothedMaxRate() {
+		return calculationsStarted ? smoothedMaxRate : 0.0;
 	}
 
 	/**
@@ -125,7 +168,7 @@ public final class EventsCounter {
 
 	@Override
 	public String toString() {
-		return "Dynamic Rate: " + String.valueOf(getRate());
+		return "Dynamic Rate: " + String.valueOf(getSmoothedRate());
 	}
 
 	private static double secondsToMillis(double seconds) {

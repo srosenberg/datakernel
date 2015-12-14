@@ -19,12 +19,15 @@ package io.datakernel.jmx;
 import io.datakernel.time.CurrentTimeProvider;
 import org.junit.Test;
 
+import java.util.Random;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 public class EventsCounterTest {
 
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
+	private static final Random RANDOM = new Random();
 
 	@Test
 	public void counterShouldUpdatesRateDependingOnPrecision() throws InterruptedException {
@@ -34,18 +37,18 @@ public class EventsCounterTest {
 		EventsCounter eventsCounter_1 = new EventsCounter(0.1, precision_1_inSeconds, MANUAL_TIME_PROVIDER);
 		EventsCounter eventsCounter_2 = new EventsCounter(0.1, precision_2_inSeconds, MANUAL_TIME_PROVIDER);
 
-		double counter_1_initRate = eventsCounter_1.getRate();
-		double counter_2_initRate = eventsCounter_2.getRate();
+		double counter_1_initRate = eventsCounter_1.getSmoothedRate();
+		double counter_2_initRate = eventsCounter_2.getSmoothedRate();
 		MANUAL_TIME_PROVIDER.upgradeTime(oneSecondInMillis);
 		eventsCounter_1.recordEvent();
 		eventsCounter_2.recordEvent();
-		double counter_1_rateAfterUpgrade_1 = eventsCounter_1.getRate();
-		double counter_2_rateAfterUpgrade_1 = eventsCounter_2.getRate();
+		double counter_1_rateAfterUpgrade_1 = eventsCounter_1.getSmoothedRate();
+		double counter_2_rateAfterUpgrade_1 = eventsCounter_2.getSmoothedRate();
 		MANUAL_TIME_PROVIDER.upgradeTime(oneSecondInMillis);
 		eventsCounter_1.recordEvent();
 		eventsCounter_2.recordEvent();
-		double counter_1_rateAfterUpgrade_2 = eventsCounter_1.getRate();
-		double counter_2_rateAfterUpgrade_2 = eventsCounter_2.getRate();
+		double counter_1_rateAfterUpgrade_2 = eventsCounter_1.getSmoothedRate();
+		double counter_2_rateAfterUpgrade_2 = eventsCounter_2.getSmoothedRate();
 
 		double acceptableError = 1E-5;
 		assertNotEquals(counter_1_initRate, counter_1_rateAfterUpgrade_1, acceptableError);
@@ -65,11 +68,11 @@ public class EventsCounterTest {
 		for (int i = 0; i < events; i++) {
 			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ": " + eventsCounter.getRate());
+//			System.out.println(i + ": " + eventsCounter.getSmoothedRate());
 		}
 
 		double acceptableError = 1E-5;
-		assertEquals(rate, eventsCounter.getRate(), acceptableError);
+		assertEquals(rate, eventsCounter.getSmoothedRate(), acceptableError);
 	}
 
 	@Test
@@ -83,12 +86,12 @@ public class EventsCounterTest {
 		for (int i = 0; i < events; i++) {
 			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ": " + eventsCounter.getRate());
+//			System.out.println(i + ": " + eventsCounter.getSmoothedRate());
 		}
-		double rateBeforeReset = eventsCounter.getRate();
+		double rateBeforeReset = eventsCounter.getSmoothedRate();
 		double initRateOfReset = 0.0;
 		eventsCounter.reset();
-		double rateAfterReset = eventsCounter.getRate();
+		double rateAfterReset = eventsCounter.getSmoothedRate();
 
 		double acceptableError = 1E-5;
 		assertEquals(rate, rateBeforeReset, acceptableError);
@@ -97,7 +100,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void counterShouldProperlyCountAllEvents() {
-		EventsCounter eventsCounter = new EventsCounter(0.01, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
@@ -106,11 +109,34 @@ public class EventsCounterTest {
 		for (int i = 0; i < events; i++) {
 			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-			System.out.println(i + ": " + eventsCounter.getRate());
+			System.out.println(i + ": " + eventsCounter.getSmoothedRate());
 		}
 
 		assertEquals(events, eventsCounter.getEventsCount());
 	}
+
+//	@Test
+//	public void example() {
+//		EventsCounter eventsCounter = new EventsCounter(1.0, 0.01, MANUAL_TIME_PROVIDER);
+//		int events = 1000;
+//		int minPeriod = 100;
+//		int maxPeriod = 500;
+//
+//		for (int i = 0; i < events; i++) {
+//			eventsCounter.recordEvent();
+//			int periodInMillis = uniformRandom(minPeriod, maxPeriod);
+//			// after 100 iterations passed smoothed max should jump to 100 events per second
+//			if (i > 100 && i < 200) {
+//				periodInMillis = 10;
+//			}
+//			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
+//			System.out.printf("%4d:   current period: %4d     dynamicRate: %5.3f     smoothedMinRate: %5.3f    smoothedMaxRate: %5.3f\n",
+//					i, periodInMillis, eventsCounter.getSmoothedRate(),
+//					eventsCounter.getSmoothedMinRate(), eventsCounter.getSmoothedMaxRate());
+//		}
+//
+//		assertEquals(events, eventsCounter.getEventsCount());
+//	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {
 
@@ -130,4 +156,7 @@ public class EventsCounterTest {
 		}
 	}
 
+	public static int uniformRandom(int min, int max) {
+		return min + (Math.abs(RANDOM.nextInt()) % (max + 1));
+	}
 }
