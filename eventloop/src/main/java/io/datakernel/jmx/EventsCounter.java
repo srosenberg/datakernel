@@ -168,7 +168,8 @@ public final class EventsCounter {
 
 	@Override
 	public String toString() {
-		return "Dynamic Rate: " + String.valueOf(getSmoothedRate());
+		return String.format("total: %d   smoothedRate: %.4f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
+				getEventsCount(), getSmoothedRate(), getSmoothedMinRate(), getSmoothedMaxRate());
 	}
 
 	private static double secondsToMillis(double seconds) {

@@ -125,14 +125,13 @@ public class EventsCounterTest {
 //		for (int i = 0; i < events; i++) {
 //			eventsCounter.recordEvent();
 //			int periodInMillis = uniformRandom(minPeriod, maxPeriod);
-//			// after 100 iterations passed smoothed max should jump to 100 events per second
+//			// after 100 iterations passed, smoothed max should jump to 100 events per second
 //			if (i > 100 && i < 200) {
 //				periodInMillis = 10;
 //			}
 //			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.printf("%4d:   current period: %4d     dynamicRate: %5.3f     smoothedMinRate: %5.3f    smoothedMaxRate: %5.3f\n",
-//					i, periodInMillis, eventsCounter.getSmoothedRate(),
-//					eventsCounter.getSmoothedMinRate(), eventsCounter.getSmoothedMaxRate());
+//			System.out.println(i + ":   currentPeriodInMillis:  " + periodInMillis + "   eventsStats:   "
+//					+ eventsCounter.toString());
 //		}
 //
 //		assertEquals(events, eventsCounter.getEventsCount());

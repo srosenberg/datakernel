@@ -44,7 +44,7 @@ public class StatsCounterTest {
 		}
 
 		double acceptableError = 10E-5;
-		assertEquals(inputValue, statsCounter.getDynamicAvg(), acceptableError);
+		assertEquals(inputValue, statsCounter.getSmoothedAverage(), acceptableError);
 	}
 
 	@Test
@@ -65,7 +65,7 @@ public class StatsCounterTest {
 		// standard deviation of uniform distribution
 		double expectedStandardDeviation = sqrt(((maxValue - minValue + 1) * (maxValue - minValue + 1) - 1)/ 12.0);
 		double acceptableError = 0.1;
-		assertEquals(expectedStandardDeviation, counter.getDynamicStdDeviation(), acceptableError);
+		assertEquals(expectedStandardDeviation, counter.getSmoothedStandardDeviation(), acceptableError);
 	}
 
 	@Test
@@ -81,34 +81,31 @@ public class StatsCounterTest {
 			statsCounter.recordValue(inputValue);
 		}
 
-		double avgBeforeReset = statsCounter.getDynamicAvg();
+		double avgBeforeReset = statsCounter.getSmoothedAverage();
 		statsCounter.reset();
-		double avgAfterReset = statsCounter.getDynamicAvg();
+		double avgAfterReset = statsCounter.getSmoothedAverage();
 
 		double acceptableError = 10E-5;
 		assertEquals(inputValue, avgBeforeReset, acceptableError);
 		assertEquals(0.0, avgAfterReset, acceptableError);
 	}
 
-//	@Test
-//	public void example() {
-//		double window = 10.0;
-//		double precision = 0.001;
-//		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
-//		int iterations = 1000;
-//		int minValue = 0;
-//		int maxValue = 500;
-//
-//		for (int i = 0; i < iterations; i++) {
-//			MANUAL_TIME_PROVIDER.upgradeTime(100);
-//			int currentValue = uniformRandom(minValue, maxValue);
-//			counter.recordValue(currentValue);
-//			System.out.printf("%4d:       value:%3d          dynamicAvg: %7.3f        dynamicStdDeviation: %7.3f     " +
-//							"  dynamicMin: %7.3f          dynamicMax: %7.3f      min:%3d      max:%3d\n",
-//					i, currentValue, counter.getDynamicAvg(), counter.getDynamicStdDeviation(),
-//					counter.getDynamicMin(), counter.getDynamicMax(), counter.getMinValue(), counter.getMaxValue());
-//		}
-//	}
+	@Test
+	public void example() {
+		double window = 10.0;
+		double precision = 0.001;
+		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		int iterations = 1000;
+		int minValue = 0;
+		int maxValue = 500;
+
+		for (int i = 0; i < iterations; i++) {
+			MANUAL_TIME_PROVIDER.upgradeTime(100);
+			int currentValue = uniformRandom(minValue, maxValue);
+			counter.recordValue(currentValue);
+			System.out.println(i + ":   stats: " + counter);
+		}
+	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {
 

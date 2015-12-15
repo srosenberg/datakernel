@@ -36,33 +36,33 @@ public interface RpcJmxStatsManagerMBean {
 
 	String getAddresses();
 
-	int getConnectionsCount();
+	int getActiveConnectionsCount();
 
 	CompositeData[] getAddressesStats() throws OpenDataException;
 
-	CompositeData[] getRequestClassStats() throws OpenDataException;
+	CompositeData[] getRequestClassesStats() throws OpenDataException;
 
-	long getTotalSuccessfulRequests();
+	String getTotalRequestsStats();
 
-	long getTotalPendingRequests();
+	String getPendingRequestsStats();
 
-	long getTotalRejectedRequests();
+	String getSuccessfulRequestsStats();
 
-	long getTotalFailedRequests();
+	String getFailedRequestsStats();
 
-	long getTotalExpiredRequests();
+	String getRejectedRequestsStats();
 
-	int getSuccessfulConnects();
+	String getExpiredRequestsStats();
 
-	int getFailedConnects();
+	String getSuccessfulConnectsStats();
 
-	int getClosedConnects();
+	String getFailedConnectsStats();
+
+	String getClosedConnectsStats();
+
+	String getAverageResponseTimeStats();
 
 	CompositeData getLastServerException();
 
 	int getExceptionsCount();
-
-	double getRequestsRate();
-
-	double getAvgResponseTime();
 }

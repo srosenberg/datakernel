@@ -24,7 +24,9 @@ import java.util.Map;
 
 public interface RpcClientJmx {
 
-	void setRpcJmxStatsManager(RpcJmxStatsManager jmxStatsManager);
+	void startMonitoring(RpcJmxStatsManager jmxStatsManager);
+
+	void stopMonitoring();
 
 //	List<InetSocketAddress> getAddresses();
 }

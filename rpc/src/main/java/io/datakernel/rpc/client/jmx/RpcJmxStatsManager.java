@@ -31,7 +31,7 @@ import java.util.Map;
 public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// settings
-	private boolean monitoring;
+	private volatile boolean monitoring;    // TODO(vmykhalko): add thread-safety
 	private double smoothingWindow;
 	private double smoothingPrecision;
 	private CurrentTimeProvider timeProvider;
@@ -42,13 +42,17 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private Map<Class<?>, ParticularStats> statsPerRequestClass;
 
 	// general stats
+	private final EventsCounter totalRequests;
+	private final EventsCounter successfulRequests;
+	private final EventsCounter failedRequests;
+	private final EventsCounter rejectedRequests;
+	private final EventsCounter expiredRequests;
 	private final StatsCounter pendingRequests;
 	private final StatsCounter responseTimeStats;
-	private final EventsCounter successfulRequest;
-	private final EventsCounter failedRequest;
-	private final EventsCounter rejectedRequest;
-	private final EventsCounter expiredRequest;
 	private final LastExceptionCounter lastRemoteException;
+	private final EventsCounter successfulConnects;
+	private final EventsCounter failedConnects;
+	private final EventsCounter closedConnects;
 
 	public RpcJmxStatsManager(List<RpcClientJmx> rpcClients, double smoothingWindow, double smoothingPrecision,
 	                          CurrentTimeProvider timeProvider) {
@@ -61,19 +65,29 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		this.statsPerAddress = new HashMap<>();
 		this.statsPerRequestClass = new HashMap<>();
 
+		this.totalRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.successfulRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.failedRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.rejectedRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.expiredRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.pendingRequests = new StatsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.responseTimeStats = new StatsCounter(smoothingWindow, smoothingPrecision, timeProvider);
-		this.successfulRequest = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
-		this.failedRequest = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
-		this.rejectedRequest = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
-		this.expiredRequest = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.lastRemoteException = new LastExceptionCounter("Remote Exception");
+
+		this.successfulConnects = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.failedConnects = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.closedConnects = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 	}
 
 	// stats manager api
 	public void recordNewRequest(Class<?> requestClass) {
-		// if (monitoring == true)   // TODO
-		incrementStatsCounter(getRequestClassStats(requestClass).getPendingRequests());
+		// TODO(vmykhalko): is it needed to check whether monitoring flag is true
+		ParticularStats requestClassStats = getRequestClassStats(requestClass);
+
+		totalRequests.recordEvent();
+		requestClassStats.getTotalRequests().recordEvent();
+
+		incrementStatsCounter(requestClassStats.getPendingRequests());
 		incrementStatsCounter(pendingRequests);
 	}
 
@@ -81,16 +95,16 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		preprocessFinishedRequest(requestClass);
 		updateResponseTime(requestClass, responseTime);
 
-		successfulRequest.recordEvent();
-		getRequestClassStats(requestClass).getSuccessfulRequest().recordEvent();
+		successfulRequests.recordEvent();
+		getRequestClassStats(requestClass).getSuccessfulRequests().recordEvent();
 	}
 
 	public void recordFailedRequest(Class<?> requestClass, Exception exception, Object causedObject, int responseTime) {
 		preprocessFinishedRequest(requestClass);
 		updateResponseTime(requestClass, responseTime);
 
-		failedRequest.recordEvent();
-		getRequestClassStats(requestClass).getFailedRequest().recordEvent();
+		failedRequests.recordEvent();
+		getRequestClassStats(requestClass).getFailedRequests().recordEvent();
 
 		lastRemoteException.update(exception, causedObject, timeProvider.currentTimeMillis());
 		getRequestClassStats(requestClass).getLastRemoteException()
@@ -99,18 +113,33 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	public void recordRejectedRequest(Class<?> requestClass) {
 		preprocessFinishedRequest(requestClass);
-		rejectedRequest.recordEvent();
-		getRequestClassStats(requestClass).getRejectedRequest().recordEvent();
+		rejectedRequests.recordEvent();
+		getRequestClassStats(requestClass).getRejectedRequests().recordEvent();
 	}
 
 	public void recordExpiredRequest(Class<?> requestClass) {
 		preprocessFinishedRequest(requestClass);
-		expiredRequest.recordEvent();
-		getRequestClassStats(requestClass).getExpiredRequest().recordEvent();
+		expiredRequests.recordEvent();
+		getRequestClassStats(requestClass).getExpiredRequests().recordEvent();
 	}
 
+	public void recordSuccessfulConnect(InetSocketAddress address) {
+		successfulConnects.recordEvent();
+		getConnectionStatsManager(address).recordSuccessfulConnect();
+	}
+
+	public void recordFailedConnect(InetSocketAddress address) {
+		failedConnects.recordEvent();
+		getConnectionStatsManager(address).recordFailedConnect();
+	}
+
+	public void recordClosedConnect(InetSocketAddress address) {
+		closedConnects.recordEvent();
+		getConnectionStatsManager(address).recordClosedConnect();
+	}
+
+	// TODO(vmykhalko): maybe it will be better to set addresses only once in constructor / or in resetStats() ?
 	public RpcConnectionStatsManager getConnectionStatsManager(InetSocketAddress address) {
-//		return statsPerAddress.get(address);
 		if (!statsPerAddress.containsKey(address)) {
 			statsPerAddress.put(address, new RpcConnectionStatsManager(smoothingWindow, smoothingPrecision, timeProvider));
 		}
@@ -132,7 +161,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	public void startMonitoring() {
 		monitoring = true;
 		for (RpcClientJmx rpcClient : rpcClients) {
-			rpcClient.setRpcJmxStatsManager(this);
+			rpcClient.startMonitoring(this);
 		}
 	}
 
@@ -140,7 +169,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	public void stopMonitoring() {
 		monitoring = false;
 		for (RpcClientJmx rpcClient : rpcClients) {
-			rpcClient.setRpcJmxStatsManager(null);
+			rpcClient.stopMonitoring();
 		}
 	}
 
@@ -161,14 +190,25 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	@Override
 	public String getAddresses() {
-		// TODO
-		return null;
+		StringBuilder result = new StringBuilder();
+		String separator = ", ";
+		for (InetSocketAddress address : statsPerAddress.keySet()) {
+			result.append(address.toString());
+			result.append(separator);
+		}
+		result.delete(result.lastIndexOf(separator), result.length());
+		return result.toString();
 	}
 
 	@Override
-	public int getConnectionsCount() {
-		// TODO
-		return 0;
+	public int getActiveConnectionsCount() {
+		int activeConnections = 0;
+		for (RpcConnectionStatsManager rpcConnectionStatsManager : statsPerAddress.values()) {
+			if (rpcConnectionStatsManager.isConnectionActive()) {
+				++activeConnections;
+			}
+		}
+		return activeConnections;
 	}
 
 	@Override
@@ -178,57 +218,60 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getRequestClassStats() throws OpenDataException {
+	public CompositeData[] getRequestClassesStats() throws OpenDataException {
 		// TODO
 		return new CompositeData[0];
 	}
 
 	@Override
-	public long getTotalSuccessfulRequests() {
-		// TODO
-		return 1;
+	public String getTotalRequestsStats() {
+		return totalRequests.toString();
 	}
 
 	@Override
-	public long getTotalPendingRequests() {
-		// TODO
-		return 0;
+	public String getSuccessfulRequestsStats() {
+		return successfulRequests.toString();
 	}
 
 	@Override
-	public long getTotalRejectedRequests() {
-		// TODO
-		return 0;
+	public String getFailedRequestsStats() {
+		return failedRequests.toString();
 	}
 
 	@Override
-	public long getTotalFailedRequests() {
-		// TODO
-		return 0;
+	public String getRejectedRequestsStats() {
+		return rejectedRequests.toString();
 	}
 
 	@Override
-	public long getTotalExpiredRequests() {
-		// TODO
-		return 0;
+	public String getExpiredRequestsStats() {
+		return expiredRequests.toString();
 	}
 
 	@Override
-	public int getSuccessfulConnects() {
-		// TODO
-		return 0;
+	public String getPendingRequestsStats() {
+		return pendingRequests.toString();
+	}
+
+
+	@Override
+	public String getSuccessfulConnectsStats() {
+		return successfulConnects.toString();
 	}
 
 	@Override
-	public int getFailedConnects() {
-		// TODO
-		return 0;
+	public String getFailedConnectsStats() {
+		return failedConnects.toString();
 	}
 
 	@Override
-	public int getClosedConnects() {
-		// TODO
-		return 0;
+	public String getClosedConnectsStats() {
+		return closedConnects.toString();
+	}
+
+	@Override
+	public String getAverageResponseTimeStats() {
+		return responseTimeStats.toString();
 	}
 
 	@Override
@@ -242,24 +285,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		// TODO
 		return 0;
 	}
-
-	@Override
-	public double getRequestsRate() {
-		// TODO
-		return 0;
-	}
-
-	@Override
-	public double getAvgResponseTime() {
-		// TODO
-		return 0;
-	}
-
-	// TODO:  (end of jmx api, that needs to be implemented)
-
-
-
-
 
 
 
@@ -306,22 +331,43 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	private static class ParticularStats {
+		private final EventsCounter totalRequests;
+		private final EventsCounter successfulRequests;
+		private final EventsCounter failedRequests;
+		private final EventsCounter rejectedRequests;
+		private final EventsCounter expiredRequests;
 		private final StatsCounter pendingRequests;
 		private final StatsCounter responseTimeStats;
-		private final EventsCounter successfulRequest;
-		private final EventsCounter failedRequest;
-		private final EventsCounter rejectedRequest;
-		private final EventsCounter expiredRequest;
 		private final LastExceptionCounter lastRemoteException;
 		
 		public ParticularStats(double window, double precision, CurrentTimeProvider timeProvider) {
+			this.totalRequests = new EventsCounter(window, precision, timeProvider);
+			this.successfulRequests = new EventsCounter(window, precision, timeProvider);
+			this.failedRequests = new EventsCounter(window, precision, timeProvider);
+			this.rejectedRequests = new EventsCounter(window, precision, timeProvider);
+			this.expiredRequests = new EventsCounter(window, precision, timeProvider);
 			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
 			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
-			this.successfulRequest = new EventsCounter(window, precision, timeProvider);
-			this.failedRequest = new EventsCounter(window, precision, timeProvider);
-			this.rejectedRequest = new EventsCounter(window, precision, timeProvider);
-			this.expiredRequest = new EventsCounter(window, precision, timeProvider);
 			this.lastRemoteException = new LastExceptionCounter("Remote Exception");
+		}
+
+		public EventsCounter getTotalRequests() {
+			return totalRequests;
+		}
+		public EventsCounter getSuccessfulRequests() {
+			return successfulRequests;
+		}
+
+		public EventsCounter getFailedRequests() {
+			return failedRequests;
+		}
+
+		public EventsCounter getRejectedRequests() {
+			return rejectedRequests;
+		}
+
+		public EventsCounter getExpiredRequests() {
+			return expiredRequests;
 		}
 
 		public StatsCounter getPendingRequests() {
@@ -330,22 +376,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 		public StatsCounter getResponseTimeStats() {
 			return responseTimeStats;
-		}
-
-		public EventsCounter getSuccessfulRequest() {
-			return successfulRequest;
-		}
-
-		public EventsCounter getFailedRequest() {
-			return failedRequest;
-		}
-
-		public EventsCounter getRejectedRequest() {
-			return rejectedRequest;
-		}
-
-		public EventsCounter getExpiredRequest() {
-			return expiredRequest;
 		}
 
 		public LastExceptionCounter getLastRemoteException() {
@@ -364,7 +394,11 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		private final EventsCounter expiredRequest;
 		private final LastExceptionCounter lastRemoteException;
 
-		// TODO(vmykhalko): recordValue fields for reconnects count and so on
+		private final EventsCounter successfulConnects;
+		private final EventsCounter failedConnects;
+		private final EventsCounter closedConnects;
+
+		private volatile boolean connectionActive;
 
 		public RpcConnectionStatsManager(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.timeProvider = timeProvider;
@@ -376,6 +410,12 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			this.rejectedRequest = new EventsCounter(window, precision, timeProvider);
 			this.expiredRequest = new EventsCounter(window, precision, timeProvider);
 			this.lastRemoteException = new LastExceptionCounter("Remote Exception");
+
+			this.successfulConnects = new EventsCounter(window, precision, timeProvider);
+			this.failedConnects = new EventsCounter(window, precision, timeProvider);
+			this.closedConnects = new EventsCounter(window, precision, timeProvider);
+
+			this.connectionActive = false;
 		}
 
 		// public api
@@ -406,7 +446,22 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			expiredRequest.recordEvent();
 		}
 
-		// private getters for RpcJmxStatsManager usage
+		// inner-private api (for RpcJmxStatsManager)
+		private void recordSuccessfulConnect() {
+			successfulConnects.recordEvent();
+			connectionActive = true;
+		}
+
+		private void recordFailedConnect() {
+			failedConnects.recordEvent();
+			connectionActive = false;
+		}
+
+		private void recordClosedConnect() {
+			closedConnects.recordEvent();
+			connectionActive = false;
+		}
+
 		private StatsCounter getPendingRequests() {
 			return pendingRequests;
 		}
@@ -433,6 +488,22 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 		private LastExceptionCounter getLastRemoteException() {
 			return lastRemoteException;
+		}
+
+		public EventsCounter getSuccessfulConnectsStats() {
+			return successfulConnects;
+		}
+
+		public EventsCounter getFailedConnectsStats() {
+			return failedConnects;
+		}
+
+		public EventsCounter getClosedConnectsStats() {
+			return closedConnects;
+		}
+
+		public boolean isConnectionActive() {
+			return connectionActive;
 		}
 	}
 }

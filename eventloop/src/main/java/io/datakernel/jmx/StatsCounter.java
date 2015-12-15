@@ -42,10 +42,10 @@ public final class StatsCounter {
 	private int minValue;
 	private int maxValueAtLastStep;
 	private int minValueAtLastStep;
-	private double dynamicAvg;
-	private double dynamicVariance;
-	private double dynamicMin;
-	private double dynamicMax;
+	private double smoothedAverage;
+	private double smoothedVariance;
+	private double smoothedMin;
+	private double smoothedMax;
 
 	/**
 	 * Creates {@link StatsCounter} with specified parameters
@@ -79,8 +79,8 @@ public final class StatsCounter {
 	private void resetValues(double windowE, double precisionInMillis) {
 		this.windowE = windowE;
 		this.precision = precisionInMillis;
-		this.dynamicAvg = DEFAULT_INITIAL_DYNAMIC_AVG;
-		this.dynamicVariance = DEFAULT_INITIAL_DYNAMIC_VARIANCE;
+		this.smoothedAverage = DEFAULT_INITIAL_DYNAMIC_AVG;
+		this.smoothedVariance = DEFAULT_INITIAL_DYNAMIC_VARIANCE;
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.lastValuesSum = 0.0;
 		this.lastValuesAmount = 0;
@@ -89,8 +89,8 @@ public final class StatsCounter {
 		this.minValue = Integer.MAX_VALUE;
 		this.maxValueAtLastStep = this.maxValue;
 		this.minValueAtLastStep = this.minValue;
-		this.dynamicMax = this.maxValue;
-		this.dynamicMin = this.minValue;
+		this.smoothedMax = this.maxValue;
+		this.smoothedMin = this.minValue;
 	}
 
 	/**
@@ -130,9 +130,9 @@ public final class StatsCounter {
 	private void performComputations(int timeElapsedMillis) {
 		double weight = 1 - exp(-timeElapsedMillis / windowE);
 
-		updateDynamicAverageAndDeviation(weight);
-		updateDynamicMin(weight);
-		updateDynamicMax(weight);
+		updateSmoothedAverageAndDeviation(weight);
+		updateSmoothedMin(weight);
+		updateSmoothedMax(weight);
 
 		lastTimestampMillis += timeElapsedMillis;
 		lastValuesSum = 0;
@@ -141,26 +141,26 @@ public final class StatsCounter {
 		maxValueAtLastStep = Integer.MIN_VALUE;
 	}
 
-	private void updateDynamicAverageAndDeviation(double weight) {
+	private void updateSmoothedAverageAndDeviation(double weight) {
 		double lastValuesAvg = lastValuesSum / lastValuesAmount;
-		dynamicAvg += (lastValuesAvg - dynamicAvg) * weight;
-		double currentDeviationSquared = pow((dynamicAvg - lastValuesAvg), 2.0);
-		dynamicVariance += (currentDeviationSquared - dynamicVariance) * weight;
+		smoothedAverage += (lastValuesAvg - smoothedAverage) * weight;
+		double currentDeviationSquared = pow((smoothedAverage - lastValuesAvg), 2.0);
+		smoothedVariance += (currentDeviationSquared - smoothedVariance) * weight;
 	}
 
-	private void updateDynamicMin(double weight) {
-		if (minValueAtLastStep < dynamicMin) {
-			dynamicMin = minValueAtLastStep;
+	private void updateSmoothedMin(double weight) {
+		if (minValueAtLastStep < smoothedMin) {
+			smoothedMin = minValueAtLastStep;
 		} else {
-			dynamicMin += (dynamicMax - dynamicMin) * weight;
+			smoothedMin += (smoothedMax - smoothedMin) * weight;
 		}
 	}
 
-	private void updateDynamicMax(double weight) {
-		if (maxValueAtLastStep > dynamicMax) {
-			dynamicMax = maxValueAtLastStep;
+	private void updateSmoothedMax(double weight) {
+		if (maxValueAtLastStep > smoothedMax) {
+			smoothedMax = maxValueAtLastStep;
 		} else {
-			dynamicMax += (dynamicMin - dynamicMax) * weight;
+			smoothedMax += (smoothedMin - smoothedMax) * weight;
 		}
 	}
 
@@ -169,8 +169,8 @@ public final class StatsCounter {
 	 *
 	 * @return dynamic average of added values
 	 */
-	public double getDynamicAvg() {
-		return dynamicAvg;
+	public double getSmoothedAverage() {
+		return smoothedAverage;
 	}
 
 	/**
@@ -178,8 +178,8 @@ public final class StatsCounter {
 	 *
 	 * @return dynamic standard deviation
 	 */
-	public double getDynamicStdDeviation() {
-		return sqrt(dynamicVariance);
+	public double getSmoothedStandardDeviation() {
+		return sqrt(smoothedVariance);
 	}
 
 	/**
@@ -214,8 +214,8 @@ public final class StatsCounter {
 	 *
 	 * @return dynamic max of added values
 	 */
-	public double getDynamicMax() {
-		return dynamicMax;
+	public double getSmoothedMax() {
+		return smoothedMax;
 	}
 
 	/**
@@ -223,14 +223,15 @@ public final class StatsCounter {
 	 *
 	 * @return dynamic min of added values
 	 */
-	public double getDynamicMin() {
-		return dynamicMin;
+	public double getSmoothedMin() {
+		return smoothedMin;
 	}
 
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f min: %.2f max: .2f",
-				getDynamicAvg(), getDynamicStdDeviation(), getMinValue(), getMaxValue());
+		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   smoothedMin: %.2f   smoothedMax: %.2f",
+				getSmoothedAverage(), getSmoothedStandardDeviation(), getMinValue(), getMaxValue(), getLastValue(),
+				getSmoothedMin(), getSmoothedMax());
 	}
 
 	private static double secondsToMillis(double precisionInSeconds) {
@@ -240,4 +241,6 @@ public final class StatsCounter {
 	private static double transformWindow(double windowBase2InSeconds) {
 		return windowBase2InSeconds * ONE_SECOND_IN_MILLIS / log(2);
 	}
+
+
 }

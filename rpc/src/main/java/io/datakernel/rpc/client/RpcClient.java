@@ -103,7 +103,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
 		return new RpcClient(eventloop, serializerFactory);
 	}
-
+	
 	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
 		this.strategy = requestSendingStrategy;
 		this.addresses = new ArrayList<>(requestSendingStrategy.getAddresses());
