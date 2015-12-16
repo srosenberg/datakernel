@@ -52,7 +52,7 @@ import javax.management.openmbean.OpenDataException;
 //
 //	CompositeData getLastProtocolException();
 //
-//	CompositeData getLastRemoteException();
+//	CompositeData getLastServerExceptionCounter();
 //
 //	int getExceptionsAmount();
 //}

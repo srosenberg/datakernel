@@ -35,6 +35,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// CompositeData keys
 	public static final String REQUEST_CLASS_KEY = "Request class";
+	public static final String ADDRESS_KEY = "Address";
 	public static final String TOTAL_REQUESTS_KEY = "Total requests";
 	public static final String PENDING_REQUESTS_KEY = "Pending requests";
 	public static final String SUCCESSFUL_REQUESTS_KEY = "Successful requests";
@@ -44,6 +45,9 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	public static final String RESPONSE_TIME_KEY = "Response time";
 	public static final String LAST_SERVER_EXCEPTION_KEY = "Last server exception";
 	public static final String TOTAL_EXCEPTIONS_KEY = "Total exceptions";
+	public static final String SUCCESSFUL_CONNECTS_KEY = "Successful connects";
+	public static final String FAILED_CONNECTS_KEY = "Failed connects";
+	public static final String CLOSED_CONNECTS_KEY = "Closed connects";
 
 	private static final String LAST_SERVER_EXCEPTION_COUNTER_NAME = "Server exception";
 	private static final String REQUEST_CLASS_COMPOSITE_DATA_NAME = "Request class stats";
@@ -126,7 +130,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		getRequestClassStats(requestClass).getFailedRequests().recordEvent();
 
 		lastServerException.update(exception, causedObject, timeProvider.currentTimeMillis());
-		getRequestClassStats(requestClass).getLastRemoteException()
+		getRequestClassStats(requestClass).getLastServerExceptionCounter()
 				.update(exception, causedObject, timeProvider.currentTimeMillis());
 	}
 
@@ -164,17 +168,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		}
 		return statsPerAddress.get(address);
 	}
-
-
-
-
-
-
-
-
-
-	// jmx api
-	// TODO(vmykhalko):
 
 	@Override
 	public void startMonitoring() {
@@ -250,8 +243,33 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	@Override
 	public CompositeData[] getAddressesStats() throws OpenDataException {
-		// TODO
-		return new CompositeData[0];
+		List<CompositeData> compositeDataList = new ArrayList<>();
+		for (InetSocketAddress address : statsPerAddress.keySet()) {
+			RpcAddressStatsManager addressStats = statsPerAddress.get(address);
+			Throwable lastException = addressStats.getLastServerException().getLastException();
+			compositeDataList.add(CompositeDataBuilder.builder(ADDRESS_COMPOSITE_DATA_NAME)
+							.add(ADDRESS_KEY, SimpleType.STRING, address.toString())
+							.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, addressStats.getTotalRequests().toString())
+							.add(PENDING_REQUESTS_KEY, SimpleType.STRING, addressStats.getPendingRequests().toString())
+							.add(SUCCESSFUL_REQUESTS_KEY, SimpleType.STRING, addressStats.getSuccessfulRequests().toString())
+							.add(FAILED_REQUESTS_KEY, SimpleType.STRING, addressStats.getFailedRequests().toString())
+							.add(REJECTED_REQUESTS_KEY, SimpleType.STRING, addressStats.getRejectedRequests().toString())
+							.add(EXPIRED_REQUESTS_KEY, SimpleType.STRING, addressStats.getExpiredRequests().toString())
+							.add(RESPONSE_TIME_KEY, SimpleType.STRING, addressStats.getResponseTimeStats().toString())
+							.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
+									lastException != null ? lastException.toString() : "")
+							.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
+									Integer.toString(addressStats.getLastServerException().getTotal()))
+							.add(SUCCESSFUL_CONNECTS_KEY, SimpleType.STRING,
+									addressStats.getSuccessfulConnectsStats().toString())
+							.add(FAILED_CONNECTS_KEY, SimpleType.STRING,
+									addressStats.getFailedConnectsStats().toString())
+							.add(CLOSED_CONNECTS_KEY, SimpleType.STRING,
+									addressStats.getClosedConnectsStats().toString())
+							.build()
+			);
+		}
+		return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
 	}
 
 	@Override
@@ -259,6 +277,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		List<CompositeData> compositeDataList = new ArrayList<>();
 		for (Class<?> requestClass : statsPerRequestClass.keySet()) {
 			ParticularStats requestClassStats = statsPerRequestClass.get(requestClass);
+			Throwable lastException = requestClassStats.getLastServerExceptionCounter().getLastException();
 			compositeDataList.add(CompositeDataBuilder.builder(REQUEST_CLASS_COMPOSITE_DATA_NAME)
 					.add(REQUEST_CLASS_KEY, SimpleType.STRING, requestClass.getName())
 					.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getTotalRequests().toString())
@@ -269,9 +288,9 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 					.add(EXPIRED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getExpiredRequests().toString())
 					.add(RESPONSE_TIME_KEY, SimpleType.STRING, requestClassStats.getResponseTimeStats().toString())
 					.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
-							requestClassStats.getLastRemoteException().getException().toString())
+							lastException != null ? lastException.toString() : "")
 					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
-							Integer.toString(requestClassStats.getLastRemoteException().getTotal()))
+							Integer.toString(requestClassStats.getLastServerExceptionCounter().getTotal()))
 					.build()
 			);
 		}
@@ -339,25 +358,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		return lastServerException.getTotal();
 	}
 
-
-
-
-
-
-
-
-
-
-
-//
-//	// helper methods
-//	private ParticularStats getConnectionStats(RpcClientConnection connection) {
-//		if (!statsPerAddress.containsKey(connection)) {
-//			statsPerAddress.put(connection, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
-//		}
-//		return statsPerAddress.get(connection);
-//	}
-
 	private ParticularStats getRequestClassStats(Class<?> requestClass) {
 		if (!statsPerRequestClass.containsKey(requestClass)) {
 			statsPerRequestClass.put(requestClass, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
@@ -391,7 +391,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		private final EventsCounter expiredRequests;
 		private final StatsCounter pendingRequests;
 		private final StatsCounter responseTimeStats;
-		private final LastExceptionCounter lastRemoteException;
+		private final LastExceptionCounter lastServerException;
 		
 		public ParticularStats(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.totalRequests = new EventsCounter(window, precision, timeProvider);
@@ -401,7 +401,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			this.expiredRequests = new EventsCounter(window, precision, timeProvider);
 			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
 			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
-			this.lastRemoteException = new LastExceptionCounter(LAST_SERVER_EXCEPTION_COUNTER_NAME);
+			this.lastServerException = new LastExceptionCounter(LAST_SERVER_EXCEPTION_COUNTER_NAME);
 		}
 
 		public EventsCounter getTotalRequests() {
@@ -431,21 +431,22 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			return responseTimeStats;
 		}
 
-		public LastExceptionCounter getLastRemoteException() {
-			return lastRemoteException;
+		public LastExceptionCounter getLastServerExceptionCounter() {
+			return lastServerException;
 		}
 	}
 
 	public static class RpcAddressStatsManager {
 		private final CurrentTimeProvider timeProvider;
 
-		private final StatsCounter pendingRequests;
-		private final StatsCounter responseTimeStats;
+		private final EventsCounter totalRequests;
 		private final EventsCounter successfulRequest;
 		private final EventsCounter failedRequest;
 		private final EventsCounter rejectedRequest;
 		private final EventsCounter expiredRequest;
-		private final LastExceptionCounter lastRemoteException;
+		private final StatsCounter pendingRequests;
+		private final StatsCounter responseTimeStats;
+		private final LastExceptionCounter lastServerException;
 
 		private final EventsCounter successfulConnects;
 		private final EventsCounter failedConnects;
@@ -456,13 +457,14 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		public RpcAddressStatsManager(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.timeProvider = timeProvider;
 
-			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
-			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
+			this.totalRequests = new EventsCounter(window, precision, timeProvider);
 			this.successfulRequest = new EventsCounter(window, precision, timeProvider);
 			this.failedRequest = new EventsCounter(window, precision, timeProvider);
 			this.rejectedRequest = new EventsCounter(window, precision, timeProvider);
 			this.expiredRequest = new EventsCounter(window, precision, timeProvider);
-			this.lastRemoteException = new LastExceptionCounter(LAST_SERVER_EXCEPTION_COUNTER_NAME);
+			this.pendingRequests = new StatsCounter(window, precision, timeProvider);
+			this.responseTimeStats = new StatsCounter(window, precision, timeProvider);
+			this.lastServerException = new LastExceptionCounter(LAST_SERVER_EXCEPTION_COUNTER_NAME);
 
 			this.successfulConnects = new EventsCounter(window, precision, timeProvider);
 			this.failedConnects = new EventsCounter(window, precision, timeProvider);
@@ -473,6 +475,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 		// public api
 		public void recordNewRequest() {
+			totalRequests.recordEvent();
 			incrementStatsCounter(pendingRequests);
 		}
 
@@ -486,7 +489,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			decrementStatsCounter(pendingRequests);
 			responseTimeStats.recordValue(responseTime);
 			failedRequest.recordEvent();
-			lastRemoteException.update(exception, causedObject, timeProvider.currentTimeMillis());
+			lastServerException.update(exception, causedObject, timeProvider.currentTimeMillis());
 		}
 
 		public void recordRejectedRequest() {
@@ -515,6 +518,26 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			connectionActive = false;
 		}
 
+		private EventsCounter getTotalRequests() {
+			return totalRequests;
+		}
+
+		private EventsCounter getSuccessfulRequests() {
+			return successfulRequest;
+		}
+
+		private EventsCounter getFailedRequests() {
+			return failedRequest;
+		}
+
+		private EventsCounter getRejectedRequests() {
+			return rejectedRequest;
+		}
+
+		private EventsCounter getExpiredRequests() {
+			return expiredRequest;
+		}
+
 		private StatsCounter getPendingRequests() {
 			return pendingRequests;
 		}
@@ -523,24 +546,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			return responseTimeStats;
 		}
 
-		private EventsCounter getSuccessfulRequest() {
-			return successfulRequest;
-		}
-
-		private EventsCounter getFailedRequest() {
-			return failedRequest;
-		}
-
-		private EventsCounter getRejectedRequest() {
-			return rejectedRequest;
-		}
-
-		private EventsCounter getExpiredRequest() {
-			return expiredRequest;
-		}
-
-		private LastExceptionCounter getLastRemoteException() {
-			return lastRemoteException;
+		private LastExceptionCounter getLastServerException() {
+			return lastServerException;
 		}
 
 		public EventsCounter getSuccessfulConnectsStats() {

@@ -264,7 +264,7 @@ public class HttpServerTest {
 		thread.join();
 		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(exceptionMarker(SocketConnection.class, "InternalException"));
 		assertNotNull(exceptionCounter);
-		String[] exception = exceptionCounter.getException();
+		String[] exception = exceptionCounter.getFormattedException();
 		assertTrue(exception != null && exception.length > 0);
 		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
 	}

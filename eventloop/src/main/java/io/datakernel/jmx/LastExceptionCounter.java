@@ -72,8 +72,12 @@ public final class LastExceptionCounter {
 		return MBeanFormat.formatPeriodAgo(timestamp);
 	}
 
-	public String[] getException() {
+	public String[] getFormattedException() {
 		return MBeanFormat.formatException(throwable);
+	}
+
+	public Throwable getLastException() {
+		return throwable;
 	}
 
 	public CompositeData compositeData() {
@@ -83,7 +87,7 @@ public final class LastExceptionCounter {
 			return CompositeDataBuilder.builder(marker.getName())
 					.add("ExceptionMarker", SimpleType.STRING, marker.getName())
 					.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-					.add("Exception", new ArrayType<>(1, SimpleType.STRING), getException())
+					.add("Exception", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
 					.add("CauseObject", SimpleType.STRING, getCauseObject())
 					.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
 					.add("Total", SimpleType.INTEGER, total)

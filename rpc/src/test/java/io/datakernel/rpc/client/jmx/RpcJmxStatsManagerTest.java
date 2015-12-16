@@ -312,7 +312,7 @@ public class RpcJmxStatsManagerTest {
 		Object causedObject = null;
 		int responseTime = 100;
 
-		// for each request class amount of successful, failed, expired and rejected requests is 1,
+		// amount of successful, failed, expired and rejected requests is 1 for each request class,
 		// but amount of total and pending requests is different
 
 		for (int i = 0; i < requestClass_1_requests; i++) {
@@ -337,13 +337,13 @@ public class RpcJmxStatsManagerTest {
 		Predicate<CompositeData> requestClass_1_Predicate = new Predicate<CompositeData>() {
 			@Override
 			public boolean check(CompositeData compositeData) {
-				return compositeData.get("Request class").equals(requestClass_1.getName());
+				return compositeData.get(RpcJmxStatsManager.REQUEST_CLASS_KEY).equals(requestClass_1.getName());
 			}
 		};
 		Predicate<CompositeData> requestClass_2_Predicate = new Predicate<CompositeData>() {
 			@Override
 			public boolean check(CompositeData compositeData) {
-				return compositeData.get("Request class").equals(requestClass_2.getName());
+				return compositeData.get(RpcJmxStatsManager.REQUEST_CLASS_KEY).equals(requestClass_2.getName());
 			}
 		};
 
@@ -382,95 +382,169 @@ public class RpcJmxStatsManagerTest {
 	}
 
 	@Test
-	public void itShouldProperlyCalculateStatsPerAddress() {
+	public void itShouldProperlyCalculateStatsPerAddress() throws OpenDataException {
 		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
-		final Class<?> requestClass = Object.class;
-		InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
-		InetSocketAddress address_2 = InetSocketAddress.createUnresolved("2.2.2.2", 10000);
+		final InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
+		final InetSocketAddress address_2 = InetSocketAddress.createUnresolved("2.2.2.2", 10000);
 		int address_1_requests = 7;
 		int address_2_requests = 11;
 		Exception exception = new Exception();
 		Object causedObject = null;
 		int responseTime = 100;
 
-		RpcJmxStatsManager.RpcAddressStatsManager address_1_StatsManager = statsManager.getAddressStatsManager()
+		RpcJmxStatsManager.RpcAddressStatsManager address_1_StatsManager =
+				statsManager.getAddressStatsManager(address_1);
+		RpcJmxStatsManager.RpcAddressStatsManager address_2_StatsManager =
+				statsManager.getAddressStatsManager(address_2);
 
-		// for each address amount of successful, failed, expired and rejected requests is 1,
+		// amount of successful, failed, expired and rejected requests is 1 for each address,
 		// but amount of total and pending requests is different
 
 		for (int i = 0; i < address_1_requests; i++) {
-			statsManager.recordNewRequest(address_1);
+			address_1_StatsManager.recordNewRequest();
 		}
-		statsManager.recordSuccessfulRequest(requestClass_1, responseTime);
-		statsManager.recordFailedRequest(requestClass_1, exception, causedObject, responseTime);
-		statsManager.recordRejectedRequest(requestClass_1);
-		statsManager.recordExpiredRequest(requestClass_1);
+		address_1_StatsManager.recordSuccessfulRequest(responseTime);
+		address_1_StatsManager.recordFailedRequest(exception, causedObject, responseTime);
+		address_1_StatsManager.recordRejectedRequest();
+		address_1_StatsManager.recordExpiredRequest();
 
-		for (int i = 0; i < requestClass_2_requests; i++) {
-			statsManager.recordNewRequest(requestClass_2);
+		for (int i = 0; i < address_2_requests; i++) {
+			address_2_StatsManager.recordNewRequest();
 		}
-		statsManager.recordSuccessfulRequest(requestClass_2, responseTime);
-		statsManager.recordFailedRequest(requestClass_2, exception, causedObject, responseTime);
-		statsManager.recordRejectedRequest(requestClass_2);
-		statsManager.recordExpiredRequest(requestClass_2);
+		address_2_StatsManager.recordSuccessfulRequest(responseTime);
+		address_2_StatsManager.recordFailedRequest(exception, causedObject, responseTime);
+		address_2_StatsManager.recordRejectedRequest();
+		address_2_StatsManager.recordExpiredRequest();
 
-		final CompositeData[] compositeDataArray = statsManager.getRequestClassesStats();
+		// recieve stats
+		final CompositeData[] compositeDataArray = statsManager.getAddressesStats();
 
 		// predicates to find specific CompositeData in array
-		Predicate<CompositeData> requestClass_1_Predicate = new Predicate<CompositeData>() {
+		Predicate<CompositeData> address_1_Predicate = new Predicate<CompositeData>() {
 			@Override
 			public boolean check(CompositeData compositeData) {
-				return compositeData.get("Request class").equals(requestClass_1.getName());
+				return compositeData.get(RpcJmxStatsManager.ADDRESS_KEY).equals(address_1.toString());
 			}
 		};
-		Predicate<CompositeData> requestClass_2_Predicate = new Predicate<CompositeData>() {
+		Predicate<CompositeData> address_2_Predicate = new Predicate<CompositeData>() {
 			@Override
 			public boolean check(CompositeData compositeData) {
-				return compositeData.get("Request class").equals(requestClass_2.getName());
+				return compositeData.get(RpcJmxStatsManager.ADDRESS_KEY).equals(address_2.toString());
 			}
 		};
 
-		CompositeData requestClass_1_compositeData = findInArray(compositeDataArray, requestClass_1_Predicate);
-		CompositeData requestClass_2_compositeData = findInArray(compositeDataArray, requestClass_2_Predicate);
+		CompositeData address_1_compositeData = findInArray(compositeDataArray, address_1_Predicate);
+		CompositeData address_2_compositeData = findInArray(compositeDataArray, address_2_Predicate);
 
 		int amountOfRequestsThatAreNotPending = 4; // 1 successful, 1 failed, 1 rejected and 1 expired
 
-		// check stats for requestClass_1
-		assertEquals(requestClass_1_requests,
-				extractTotalEvents((String)requestClass_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
-		assertEquals(requestClass_1_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)requestClass_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+		// check stats for address_1
+		assertEquals(address_1_requests,
+				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+		assertEquals(address_1_requests - amountOfRequestsThatAreNotPending,
+				extractLastValue((String)address_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String)address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String)address_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String)address_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String) requestClass_1_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
+				(String) address_1_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
 
-		// check stats for requestClass_2
-		assertEquals(requestClass_2_requests,
-				extractTotalEvents((String)requestClass_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
-		assertEquals(requestClass_2_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)requestClass_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+		// check stats for address_2
+		assertEquals(address_2_requests,
+				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+		assertEquals(address_2_requests - amountOfRequestsThatAreNotPending,
+				extractLastValue((String)address_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String)address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String)address_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String)address_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String) requestClass_2_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
+				(String) address_2_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
+	}
+
+	@Test
+	public void itShouldCalculateProperlyConnectsStatsForAddresses() throws OpenDataException {
+		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		RpcJmxStatsManager statsManager =
+				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
+		final InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
+		final InetSocketAddress address_2 = InetSocketAddress.createUnresolved("2.2.2.2", 10000);
+		int address_1_successful_connects = 3;
+		int address_1_failed_connects = 7;
+		int address_1_closed_connects = 11;
+		int address_2_successful_connects = 5;
+		int address_2_failed_connects = 17;
+		int address_2_closed_connects = 19;
+
+		// record connects for address_1
+		for (int i = 0; i < address_1_successful_connects; i++) {
+			statsManager.recordSuccessfulConnect(address_1);
+		}
+		for (int i = 0; i < address_1_failed_connects; i++) {
+			statsManager.recordFailedConnect(address_1);
+		}
+		for (int i = 0; i < address_1_closed_connects; i++) {
+			statsManager.recordClosedConnect(address_1);
+		}
+
+		// record connects for address_2
+		for (int i = 0; i < address_2_successful_connects; i++) {
+			statsManager.recordSuccessfulConnect(address_2);
+		}
+		for (int i = 0; i < address_2_failed_connects; i++) {
+			statsManager.recordFailedConnect(address_2);
+		}
+		for (int i = 0; i < address_2_closed_connects; i++) {
+			statsManager.recordClosedConnect(address_2);
+		}
+
+		// recieve stats
+		final CompositeData[] compositeDataArray = statsManager.getAddressesStats();
+
+		// predicates to find specific CompositeData in array
+		Predicate<CompositeData> address_1_Predicate = new Predicate<CompositeData>() {
+			@Override
+			public boolean check(CompositeData compositeData) {
+				return compositeData.get(RpcJmxStatsManager.ADDRESS_KEY).equals(address_1.toString());
+			}
+		};
+		Predicate<CompositeData> address_2_Predicate = new Predicate<CompositeData>() {
+			@Override
+			public boolean check(CompositeData compositeData) {
+				return compositeData.get(RpcJmxStatsManager.ADDRESS_KEY).equals(address_2.toString());
+			}
+		};
+
+		CompositeData address_1_compositeData = findInArray(compositeDataArray, address_1_Predicate);
+		CompositeData address_2_compositeData = findInArray(compositeDataArray, address_2_Predicate);
+
+		// check connects stats for address_1
+		assertEquals(address_1_successful_connects,
+				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
+		assertEquals(address_1_failed_connects,
+				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
+		assertEquals(address_1_closed_connects,
+				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
+
+		// check connects stats for address_2
+		assertEquals(address_2_successful_connects,
+				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
+		assertEquals(address_2_failed_connects,
+				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
+		assertEquals(address_2_closed_connects,
+				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
 	}
 
 //	@Test
 //	public void test() {
-//		CustomException customException = new CustomException("bingo");
-//		LastExceptionCounter
-//		System.out.println(Arrays.toString(MBeanFormat.formatException(customException)));
+//		InetSocketAddress address = InetSocketAddress
 //	}
 
 	// helpers
@@ -516,8 +590,10 @@ public class RpcJmxStatsManagerTest {
 		}
 		throw new IllegalArgumentException("Cannot find array element which satisfies condition");
 	}
-
-
+//
+//	public static String addressToString(InetSocketAddress address) {
+//		String address_regex
+//	}
 
 	public static class CustomException extends Exception {
 		public CustomException(String message) {
