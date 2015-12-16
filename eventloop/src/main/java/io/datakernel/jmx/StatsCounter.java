@@ -242,5 +242,4 @@ public final class StatsCounter {
 		return windowBase2InSeconds * ONE_SECOND_IN_MILLIS / log(2);
 	}
 
-
 }

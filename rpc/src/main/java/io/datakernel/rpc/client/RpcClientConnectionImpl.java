@@ -20,23 +20,19 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.StatsCounter;
-import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.rpc.client.jmx.RpcClientConnectionJmx;
+import io.datakernel.rpc.client.jmx.RpcJmxStatsManager;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionJmx {
@@ -77,7 +73,8 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 
 	private static final Logger logger = getLogger(RpcClientConnection.class);
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
-	private static final RpcException OVERLOAD_EXCEPTION = new RpcException("Write connection is overloaded");
+	private static final RpcOverloadException OVERLOAD_EXCEPTION =
+			new RpcOverloadException("Write connection is overloaded");
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
 	private final StatusListener statusListener;
@@ -90,15 +87,9 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	private boolean closing;
 
 	// JMX
-	private final StatsCounter pendingRequests;
-	private final StatsCounter timeProcessResult;
-	private final StatsCounter timeProcessException;
-	private final StatsCounter timeSendPacket;
-	private final LastExceptionCounter lastTimeoutException = new LastExceptionCounter("TimeoutException");
-	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
-	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
-	private int successfulRequests, failedRequests, rejectedRequests, expiredRequests;
-	private boolean monitoring;
+	private RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager;
+	private final Map<Integer, Long> requestToStartTimestamp = new HashMap<>();
+	private final CurrentTimeProvider timeProvider;
 
 	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel,
 	                               BufferSerializer<RpcMessage> messageSerializer,
@@ -108,19 +99,21 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
 
 		// JMX
-		this.pendingRequests = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeProcessResult = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeProcessException = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.timeSendPacket = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-
+		this.timeProvider = eventloop;
 	}
 
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		assert eventloop.inEventloopThread();
 
+		if (isMonitoring()) {
+			addressStatsManager.recordNewRequest();
+		}
+
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
-			rejectedRequests++;
+			if (isMonitoring()) {
+				addressStatsManager.recordRejectedRequest();
+			}
 			if (logger.isWarnEnabled())
 				logger.warn(OVERLOAD_EXCEPTION.getMessage());
 			returnProtocolError(callback, OVERLOAD_EXCEPTION);
@@ -141,8 +134,9 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookieCounter, timeout);
 		addTimeoutCookie(timeoutCookie);
 		requests.put(cookieCounter, callback);
-		pendingRequests.recordValue(requests.size());
-		Stopwatch stopwatch = monitoring ? Stopwatch.createStarted() : null;
+		if (isMonitoring()) {
+			requestToStartTimestamp.put(cookieCounter, timeProvider.currentTimeMillis());
+		}
 		try {
 			protocol.sendMessage(new RpcMessage(cookieCounter, request));
 		} catch (Exception e) {
@@ -150,9 +144,6 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 				logger.error("Send RpcMessage {} failed", request, e);
 			removeTimeoutCookie(timeoutCookie);
 			returnProtocolError(requests.remove(cookieCounter), e);
-		} finally {
-			if (stopwatch != null)
-				timeSendPacket.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 		}
 	}
 
@@ -199,7 +190,9 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		ResultCallback<?> callback = requests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
-		expiredRequests++;
+		if (isMonitoring()) {
+			addressStatsManager.recordExpiredRequest();
+		}
 		returnTimeout(callback, new RpcTimeoutException("Timeout (" + timeoutCookie.getElapsedTime() + "/" + timeoutCookie.getTimeoutMillis()
 				+ " ms) for server response for request ID " + timeoutCookie.getCookie()));
 	}
@@ -209,22 +202,16 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	}
 
 	private void returnTimeout(ResultCallback<?> callback, Exception exception) {
-		lastTimeoutException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
 	private void returnProtocolError(ResultCallback<?> callback, Exception exception) {
-		lastInternalException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
 	private void returnError(ResultCallback<?> callback, Exception exception) {
-		failedRequests++;
 		if (callback != null) {
-			Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
 			callback.onException(exception);
-			if (stopwatch != null)
-				timeProcessException.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 		}
 	}
 
@@ -239,7 +226,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	}
 
 	private void processError(RpcMessage message, RpcRemoteException exception) {
-		lastRemoteException.update(exception, message, eventloop.currentTimeMillis());
+		if (isMonitoring() && requestToStartTimestamp.containsKey(message.getCookie())) {
+			int responseTime = (int) (timeProvider.currentTimeMillis() - requestToStartTimestamp.get(message.getCookie()));
+			addressStatsManager.recordFailedRequest(exception, null, responseTime);
+		}
 		ResultCallback<?> callback = getResultCallback(message);
 		if (callback == null)
 			return;
@@ -250,11 +240,11 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 		ResultCallback<Object> callback = getResultCallback(message);
 		if (callback == null)
 			return;
-		successfulRequests++;
-		Stopwatch stopwatch = monitoring ? Stopwatch.createStarted() : null;
+		if (isMonitoring() && requestToStartTimestamp.containsKey(message.getCookie())) {
+			int responseTime = (int) (timeProvider.currentTimeMillis() - requestToStartTimestamp.get(message.getCookie()));
+			addressStatsManager.recordSuccessfulRequest(responseTime);
+		}
 		callback.onResult(message.getData());
-		if (stopwatch != null)
-			timeProcessResult.recordValue((int) stopwatch.elapsed(MICROSECONDS));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -300,106 +290,18 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	}
 
 	// JMX
+
 	@Override
-	public void startMonitoring() {
-		monitoring = true;
-		protocol.startMonitoring();
+	public void startMonitoring(RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager) {
+		this.addressStatsManager = addressStatsManager;
 	}
 
 	@Override
 	public void stopMonitoring() {
-		monitoring = false;
-		protocol.stopMonitoring();
+		this.addressStatsManager = null;
 	}
 
-	@Override
-	public boolean isMonitoring() {
-		return monitoring;
-	}
-
-	@Override
-	public void reset() {
-		lastTimeoutException.reset();
-		lastRemoteException.reset();
-		lastInternalException.reset();
-		pendingRequests.reset();
-		successfulRequests = 0;
-		failedRequests = 0;
-		rejectedRequests = 0;
-		expiredRequests = 0;
-		timeProcessException.reset();
-		timeProcessResult.reset();
-		timeSendPacket.reset();
-		protocol.reset();
-	}
-
-	@Override
-	public CompositeData getConnectionDetails() throws OpenDataException {
-		return protocol.getConnectionDetails();
-	}
-
-	@Override
-	public String getPendingRequestsStats() {
-		return pendingRequests.toString();
-	}
-
-	@Override
-	public int getPendingRequests() {
-		return requests.size();
-	}
-
-	@Override
-	public int getSuccessfulRequests() {
-		return successfulRequests;
-	}
-
-	@Override
-	public int getFailedRequests() {
-		return failedRequests;
-	}
-
-	@Override
-	public int getRejectedRequests() {
-		return rejectedRequests;
-	}
-
-	@Override
-	public int getExpiredRequests() {
-		return expiredRequests;
-	}
-
-	@Override
-	public String getProcessResultTimeStats() {
-		return timeProcessResult.toString();
-	}
-
-	@Override
-	public String getProcessExceptionTimeStats() {
-		return timeProcessException.toString();
-	}
-
-	@Override
-	public String getSendPacketTimeStats() {
-		return timeSendPacket.toString();
-	}
-
-	@Override
-	public CompositeData getLastTimeoutException() {
-		return lastTimeoutException.compositeData();
-	}
-
-	@Override
-	public CompositeData getLastProtocolException() {
-		return lastInternalException.compositeData();
-	}
-
-	@Override
-	public CompositeData getLastRemoteException() {
-		return lastRemoteException.compositeData();
-	}
-
-	@Override
-	public int getExceptionsAmount() {
-		return lastRemoteException.getTotal();
+	private boolean isMonitoring() {
+		return addressStatsManager != null;
 	}
 }

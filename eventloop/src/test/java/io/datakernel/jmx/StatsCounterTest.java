@@ -63,7 +63,7 @@ public class StatsCounterTest {
 		}
 
 		// standard deviation of uniform distribution
-		double expectedStandardDeviation = sqrt(((maxValue - minValue + 1) * (maxValue - minValue + 1) - 1)/ 12.0);
+		double expectedStandardDeviation = sqrt(((maxValue - minValue + 1) * (maxValue - minValue + 1) - 1) / 12.0);
 		double acceptableError = 0.1;
 		assertEquals(expectedStandardDeviation, counter.getSmoothedStandardDeviation(), acceptableError);
 	}

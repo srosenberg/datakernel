@@ -22,14 +22,14 @@ import org.junit.Test;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class RpcJmxStatsManagerTest {
 
@@ -40,7 +40,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldEnableAndDisableMonitoring() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx)new RpcClientJmxStub());
+		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 
@@ -158,7 +158,7 @@ public class RpcJmxStatsManagerTest {
 	}
 
 	@Test
-	public void itShouldResetStatsAfterResetMethodIsCalled() {
+	public void itShouldResetStatsAfterResetMethodIsCalled() throws OpenDataException {
 		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
@@ -226,7 +226,9 @@ public class RpcJmxStatsManagerTest {
 		assertEquals(0, extractTotalEvents(statsManager.getFailedConnectsStats()));
 		assertEquals(0, extractTotalEvents(statsManager.getClosedConnectsStats()));
 
-		// TODO(vmykhalko): check also addresses / request classes stats
+		// check stats for request classes and for addresses
+		assertEquals(0, statsManager.getRequestClassesStats().length);
+		assertEquals(0, statsManager.getAddressesStats().length);
 	}
 
 	@Test
@@ -261,7 +263,7 @@ public class RpcJmxStatsManagerTest {
 		int failedRequest_ResponseTime = 200;
 		double successfulRequestProbability = 0.8;
 		int requestsAmount = 10000;
-		int timeIntervalBetweenRequests = (int)(SMOOTHING_WINDOW * 1000) / 500;
+		int timeIntervalBetweenRequests = (int) (SMOOTHING_WINDOW * 1000) / 500;
 
 		for (int i = 0; i < requestsAmount; i++) {
 			boolean isThisRequestSuccessful = RANDOM.nextDouble() < successfulRequestProbability;
@@ -354,29 +356,29 @@ public class RpcJmxStatsManagerTest {
 
 		// check stats for requestClass_1
 		assertEquals(requestClass_1_requests,
-				extractTotalEvents((String)requestClass_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+				extractTotalEvents((String) requestClass_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
 		assertEquals(requestClass_1_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)requestClass_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+				extractLastValue((String) requestClass_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String) requestClass_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String) requestClass_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String) requestClass_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
 				(String) requestClass_1_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
 
 		// check stats for requestClass_2
 		assertEquals(requestClass_2_requests,
-				extractTotalEvents((String)requestClass_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+				extractTotalEvents((String) requestClass_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
 		assertEquals(requestClass_2_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)requestClass_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+				extractLastValue((String) requestClass_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String) requestClass_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String) requestClass_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)requestClass_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String) requestClass_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
 				(String) requestClass_2_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
 	}
@@ -442,29 +444,29 @@ public class RpcJmxStatsManagerTest {
 
 		// check stats for address_1
 		assertEquals(address_1_requests,
-				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+				extractTotalEvents((String) address_1_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
 		assertEquals(address_1_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)address_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+				extractLastValue((String) address_1_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String) address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String) address_1_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String) address_1_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
 				(String) address_1_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
 
 		// check stats for address_2
 		assertEquals(address_2_requests,
-				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
+				extractTotalEvents((String) address_2_compositeData.get(RpcJmxStatsManager.TOTAL_REQUESTS_KEY)));
 		assertEquals(address_2_requests - amountOfRequestsThatAreNotPending,
-				extractLastValue((String)address_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
+				extractLastValue((String) address_2_compositeData.get(RpcJmxStatsManager.PENDING_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
+				(String) address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
+				(String) address_2_compositeData.get(RpcJmxStatsManager.FAILED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
-				(String)address_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
+				(String) address_2_compositeData.get(RpcJmxStatsManager.REJECTED_REQUESTS_KEY)));
 		assertEquals(1, extractTotalEvents(
 				(String) address_2_compositeData.get(RpcJmxStatsManager.EXPIRED_REQUESTS_KEY)));
 	}
@@ -527,25 +529,30 @@ public class RpcJmxStatsManagerTest {
 
 		// check connects stats for address_1
 		assertEquals(address_1_successful_connects,
-				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
+				extractTotalEvents((String) address_1_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
 		assertEquals(address_1_failed_connects,
-				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
+				extractTotalEvents((String) address_1_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
 		assertEquals(address_1_closed_connects,
-				extractTotalEvents((String)address_1_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
+				extractTotalEvents((String) address_1_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
 
 		// check connects stats for address_2
 		assertEquals(address_2_successful_connects,
-				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
+				extractTotalEvents((String) address_2_compositeData.get(RpcJmxStatsManager.SUCCESSFUL_CONNECTS_KEY)));
 		assertEquals(address_2_failed_connects,
-				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
+				extractTotalEvents((String) address_2_compositeData.get(RpcJmxStatsManager.FAILED_CONNECTS_KEY)));
 		assertEquals(address_2_closed_connects,
-				extractTotalEvents((String)address_2_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
+				extractTotalEvents((String) address_2_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
 	}
 
-//	@Test
-//	public void test() {
-//		InetSocketAddress address = InetSocketAddress
-//	}
+	@Test
+	public void test() {
+//		Object object = new Object();
+//		synchronized (object) {
+//			synchronized (object) {
+//				System.out.println("hello world");
+//			}
+//		}
+	}
 
 	// helpers
 
@@ -582,7 +589,7 @@ public class RpcJmxStatsManagerTest {
 		}
 	}
 
-	public static<T> T findInArray(T[] array, Predicate<T> predicate) {
+	public static <T> T findInArray(T[] array, Predicate<T> predicate) {
 		for (T item : array) {
 			if (predicate.check(item)) {
 				return item;

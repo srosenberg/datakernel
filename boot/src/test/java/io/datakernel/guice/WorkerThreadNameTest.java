@@ -94,9 +94,9 @@ public class WorkerThreadNameTest {
 		@Provides
 		@Singleton
 		Element2 primaryNioServer(Element1 primaryEventloop,
-		                                  NioWorkerScopeFactory nioWorkerScope,
-		                                  @WorkerThread("First") Provider<Element4> unusedStringProvider,
-		                                  @WorkerThread Provider<Element3> itemProvider) {
+		                          NioWorkerScopeFactory nioWorkerScope,
+		                          @WorkerThread("First") Provider<Element4> unusedStringProvider,
+		                          @WorkerThread Provider<Element3> itemProvider) {
 			List<Element4> unusedList = nioWorkerScope.getList(WORKERS, unusedStringProvider);
 			List<Element3> workerHttpServers = nioWorkerScope.getList(WORKERS, itemProvider);
 			return new Element2();
@@ -123,7 +123,7 @@ public class WorkerThreadNameTest {
 		@Provides
 		@WorkerThread
 		Element3 workerHttpServer(@WorkerThread Element1 eventloop, @WorkerId final int workerId,
-		                                 @WorkerThread("Second") Element4 unusedString) {
+		                          @WorkerThread("Second") Element4 unusedString) {
 			return new Element3();
 		}
 

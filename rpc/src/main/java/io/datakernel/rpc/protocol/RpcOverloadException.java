@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.jmx;
+package io.datakernel.rpc.protocol;
 
-public interface RpcClientJmx {
+public class RpcOverloadException extends Exception {
+	public RpcOverloadException() {
+	}
 
-	void startMonitoring(RpcJmxStatsManager jmxStatsManager);
-
-	void stopMonitoring();
-
-//	List<InetSocketAddress> getAddresses();
+	public RpcOverloadException(String message) {
+		super(message);
+	}
 }

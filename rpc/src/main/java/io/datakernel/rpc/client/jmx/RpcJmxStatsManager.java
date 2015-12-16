@@ -31,6 +31,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Thread safe class
+ */
 public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// CompositeData keys
@@ -103,7 +106,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	// stats manager api
-	public void recordNewRequest(Class<?> requestClass) {
+	public synchronized void recordNewRequest(Class<?> requestClass) {
 		// TODO(vmykhalko): is it needed to check whether monitoring flag is true
 		ParticularStats requestClassStats = getRequestClassStats(requestClass);
 
@@ -114,7 +117,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		incrementStatsCounter(pendingRequests);
 	}
 
-	public void recordSuccessfulRequest(Class<?> requestClass, int responseTime) {
+	public synchronized void recordSuccessfulRequest(Class<?> requestClass, int responseTime) {
 		preprocessFinishedRequest(requestClass);
 		updateResponseTime(requestClass, responseTime);
 
@@ -122,7 +125,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		getRequestClassStats(requestClass).getSuccessfulRequests().recordEvent();
 	}
 
-	public void recordFailedRequest(Class<?> requestClass, Exception exception, Object causedObject, int responseTime) {
+	public synchronized void recordFailedRequest(Class<?> requestClass, Exception exception, Object causedObject, int responseTime) {
 		preprocessFinishedRequest(requestClass);
 		updateResponseTime(requestClass, responseTime);
 
@@ -134,43 +137,44 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 				.update(exception, causedObject, timeProvider.currentTimeMillis());
 	}
 
-	public void recordRejectedRequest(Class<?> requestClass) {
+	public synchronized void recordRejectedRequest(Class<?> requestClass) {
 		preprocessFinishedRequest(requestClass);
 		rejectedRequests.recordEvent();
 		getRequestClassStats(requestClass).getRejectedRequests().recordEvent();
 	}
 
-	public void recordExpiredRequest(Class<?> requestClass) {
+	public synchronized void recordExpiredRequest(Class<?> requestClass) {
 		preprocessFinishedRequest(requestClass);
 		expiredRequests.recordEvent();
 		getRequestClassStats(requestClass).getExpiredRequests().recordEvent();
 	}
 
-	public void recordSuccessfulConnect(InetSocketAddress address) {
+	public synchronized void recordSuccessfulConnect(InetSocketAddress address) {
 		successfulConnects.recordEvent();
 		getAddressStatsManager(address).recordSuccessfulConnect();
 	}
 
-	public void recordFailedConnect(InetSocketAddress address) {
+	public synchronized void recordFailedConnect(InetSocketAddress address) {
 		failedConnects.recordEvent();
 		getAddressStatsManager(address).recordFailedConnect();
 	}
 
-	public void recordClosedConnect(InetSocketAddress address) {
+	public synchronized void recordClosedConnect(InetSocketAddress address) {
 		closedConnects.recordEvent();
 		getAddressStatsManager(address).recordClosedConnect();
 	}
 
 	// TODO(vmykhalko): maybe it will be better to set addresses only once in constructor / or in resetStats() ?
-	public RpcAddressStatsManager getAddressStatsManager(InetSocketAddress address) {
+	public synchronized RpcAddressStatsManager getAddressStatsManager(InetSocketAddress address) {
 		if (!statsPerAddress.containsKey(address)) {
 			statsPerAddress.put(address, new RpcAddressStatsManager(smoothingWindow, smoothingPrecision, timeProvider));
 		}
 		return statsPerAddress.get(address);
 	}
 
+	// jmx api
 	@Override
-	public void startMonitoring() {
+	public synchronized void startMonitoring() {
 		monitoring = true;
 		for (RpcClientJmx rpcClient : rpcClients) {
 			rpcClient.startMonitoring(this);
@@ -178,7 +182,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public void stopMonitoring() {
+	public synchronized void stopMonitoring() {
 		monitoring = false;
 		for (RpcClientJmx rpcClient : rpcClients) {
 			rpcClient.stopMonitoring();
@@ -186,23 +190,22 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public boolean isMonitoring() {
+	public synchronized boolean isMonitoring() {
 		return monitoring;
 	}
 
 	@Override
-	public void resetStats() {
+	public synchronized void resetStats() {
 		resetStats(smoothingWindow, smoothingPrecision);
 	}
 
 	@Override
-	public void resetStats(double smoothingWindow, double smoothingPrecision) {
+	public synchronized void resetStats(double smoothingWindow, double smoothingPrecision) {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingPrecision = smoothingPrecision;
 
-		// TODO(vmykhalko): uncomment
-//		statsPerAddress = new HashMap<>();
-//		statsPerRequestClass = new HashMap<>();
+		statsPerAddress = new HashMap<>();
+		statsPerRequestClass = new HashMap<>();
 
 		totalRequests.reset(smoothingWindow, smoothingPrecision);
 		successfulRequests.reset(smoothingWindow, smoothingPrecision);
@@ -219,7 +222,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public String getAddresses() {
+	public synchronized String getAddresses() {
 		StringBuilder result = new StringBuilder();
 		String separator = ", ";
 		for (InetSocketAddress address : statsPerAddress.keySet()) {
@@ -231,7 +234,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public int getActiveConnectionsCount() {
+	public synchronized int getActiveConnectionsCount() {
 		int activeConnections = 0;
 		for (RpcAddressStatsManager rpcAddressStatsManager : statsPerAddress.values()) {
 			if (rpcAddressStatsManager.isConnectionActive()) {
@@ -242,7 +245,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getAddressesStats() throws OpenDataException {
+	public synchronized CompositeData[] getAddressesStats() throws OpenDataException {
 		List<CompositeData> compositeDataList = new ArrayList<>();
 		for (InetSocketAddress address : statsPerAddress.keySet()) {
 			RpcAddressStatsManager addressStats = statsPerAddress.get(address);
@@ -273,91 +276,91 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getRequestClassesStats() throws OpenDataException {
+	public synchronized CompositeData[] getRequestClassesStats() throws OpenDataException {
 		List<CompositeData> compositeDataList = new ArrayList<>();
 		for (Class<?> requestClass : statsPerRequestClass.keySet()) {
 			ParticularStats requestClassStats = statsPerRequestClass.get(requestClass);
 			Throwable lastException = requestClassStats.getLastServerExceptionCounter().getLastException();
 			compositeDataList.add(CompositeDataBuilder.builder(REQUEST_CLASS_COMPOSITE_DATA_NAME)
-					.add(REQUEST_CLASS_KEY, SimpleType.STRING, requestClass.getName())
-					.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getTotalRequests().toString())
-					.add(PENDING_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getPendingRequests().toString())
-					.add(SUCCESSFUL_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getSuccessfulRequests().toString())
-					.add(FAILED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getFailedRequests().toString())
-					.add(REJECTED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getRejectedRequests().toString())
-					.add(EXPIRED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getExpiredRequests().toString())
-					.add(RESPONSE_TIME_KEY, SimpleType.STRING, requestClassStats.getResponseTimeStats().toString())
-					.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
-							lastException != null ? lastException.toString() : "")
-					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
-							Integer.toString(requestClassStats.getLastServerExceptionCounter().getTotal()))
-					.build()
+							.add(REQUEST_CLASS_KEY, SimpleType.STRING, requestClass.getName())
+							.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getTotalRequests().toString())
+							.add(PENDING_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getPendingRequests().toString())
+							.add(SUCCESSFUL_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getSuccessfulRequests().toString())
+							.add(FAILED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getFailedRequests().toString())
+							.add(REJECTED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getRejectedRequests().toString())
+							.add(EXPIRED_REQUESTS_KEY, SimpleType.STRING, requestClassStats.getExpiredRequests().toString())
+							.add(RESPONSE_TIME_KEY, SimpleType.STRING, requestClassStats.getResponseTimeStats().toString())
+							.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
+									lastException != null ? lastException.toString() : "")
+							.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
+									Integer.toString(requestClassStats.getLastServerExceptionCounter().getTotal()))
+							.build()
 			);
 		}
 		return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
 	}
 
 	@Override
-	public String getTotalRequestsStats() {
+	public synchronized String getTotalRequestsStats() {
 		return totalRequests.toString();
 	}
 
 	@Override
-	public String getSuccessfulRequestsStats() {
+	public synchronized String getSuccessfulRequestsStats() {
 		return successfulRequests.toString();
 	}
 
 	@Override
-	public String getFailedRequestsStats() {
+	public synchronized String getFailedRequestsStats() {
 		return failedRequests.toString();
 	}
 
 	@Override
-	public String getRejectedRequestsStats() {
+	public synchronized String getRejectedRequestsStats() {
 		return rejectedRequests.toString();
 	}
 
 	@Override
-	public String getExpiredRequestsStats() {
+	public synchronized String getExpiredRequestsStats() {
 		return expiredRequests.toString();
 	}
 
 	@Override
-	public String getPendingRequestsStats() {
+	public synchronized String getPendingRequestsStats() {
 		return pendingRequests.toString();
 	}
 
-
 	@Override
-	public String getSuccessfulConnectsStats() {
+	public synchronized String getSuccessfulConnectsStats() {
 		return successfulConnects.toString();
 	}
 
 	@Override
-	public String getFailedConnectsStats() {
+	public synchronized String getFailedConnectsStats() {
 		return failedConnects.toString();
 	}
 
 	@Override
-	public String getClosedConnectsStats() {
+	public synchronized String getClosedConnectsStats() {
 		return closedConnects.toString();
 	}
 
 	@Override
-	public String getAverageResponseTimeStats() {
+	public synchronized String getAverageResponseTimeStats() {
 		return responseTimeStats.toString();
 	}
 
 	@Override
-	public CompositeData getLastServerException() {
+	public synchronized CompositeData getLastServerException() {
 		return lastServerException.compositeData();
 	}
 
 	@Override
-	public int getExceptionsCount() {
+	public synchronized int getExceptionsCount() {
 		return lastServerException.getTotal();
 	}
 
+	// helpers
 	private ParticularStats getRequestClassStats(Class<?> requestClass) {
 		if (!statsPerRequestClass.containsKey(requestClass)) {
 			statsPerRequestClass.put(requestClass, new ParticularStats(smoothingWindow, smoothingPrecision, timeProvider));
@@ -392,7 +395,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		private final StatsCounter pendingRequests;
 		private final StatsCounter responseTimeStats;
 		private final LastExceptionCounter lastServerException;
-		
+
 		public ParticularStats(double window, double precision, CurrentTimeProvider timeProvider) {
 			this.totalRequests = new EventsCounter(window, precision, timeProvider);
 			this.successfulRequests = new EventsCounter(window, precision, timeProvider);
@@ -407,6 +410,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		public EventsCounter getTotalRequests() {
 			return totalRequests;
 		}
+
 		public EventsCounter getSuccessfulRequests() {
 			return successfulRequests;
 		}
@@ -436,6 +440,9 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		}
 	}
 
+	/**
+	 * Not thread safe class
+	 */
 	public static class RpcAddressStatsManager {
 		private final CurrentTimeProvider timeProvider;
 

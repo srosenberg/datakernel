@@ -18,7 +18,8 @@ package io.datakernel.rpc.client.jmx;
 
 public interface RpcClientConnectionJmx {
 
-	void setRpcJmxStatsManager(RpcJmxStatsManager jmxStatsManager);
+	void startMonitoring(RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager);
 
+	void stopMonitoring();
 
 }
