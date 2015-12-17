@@ -20,7 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.jmx.RpcClientConnectionJmx;
+import io.datakernel.rpc.client.jmx.RpcJmxClientConncetion;
 import io.datakernel.rpc.client.jmx.RpcJmxStatsManager;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -35,7 +35,7 @@ import java.util.PriorityQueue;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionJmx {
+public final class RpcImplClientConncetion implements RpcClientConnection, RpcJmxClientConncetion {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
@@ -91,7 +91,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	private final Map<Integer, Long> requestToStartTimestamp = new HashMap<>();
 	private final CurrentTimeProvider timeProvider;
 
-	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel,
+	public RpcImplClientConncetion(NioEventloop eventloop, SocketChannel socketChannel,
 	                               BufferSerializer<RpcMessage> messageSerializer,
 	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;

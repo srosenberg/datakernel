@@ -61,7 +61,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private double smoothingWindow;
 	private double smoothingPrecision;
 	private CurrentTimeProvider timeProvider;
-	private List<RpcClientJmx> rpcClients;
+	private List<RpcJmxClient> rpcClients;
 
 	// stats per connection and per request class
 	private Map<InetSocketAddress, RpcAddressStatsManager> statsPerAddress;
@@ -76,11 +76,12 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private final StatsCounter pendingRequests;
 	private final StatsCounter responseTimeStats;
 	private final LastExceptionCounter lastServerException;
+
 	private final EventsCounter successfulConnects;
 	private final EventsCounter failedConnects;
 	private final EventsCounter closedConnects;
 
-	public RpcJmxStatsManager(List<RpcClientJmx> rpcClients, double smoothingWindow, double smoothingPrecision,
+	public RpcJmxStatsManager(List<RpcJmxClient> rpcClients, double smoothingWindow, double smoothingPrecision,
 	                          CurrentTimeProvider timeProvider) {
 		this.monitoring = false;
 		this.smoothingWindow = smoothingWindow;
@@ -176,7 +177,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	@Override
 	public synchronized void startMonitoring() {
 		monitoring = true;
-		for (RpcClientJmx rpcClient : rpcClients) {
+		for (RpcJmxClient rpcClient : rpcClients) {
 			rpcClient.startMonitoring(this);
 		}
 	}
@@ -184,7 +185,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	@Override
 	public synchronized void stopMonitoring() {
 		monitoring = false;
-		for (RpcClientJmx rpcClient : rpcClients) {
+		for (RpcJmxClient rpcClient : rpcClients) {
 			rpcClient.stopMonitoring();
 		}
 	}

@@ -16,10 +16,11 @@
 
 package io.datakernel.rpc.client.jmx;
 
-public interface RpcClientConnectionJmx {
+public interface RpcJmxClient {
 
-	void startMonitoring(RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager);
+	void startMonitoring(RpcJmxStatsManager jmxStatsManager);
 
 	void stopMonitoring();
 
+//	List<InetSocketAddress> getAddresses();
 }

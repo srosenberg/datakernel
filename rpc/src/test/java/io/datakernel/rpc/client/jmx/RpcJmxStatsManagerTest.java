@@ -40,7 +40,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldEnableAndDisableMonitoring() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 
@@ -53,16 +53,16 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldCallStartMonitoringInjectOneselfToAllClientsWhenMonitoringIsEnabled() {
-		List<RpcClientJmx> clients =
-				Arrays.<RpcClientJmx>asList(new RpcClientJmxStub(), new RpcClientJmxStub(), new RpcClientJmxStub());
+		List<RpcJmxClient> clients =
+				Arrays.<RpcJmxClient>asList(new RpcJmxClientStub(), new RpcJmxClientStub(), new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 
 		statsManager.startMonitoring();
 
 		int amountOfClientsThatRecievedStartMonitoringCallWithProperParameter = 0;
-		for (RpcClientJmx client : clients) {
-			RpcClientJmxStub clientStub = ((RpcClientJmxStub) client);
+		for (RpcJmxClient client : clients) {
+			RpcJmxClientStub clientStub = ((RpcJmxClientStub) client);
 			if (clientStub.wasStartMonitoringCalled() && clientStub.getStatsManager() == statsManager) {
 				++amountOfClientsThatRecievedStartMonitoringCallWithProperParameter;
 			}
@@ -72,8 +72,8 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldCallStopMonitoringOnAllClientsWhenMonitoringIsDisabled() {
-		List<RpcClientJmx> clients =
-				Arrays.<RpcClientJmx>asList(new RpcClientJmxStub(), new RpcClientJmxStub(), new RpcClientJmxStub());
+		List<RpcJmxClient> clients =
+				Arrays.<RpcJmxClient>asList(new RpcJmxClientStub(), new RpcJmxClientStub(), new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 
@@ -81,8 +81,8 @@ public class RpcJmxStatsManagerTest {
 		statsManager.stopMonitoring();
 
 		int amountOfClientsThatReceivedStopMonitoringCall = 0;
-		for (RpcClientJmx client : clients) {
-			if (((RpcClientJmxStub) client).wasStopMonitoringCalled()) {
+		for (RpcJmxClient client : clients) {
+			if (((RpcJmxClientStub) client).wasStopMonitoringCalled()) {
 				++amountOfClientsThatReceivedStopMonitoringCall;
 			}
 		}
@@ -91,7 +91,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldRecordEventsAndCountThemProperly() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		Class<?> requestClass = Object.class;
@@ -159,7 +159,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldResetStatsAfterResetMethodIsCalled() throws OpenDataException {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		Class<?> requestClass = Object.class;
@@ -233,7 +233,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldCountActiveConnections() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
@@ -253,7 +253,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldCalculateProperAverageResponseTime() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		Class<?> requestClass = Object.class;
@@ -283,7 +283,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldProperlyProcessExceptionStats() {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		Class<?> requestClass = Object.class;
@@ -303,7 +303,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldProperlyCalculateStatsPerRequestClass() throws OpenDataException {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		final Class<?> requestClass_1 = Integer.class;
@@ -385,7 +385,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldProperlyCalculateStatsPerAddress() throws OpenDataException {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		final InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
@@ -473,7 +473,7 @@ public class RpcJmxStatsManagerTest {
 
 	@Test
 	public void itShouldCalculateProperlyConnectsStatsForAddresses() throws OpenDataException {
-		List<RpcClientJmx> clients = asList((RpcClientJmx) new RpcClientJmxStub());
+		List<RpcJmxClient> clients = asList((RpcJmxClient) new RpcJmxClientStub());
 		RpcJmxStatsManager statsManager =
 				new RpcJmxStatsManager(clients, SMOOTHING_WINDOW, SMOOTHING_PRECISION, MANUAL_TIME_PROVIDER);
 		final InetSocketAddress address_1 = InetSocketAddress.createUnresolved("1.1.1.1", 10000);
@@ -597,7 +597,7 @@ public class RpcJmxStatsManagerTest {
 		}
 	}
 
-	public static class RpcClientJmxStub implements RpcClientJmx {
+	public static class RpcJmxClientStub implements RpcJmxClient {
 
 		private RpcJmxStatsManager statsManager = null;
 		private boolean stopMonitoringWasCalled;

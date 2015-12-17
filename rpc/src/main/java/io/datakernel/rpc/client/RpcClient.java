@@ -24,14 +24,13 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.jmx.RpcClientConnectionJmx;
-import io.datakernel.rpc.client.jmx.RpcClientJmx;
+import io.datakernel.rpc.client.jmx.RpcJmxClientConncetion;
+import io.datakernel.rpc.client.jmx.RpcJmxClient;
 import io.datakernel.rpc.client.jmx.RpcJmxStatsManager;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +49,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements NioService, RpcClientJmx {
+public final class RpcClient implements NioService, RpcJmxClient {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
@@ -201,7 +200,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 						connect(address);
 					}
 				};
-				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel,
+				RpcClientConnection connection = new RpcImplClientConncetion(eventloop, socketChannel,
 						serializer.createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				if (isMonitoring()) {
@@ -239,8 +238,8 @@ public final class RpcClient implements NioService, RpcClientJmx {
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
 		connections.put(address, connection);
 		if (isMonitoring()) {
-			if (connection instanceof RpcClientConnectionJmx)
-				((RpcClientConnectionJmx) connection).startMonitoring(jmxStatsManager.getAddressStatsManager(address));
+			if (connection instanceof RpcJmxClientConncetion)
+				((RpcJmxClientConncetion) connection).startMonitoring(jmxStatsManager.getAddressStatsManager(address));
 		}
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
@@ -305,7 +304,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 			public void run() {
 				RpcClient.this.jmxStatsManager = jmxStatsManager;
 				for (InetSocketAddress address : addresses) {
-					RpcClientConnectionJmx connection = (RpcClientConnectionJmx) pool.get(address);
+					RpcJmxClientConncetion connection = (RpcJmxClientConncetion) pool.get(address);
 					connection.startMonitoring(jmxStatsManager.getAddressStatsManager(address));
 				}
 			}
@@ -322,7 +321,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 			public void run() {
 				RpcClient.this.jmxStatsManager = null;
 				for (InetSocketAddress address : addresses) {
-					RpcClientConnectionJmx connection = (RpcClientConnectionJmx) pool.get(address);
+					RpcJmxClientConncetion connection = (RpcJmxClientConncetion) pool.get(address);
 					connection.stopMonitoring();
 				}
 			}
