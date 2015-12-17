@@ -35,7 +35,7 @@ public final class StatsCounter {
 	private double windowE;
 	private double precision;
 	private long lastTimestampMillis;
-	private double lastValuesSum;
+	private int lastValuesSum;
 	private int lastValuesAmount;
 	private int lastValue;
 	private int maxValue;
@@ -82,7 +82,7 @@ public final class StatsCounter {
 		this.smoothedAverage = DEFAULT_INITIAL_DYNAMIC_AVG;
 		this.smoothedVariance = DEFAULT_INITIAL_DYNAMIC_VARIANCE;
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
-		this.lastValuesSum = 0.0;
+		this.lastValuesSum = 0;
 		this.lastValuesAmount = 0;
 		this.lastValue = 0;
 		this.maxValue = Integer.MIN_VALUE;
@@ -142,7 +142,7 @@ public final class StatsCounter {
 	}
 
 	private void updateSmoothedAverageAndDeviation(double weight) {
-		double lastValuesAvg = lastValuesSum / lastValuesAmount;
+		double lastValuesAvg = lastValuesSum / (double)lastValuesAmount;
 		smoothedAverage += (lastValuesAvg - smoothedAverage) * weight;
 		double currentDeviationSquared = pow((smoothedAverage - lastValuesAvg), 2.0);
 		smoothedVariance += (currentDeviationSquared - smoothedVariance) * weight;

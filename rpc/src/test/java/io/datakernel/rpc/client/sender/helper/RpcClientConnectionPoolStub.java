@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
+import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.RpcSender;
 
@@ -35,7 +36,7 @@ public class RpcClientConnectionPoolStub implements RpcClientConnectionPool {
 	}
 
 	@Override
-	public RpcSender get(InetSocketAddress address) {
+	public RpcClientConnection get(InetSocketAddress address) {
 		return connections.get(address);
 	}
 }

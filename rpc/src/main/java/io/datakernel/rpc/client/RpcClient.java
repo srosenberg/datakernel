@@ -22,11 +22,13 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
+import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.RpcJmxClientConncetion;
 import io.datakernel.rpc.client.jmx.RpcJmxClient;
-import io.datakernel.rpc.client.jmx.RpcJmxStatsManager;
+import io.datakernel.rpc.client.jmx.RpcJmxConnectsStats;
+import io.datakernel.rpc.client.jmx.RpcJmxRequestsStatsSet;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
@@ -72,18 +74,36 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	private boolean running;
 
 	// JMX
-	private RpcJmxStatsManager jmxStatsManager;
+	private static final String LAST_SERVER_EXCEPTION_COUNTER_NAME = "Server exception";
+	private static final double DEFAULT_SMOOTING_WINDOW = 10.0;    // 10 seconds
+	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 second
+
+	private boolean monitoring;
+
+	private double smoothingWindow = DEFAULT_SMOOTING_WINDOW;
+	private double smoothingPrecision = DEFAULT_SMOOTHING_PRECISION;
+
+	private final RpcJmxRequestsStatsSet generalRequestsStats;
+	private final RpcJmxConnectsStats generalConnectsStats;
+	private final Map<Class<?>, RpcJmxRequestsStatsSet> requestStatsPerClass;
+	private final Map<InetSocketAddress, RpcJmxConnectsStats> connectsStatsPerAddress;
 
 	private final RpcClientConnectionPool pool = new RpcClientConnectionPool() {
 		@Override
-		public RpcClientConnection get(InetSocketAddress key) {
-			return connections.get(key);
+		public RpcClientConnection get(InetSocketAddress address) {
+			return connections.get(address);
 		}
 	};
 
 	private RpcClient(NioEventloop eventloop, RpcSerializer serializer) {
 		this.eventloop = eventloop;
 		this.serializer = serializer;
+
+		// JMX
+		this.generalRequestsStats = new RpcJmxRequestsStatsSet(smoothingWindow, smoothingPrecision, eventloop);
+		this.generalConnectsStats = new RpcJmxConnectsStats(smoothingWindow, smoothingPrecision, eventloop);
+		this.requestStatsPerClass = new HashMap<>();
+		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
 	}
 
 	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
@@ -194,18 +214,22 @@ public final class RpcClient implements NioService, RpcJmxClient {
 					public void onClosed() {
 						logger.info("Connection to {} closed", address);
 						removeConnection(address);
-						if (isMonitoring()) {
-							jmxStatsManager.recordClosedConnect(address);
-						}
+
+						// jmx
+						generalConnectsStats.getClosedConnects().recordEvent();
+						connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
+
 						connect(address);
 					}
 				};
 				RpcClientConnection connection = new RpcImplClientConncetion(eventloop, socketChannel,
 						serializer.createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
-				if (isMonitoring()) {
-					jmxStatsManager.recordSuccessfulConnect(address);
-				}
+
+				// jmx
+				generalConnectsStats.getSuccessfulConnects().recordEvent();
+				connectsStatsPerAddress.get(address).getSuccessfulConnects().recordEvent();
+
 				logger.info("Connection to {} established", address);
 				if (startCallback != null) {
 					postCompletion(eventloop, startCallback);
@@ -215,9 +239,10 @@ public final class RpcClient implements NioService, RpcJmxClient {
 
 			@Override
 			public void onException(Exception exception) {
-				if (isMonitoring()) {
-					jmxStatsManager.recordFailedConnect(address);
-				}
+				//jmx
+				generalConnectsStats.getFailedConnects().recordEvent();
+				connectsStatsPerAddress.get(address).getFailedConnects().recordEvent();
+
 				if (running) {
 					if (logger.isWarnEnabled()) {
 						logger.warn("Connection failed, reconnecting to {}: {}", address, exception.toString());
@@ -237,10 +262,13 @@ public final class RpcClient implements NioService, RpcJmxClient {
 
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
 		connections.put(address, connection);
+
+		// jmx
 		if (isMonitoring()) {
 			if (connection instanceof RpcJmxClientConncetion)
-				((RpcJmxClientConncetion) connection).startMonitoring(jmxStatsManager.getAddressStatsManager(address));
+				((RpcJmxClientConncetion) connection).startMonitoring();
 		}
+
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
 	}
@@ -259,10 +287,15 @@ public final class RpcClient implements NioService, RpcJmxClient {
 
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		ResultCallback<T> requestCallback = callback;
+
+		// jmx
+		generalRequestsStats.getTotalRequests().recordEvent();
 		if (isMonitoring()) {
-			jmxStatsManager.recordNewRequest(request.getClass());
-			requestCallback = new JmxMonitoringResultCallback<>(request.getClass(), callback);
+			Class<?> requestClass = request.getClass();
+			requestStatsPerClass.get(requestClass);
+			requestCallback = new JmxMonitoringResultCallback<>(requestClass, callback);
 		}
+
 		requestSender.sendRequest(request, timeout, requestCallback);
 
 	}
@@ -298,14 +331,16 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 * Thread-safe operation
 	 */
 	@Override
-	public void startMonitoring(final RpcJmxStatsManager jmxStatsManager) {
+	public void startMonitoring() {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				RpcClient.this.jmxStatsManager = jmxStatsManager;
+				RpcClient.this.monitoring = true;
 				for (InetSocketAddress address : addresses) {
-					RpcJmxClientConncetion connection = (RpcJmxClientConncetion) pool.get(address);
-					connection.startMonitoring(jmxStatsManager.getAddressStatsManager(address));
+					RpcClientConnection connection = pool.get(address);
+					if (connection != null && connection instanceof RpcJmxClientConncetion) {
+						((RpcJmxClientConncetion)(connection)).startMonitoring();
+					}
 				}
 			}
 		});
@@ -319,17 +354,19 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				RpcClient.this.jmxStatsManager = null;
+				RpcClient.this.monitoring = false;
 				for (InetSocketAddress address : addresses) {
-					RpcJmxClientConncetion connection = (RpcJmxClientConncetion) pool.get(address);
-					connection.stopMonitoring();
+					RpcClientConnection connection = pool.get(address);
+					if (connection != null && connection instanceof RpcJmxClientConncetion) {
+						((RpcJmxClientConncetion)(connection)).stopMonitoring();
+					}
 				}
 			}
 		});
 	}
 
 	private boolean isMonitoring() {
-		return jmxStatsManager != null;
+		return monitoring;
 	}
 
 	private final class JmxMonitoringResultCallback<T> implements ResultCallback<T> {
@@ -347,7 +384,9 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		@Override
 		public void onResult(T result) {
 			if (isMonitoring()) {
-				jmxStatsManager.recordSuccessfulRequest(requestClass, timeElapsed());
+				generalRequestsStats.getSuccessfulRequests().recordEvent();
+				requestStatsPerClass.get(requestClass).getSuccessfulRequests().recordEvent();
+				updateResponseTime(requestClass, timeElapsed());
 			}
 			callback.onResult(result);
 		}
@@ -356,15 +395,33 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		public void onException(Exception exception) {
 			if (isMonitoring()) {
 				if (exception instanceof RpcTimeoutException) {
-					jmxStatsManager.recordExpiredRequest(requestClass);
+					generalRequestsStats.recordExpiredRequest(requestClass);
 				} else if (exception instanceof RpcOverloadException) {
 					jmxStatsManager.recordRejectedRequest(requestClass);
 				} else if (exception instanceof RpcRemoteException) {
 					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
-					jmxStatsManager.recordFailedRequest(requestClass, exception, null, timeElapsed());
+//					jmxStatsManager.recordFailedRequest(requestClass, exception, null, timeElapsed());
+					generalRequestsStats.getFailedRequests().recordEvent();
+					requestStatsPerClass.get(requestClass).getFailedRequests().recordEvent();
+					updateResponseTime(requestClass, timeElapsed());
+
+					long timestamp = eventloop.currentTimeMillis();
+					generalRequestsStats.getLastServerExceptionCounter().update(exception, null, timestamp);
+					requestStatsPerClass.get(requestClass)
+							.getLastServerExceptionCounter().update(exception, null, timestamp); // TODO(vmykhalko): check whether map returns null pointer
 				}
 			}
 			callback.onException(exception);
+		}
+
+		private void updateResponseTime(Class<?> requestClass, int responseTime) {
+			generalRequestsStats.getResponseTimeStats().recordValue(responseTime);
+			requestStatsPerClass.get(requestClass).getResponseTimeStats().recordValue(responseTime);
+		}
+
+		private void updateExceptionCounter(LastExceptionCounter exceptionCounter, Exception exception) {
+			long timestamp = eventloop.currentTimeMillis();
+			exceptionCounter.update(exception, null, timestamp);
 		}
 
 		private int timeElapsed() {
