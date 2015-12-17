@@ -32,6 +32,7 @@ import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
 import static io.datakernel.async.AsyncCallbacks.postException;
@@ -52,9 +54,6 @@ public final class RpcClient implements NioService, RpcClientJmx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
-
-	private static final double RATE_COUNTER_DEFAULT_WINDOW = 10.0; // 10 seconds
-	private static final double RATE_COUNTER_DEFAULT_PRECISION = 0.1; // 0.1 seconds
 
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
@@ -263,7 +262,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 		ResultCallback<T> requestCallback = callback;
 		if (isMonitoring()) {
 			jmxStatsManager.recordNewRequest(request.getClass());
-			requestCallback = new JmxMonitoringResultCallback<>(request.getClass(), callback, eventloop);
+			requestCallback = new JmxMonitoringResultCallback<>(request.getClass(), callback);
 		}
 		requestSender.sendRequest(request, timeout, requestCallback);
 
@@ -297,7 +296,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 	}
 
 	/**
-	 * Thread-safe
+	 * Thread-safe operation
 	 */
 	@Override
 	public void startMonitoring(final RpcJmxStatsManager jmxStatsManager) {
@@ -314,7 +313,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 	}
 
 	/**
-	 * Thread-safe
+	 * Thread-safe operation
 	 */
 	@Override
 	public void stopMonitoring() {
@@ -336,17 +335,14 @@ public final class RpcClient implements NioService, RpcClientJmx {
 
 	private final class JmxMonitoringResultCallback<T> implements ResultCallback<T> {
 
-		private final CurrentTimeProvider timeProvider;
-		private final long startTimestamp;
+		private Stopwatch stopwatch;
 		private final Class<?> requestClass;
 		private final ResultCallback<T> callback;
 
-		public JmxMonitoringResultCallback(Class<?> requestClass, ResultCallback<T> callback,
-		                                   CurrentTimeProvider timeProvider) {
-			this.timeProvider = timeProvider;
+		public JmxMonitoringResultCallback(Class<?> requestClass, ResultCallback<T> callback) {
+			this.stopwatch = Stopwatch.createStarted();
 			this.requestClass = requestClass;
 			this.callback = callback;
-			this.startTimestamp = timeProvider.currentTimeMillis();
 		}
 
 		@Override
@@ -373,7 +369,7 @@ public final class RpcClient implements NioService, RpcClientJmx {
 		}
 
 		private int timeElapsed() {
-			return (int) (timeProvider.currentTimeMillis() - startTimestamp);
+			return (int)(stopwatch.elapsed(TimeUnit.MILLISECONDS));
 		}
 	}
 }

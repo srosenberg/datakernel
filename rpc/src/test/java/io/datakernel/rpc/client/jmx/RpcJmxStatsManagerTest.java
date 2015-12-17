@@ -544,18 +544,7 @@ public class RpcJmxStatsManagerTest {
 				extractTotalEvents((String) address_2_compositeData.get(RpcJmxStatsManager.CLOSED_CONNECTS_KEY)));
 	}
 
-	@Test
-	public void test() {
-//		Object object = new Object();
-//		synchronized (object) {
-//			synchronized (object) {
-//				System.out.println("hello world");
-//			}
-//		}
-	}
-
 	// helpers
-
 	public static int extractLastValue(String input) {
 		String regex = ".*last:\\s+(-?\\d+)\\s.*";
 		Pattern pattern = Pattern.compile(regex);
@@ -597,10 +586,6 @@ public class RpcJmxStatsManagerTest {
 		}
 		throw new IllegalArgumentException("Cannot find array element which satisfies condition");
 	}
-//
-//	public static String addressToString(InetSocketAddress address) {
-//		String address_regex
-//	}
 
 	public static class CustomException extends Exception {
 		public CustomException(String message) {
