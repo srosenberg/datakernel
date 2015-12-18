@@ -16,25 +16,19 @@
 
 package io.datakernel.uikernel;
 
+import io.datakernel.async.ResultCallback;
+
 import java.util.List;
+import java.util.Map;
 
-public final class DeleteResponse {
-	// TODO (arashev): avoid using nulls, use Collections.emptyList instead here and in similar classes
-	private List<String> errors;
+public interface Controller {
+	void read(String tableName, ReadSettings settings, ResultCallback<ReadResponse> callback);
 
-	// TODO (arashev): use properly named static factory methods instead, here and in similar classes. Constructors must be private. There must be helper static methods for single error, multiple errors etc.
-	public DeleteResponse() {
-	}
+	void read(String tableName, ReadSettings settings, Integer id, ResultCallback<Map<String, Object>> callback);
 
-	public DeleteResponse(List<String> errors) {
-		this.errors = errors;
-	}
+	void create(String tableName, Map<String, Object> map, ResultCallback<CreateResponse> callback);
 
-	public boolean hasErrors() {
-		return errors != null && !errors.isEmpty();
-	}
+	void update(String tableName, List<List<Object>> list, ResultCallback<UpdateResponse> callback);
 
-	public List<String> getErrors() {
-		return errors;
-	}
+	void delete(String tableName, Integer id, ResultCallback<DeleteResponse> callback);
 }
