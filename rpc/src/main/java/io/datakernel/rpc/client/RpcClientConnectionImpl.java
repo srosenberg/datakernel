@@ -20,11 +20,12 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.jmx.RpcJmxClientConncetion;
-import io.datakernel.rpc.client.jmx.RpcJmxStatsManager;
+import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.rpc.client.jmx.RpcJmxClientConnection;
+import io.datakernel.rpc.client.jmx.RpcJmxRequestsStatsSet;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
 import java.nio.channels.SocketChannel;
@@ -32,10 +33,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.TimeUnit;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcImplClientConncetion implements RpcClientConnection, RpcJmxClientConncetion {
+public final class RpcClientConnectionImpl implements RpcClientConnection, RpcJmxClientConnection {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
@@ -87,11 +89,10 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 	private boolean closing;
 
 	// JMX
-	private RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager;
-	private final Map<Integer, Long> requestToStartTimestamp = new HashMap<>();
-	private final CurrentTimeProvider timeProvider;
+	private boolean monitoring;
+	private RpcJmxRequestsStatsSet requestsStatsSet;
 
-	public RpcImplClientConncetion(NioEventloop eventloop, SocketChannel socketChannel,
+	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel,
 	                               BufferSerializer<RpcMessage> messageSerializer,
 	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
@@ -99,21 +100,21 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
 
 		// JMX
-		this.timeProvider = eventloop;
+		this.monitoring = false;
 	}
 
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		assert eventloop.inEventloopThread();
 
-		if (isMonitoring()) {
-			addressStatsManager.recordNewRequest();
-		}
+		// jmx
+		requestsStatsSet.getTotalRequests().recordEvent();
 
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
-			if (isMonitoring()) {
-				addressStatsManager.recordRejectedRequest();
-			}
+
+			// jmx
+			requestsStatsSet.getRejectedRequests().recordEvent();
+
 			if (logger.isWarnEnabled())
 				logger.warn(OVERLOAD_EXCEPTION.getMessage());
 			returnProtocolError(callback, OVERLOAD_EXCEPTION);
@@ -131,12 +132,18 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 			returnProtocolError(callback, new IllegalStateException(msg));
 			return;
 		}
+
+		ResultCallback<?> requestCallback = callback;
+
+		// jmx
+		if (isMonitoring()) {
+			requestCallback = new JmxConnectionMonitoringResultCallback<>(callback);
+		}
+
 		TimeoutCookie timeoutCookie = new TimeoutCookie(cookieCounter, timeout);
 		addTimeoutCookie(timeoutCookie);
-		requests.put(cookieCounter, callback);
-		if (isMonitoring()) {
-			requestToStartTimestamp.put(cookieCounter, timeProvider.currentTimeMillis());
-		}
+		requests.put(cookieCounter, requestCallback);
+
 		try {
 			protocol.sendMessage(new RpcMessage(cookieCounter, request));
 		} catch (Exception e) {
@@ -190,9 +197,10 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 		ResultCallback<?> callback = requests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
-		if (isMonitoring()) {
-			addressStatsManager.recordExpiredRequest();
-		}
+
+		// jmx
+		requestsStatsSet.getExpiredRequests().recordEvent();
+
 		returnTimeout(callback, new RpcTimeoutException("Timeout (" + timeoutCookie.getElapsedTime() + "/" + timeoutCookie.getTimeoutMillis()
 				+ " ms) for server response for request ID " + timeoutCookie.getCookie()));
 	}
@@ -226,10 +234,6 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 	}
 
 	private void processError(RpcMessage message, RpcRemoteException exception) {
-		if (isMonitoring() && requestToStartTimestamp.containsKey(message.getCookie())) {
-			int responseTime = (int) (timeProvider.currentTimeMillis() - requestToStartTimestamp.get(message.getCookie()));
-			addressStatsManager.recordFailedRequest(exception, null, responseTime);
-		}
 		ResultCallback<?> callback = getResultCallback(message);
 		if (callback == null)
 			return;
@@ -240,10 +244,6 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 		ResultCallback<Object> callback = getResultCallback(message);
 		if (callback == null)
 			return;
-		if (isMonitoring() && requestToStartTimestamp.containsKey(message.getCookie())) {
-			int responseTime = (int) (timeProvider.currentTimeMillis() - requestToStartTimestamp.get(message.getCookie()));
-			addressStatsManager.recordSuccessfulRequest(responseTime);
-		}
 		callback.onResult(message.getData());
 	}
 
@@ -292,16 +292,70 @@ public final class RpcImplClientConncetion implements RpcClientConnection, RpcJm
 	// JMX
 
 	@Override
-	public void startMonitoring(RpcJmxStatsManager.RpcAddressStatsManager addressStatsManager) {
-		this.addressStatsManager = addressStatsManager;
+	public void startMonitoring() {
+		monitoring = true;
 	}
 
 	@Override
 	public void stopMonitoring() {
-		this.addressStatsManager = null;
+		monitoring = false;
 	}
 
 	private boolean isMonitoring() {
-		return addressStatsManager != null;
+		return monitoring;
+	}
+
+	@Override
+	public void reset() {
+		requestsStatsSet.reset();
+	}
+
+	@Override
+	public void reset(double smoothingWindow, double smoothingPrecision) {
+		requestsStatsSet.reset(smoothingWindow, smoothingPrecision);
+	}
+
+	@Override
+	public RpcJmxRequestsStatsSet getRequestStats() {
+		return requestsStatsSet;
+	}
+
+	private final class JmxConnectionMonitoringResultCallback<T> implements ResultCallback<T> {
+
+		private Stopwatch stopwatch;
+		private final ResultCallback<T> callback;
+
+		public JmxConnectionMonitoringResultCallback(ResultCallback<T> callback) {
+			this.stopwatch = Stopwatch.createStarted();
+			this.callback = callback;
+		}
+
+		@Override
+		public void onResult(T result) {
+			if (isMonitoring()) {
+				requestsStatsSet.getSuccessfulRequests().recordEvent();
+				requestsStatsSet.getResponseTimeStats().recordValue(timeElapsed());
+			}
+			callback.onResult(result);
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			if (isMonitoring()) {
+				if (exception instanceof RpcRemoteException) {
+					requestsStatsSet.getFailedRequests().recordEvent();
+					requestsStatsSet.getResponseTimeStats().recordValue(timeElapsed());
+
+					long timestamp = eventloop.currentTimeMillis();
+					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
+					requestsStatsSet.getLastServerExceptionCounter().update(exception, null, timestamp);
+				}
+			}
+			callback.onException(exception);
+		}
+
+		private int timeElapsed() {
+			return (int)(stopwatch.elapsed(TimeUnit.MILLISECONDS));
+		}
 	}
 }

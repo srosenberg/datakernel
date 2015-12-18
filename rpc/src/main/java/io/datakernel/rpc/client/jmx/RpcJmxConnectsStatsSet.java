@@ -21,7 +21,7 @@ import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.StatsCounter;
 import io.datakernel.time.CurrentTimeProvider;
 
-public final class RpcJmxConnectsStats {
+public final class RpcJmxConnectsStatsSet {
 	private double smoothingWindow;
 	private double smoothingPrecision;
 
@@ -29,7 +29,7 @@ public final class RpcJmxConnectsStats {
 	private final EventsCounter failedConnects;
 	private final EventsCounter closedConnects;
 
-	public RpcJmxConnectsStats(double smoothingWindow, double smoothingPrecision, CurrentTimeProvider timeProvider) {
+	public RpcJmxConnectsStatsSet(double smoothingWindow, double smoothingPrecision, CurrentTimeProvider timeProvider) {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingPrecision = smoothingPrecision;
 

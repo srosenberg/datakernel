@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.time.CurrentTimeProvider;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
@@ -29,10 +30,12 @@ import static java.lang.Math.log;
 public final class EventsCounter {
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
 	private static final double DEFAULT_INITIAL_PERIOD_IN_MILLIS = 1E6;
+	private static final int MIN_PRECISION_IN_MILLIS = 1;
+	private static final int MAX_PRECISION_IM_MILLIS = Integer.MAX_VALUE;
 
 	private final CurrentTimeProvider timeProvider;
 	private double windowE;
-	private double precision;
+	private int precision;
 	private long lastTimestampMillis;
 	private int eventPerLastTimePeriod;
 	private double smoothedPeriod;
@@ -71,8 +74,12 @@ public final class EventsCounter {
 	}
 
 	private void resetValues(double windowE, double precisionInMillis) {
+		checkArgument(precisionInMillis >= MIN_PRECISION_IN_MILLIS && precisionInMillis <= MAX_PRECISION_IM_MILLIS,
+				"Smoothing precision must be in range [%d, %d] milliseconds",
+				MIN_PRECISION_IN_MILLIS, MAX_PRECISION_IM_MILLIS);
+
 		this.windowE = windowE;
-		this.precision = precisionInMillis;
+		this.precision = (int)precisionInMillis;
 		this.lastTimestampMillis = timeProvider.currentTimeMillis();
 		this.eventPerLastTimePeriod = 0;
 		this.smoothedPeriod = DEFAULT_INITIAL_PERIOD_IN_MILLIS;

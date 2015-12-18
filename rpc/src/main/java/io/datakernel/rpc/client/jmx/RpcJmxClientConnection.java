@@ -16,10 +16,18 @@
 
 package io.datakernel.rpc.client.jmx;
 
-public interface RpcJmxClientConncetion {
+/**
+ * Not thread-safe
+ */
+public interface RpcJmxClientConnection {
 
 	void startMonitoring();
 
 	void stopMonitoring();
 
+	void reset();
+
+	void reset(double smoothingWindow, double smoothingPrecision);
+
+	RpcJmxRequestsStatsSet getRequestStats();
 }

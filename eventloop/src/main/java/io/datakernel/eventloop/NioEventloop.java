@@ -781,7 +781,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	}
 
 	/**
-	 * Posts a new scheduled task to scheduledTasks. Returns {@link ScheduledRunnable} with this runnable.
+	 * Schedules new task. Returns {@link ScheduledRunnable} with this runnable.
 	 *
 	 * @param timestamp timestamp after which task will be ran
 	 * @param runnable  runnable of this task
@@ -794,7 +794,9 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	}
 
 	/**
-	 * Posts a new scheduled task to backgroundTasks. Returns {@link ScheduledRunnable} with this runnable.
+	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
+	 *
+	 * If eventloop contains only background tasks, it will be closed
 	 *
 	 * @param timestamp timestamp after which task will be ran
 	 * @param runnable  runnable of this task

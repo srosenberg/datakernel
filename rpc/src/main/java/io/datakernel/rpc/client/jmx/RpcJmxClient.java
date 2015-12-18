@@ -16,11 +16,28 @@
 
 package io.datakernel.rpc.client.jmx;
 
+import java.net.InetSocketAddress;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+
+/**
+ * Thread-safe
+ */
 public interface RpcJmxClient {
 
 	void startMonitoring();
 
 	void stopMonitoring();
 
-//	List<InetSocketAddress> getAddresses();
+	void reset();
+
+	void reset(double smoothingWindow, double smoothingPrecision);
+
+	void getGeneralRequestsStats(BlockingQueue<RpcJmxRequestsStatsSet> container);
+
+	void getRequestsStatsPerClass(BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container);
+
+	void getConnectsStats(BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container);
+
+	void getRequestStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container);
 }
