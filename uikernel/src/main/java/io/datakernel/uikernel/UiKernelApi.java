@@ -41,7 +41,7 @@ public class UiKernelApi {
 		main.get("/:table", getAll(controller, gson));
 		main.get("/:table/:id", get(controller, gson));
 		main.post("/:table", create(controller, gson));
-		main.use("/:table", PUT, create(controller, gson));
+		main.use("/:table", PUT, update(controller, gson));
 		main.use("/:table/:id", DELETE, delete(controller, gson));
 		return main;
 	}
@@ -133,7 +133,7 @@ public class UiKernelApi {
 		};
 	}
 
-	private static AsyncHttpServlet updateUsers(final Controller controller, final Gson gson) {
+	private static AsyncHttpServlet update(final Controller controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {

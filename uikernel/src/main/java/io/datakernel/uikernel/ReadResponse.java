@@ -42,6 +42,7 @@ public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	}
 
 	public void setExtra(List<R> extra) {
+
 		this.extra = extra;
 	}
 
