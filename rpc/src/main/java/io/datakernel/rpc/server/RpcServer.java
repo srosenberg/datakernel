@@ -105,7 +105,7 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 	}
 
 	private void closeConnections() {
-		for (RpcServerConnection connection : connections.values()) {
+		for (final RpcServerConnection connection : new ArrayList<>(connections.values())) {
 			connection.close();
 		}
 	}
