@@ -17,9 +17,12 @@
 package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.client.sender.RpcSender;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.rpc.client.RpcClientConnection;
+import io.datakernel.rpc.protocol.RpcMessage;
 
-public final class RpcSenderStub implements RpcSender {
+public final class RpcSenderStub implements RpcClientConnection {
 	private int sends;
 
 	public int getSendsNumber() {
@@ -29,5 +32,37 @@ public final class RpcSenderStub implements RpcSender {
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		sends++;
+	}
+
+	@Override
+	public void close() {
+		// do nothing
+	}
+
+	@Override
+	public SocketConnection getSocketConnection() {
+		// return nothing
+		return null;
+	}
+
+	@Override
+	public void onReceiveMessage(RpcMessage message) {
+		// do nothing
+	}
+
+	@Override
+	public void ready() {
+		// do nothing
+	}
+
+	@Override
+	public void onClosed() {
+		// do nothing
+	}
+
+	@Override
+	public NioEventloop getEventloop() {
+		// return nothing
+		return null;
 	}
 }

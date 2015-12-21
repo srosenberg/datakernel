@@ -37,6 +37,6 @@ public class RpcClientConnectionPoolStub implements RpcClientConnectionPool {
 
 	@Override
 	public RpcClientConnection get(InetSocketAddress address) {
-		return connections.get(address);
+		return (RpcClientConnection) connections.get(address);
 	}
 }

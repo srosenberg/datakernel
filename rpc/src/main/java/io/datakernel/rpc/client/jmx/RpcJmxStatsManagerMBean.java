@@ -34,35 +34,66 @@ public interface RpcJmxStatsManagerMBean {
 	// TODO(vmykhalko): is such functionality needed?
 //	void resetStats(double shortTermWindow, double shortTermPrecision, double longTermWindow, double longTermPrecision);
 
-	String getAddresses();
+	CompositeData[] getAddresses() throws OpenDataException;
 
 	int getActiveConnectionsCount();
 
+	// grouped stats
 	CompositeData[] getAddressesStats() throws OpenDataException;
 
 	CompositeData[] getRequestClassesStats() throws OpenDataException;
 
-	String getTotalRequestsStats();
+	// requests stats
+	long getTotalRequests();
 
-	String getPendingRequestsStats();
+	double getTotalRequestsRate();
 
-	String getSuccessfulRequestsStats();
+	String getTotalRequestsDetails();
 
-	String getFailedRequestsStats();
+	long getSuccessfulRequests();
 
-	String getRejectedRequestsStats();
+	double getSuccessfulRequestsRate();
 
-	String getExpiredRequestsStats();
+	String getSuccessfulRequestsDetails();
 
-	String getSuccessfulConnectsStats();
+	long getFailedOnServerRequests();
 
-	String getFailedConnectsStats();
+	double getFailedOnServerRequestsRate();
 
-	String getClosedConnectsStats();
+	String getFailedOnServerRequestsDetails();
 
-	String getAverageResponseTimeStats();
+	long getRejectedRequests();
 
-	CompositeData getLastServerException();
+	double getRejectedRequestsRate();
+
+	String getRejectedRequestsDetails();
+
+	long getExpiredRequests();
+
+	double getExpiredRequestsRate();
+
+	String getExpiredRequestsDetails();
+
+	// connects stats
+	int getSuccessfulConnects();
+
+	String getSuccessfulConnectsDetails();
+
+	int getFailedConnects();
+
+	String getFailedRequestsDetails();
+
+	int getClosedConnects();
+
+	String getClosedConnectsDetails();
+
+	// response time
+	double getAverageResponseTime();
+
+	String getAverageResponseTimeDetails();
+
+	// exceptions
+	String getLastServerException();
 
 	int getExceptionsCount();
 }

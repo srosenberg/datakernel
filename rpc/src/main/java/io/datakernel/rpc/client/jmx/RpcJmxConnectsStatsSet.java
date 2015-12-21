@@ -17,8 +17,6 @@
 package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.EventsCounter;
-import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.StatsCounter;
 import io.datakernel.time.CurrentTimeProvider;
 
 public final class RpcJmxConnectsStatsSet {

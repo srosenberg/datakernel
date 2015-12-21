@@ -20,7 +20,6 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.rpc.client.jmx.RpcJmxClientConnection;
 import io.datakernel.rpc.client.jmx.RpcJmxRequestsStatsSet;
 import io.datakernel.rpc.protocol.*;
@@ -89,6 +88,9 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcJm
 	private boolean closing;
 
 	// JMX
+	private static final double DEFAULT_SMOOTING_WINDOW = 10.0;    // 10 seconds
+	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 second
+
 	private boolean monitoring;
 	private RpcJmxRequestsStatsSet requestsStatsSet;
 
@@ -101,6 +103,8 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcJm
 
 		// JMX
 		this.monitoring = false;
+		this.requestsStatsSet =
+				new RpcJmxRequestsStatsSet(DEFAULT_SMOOTING_WINDOW, DEFAULT_SMOOTHING_PRECISION, eventloop);
 	}
 
 	@Override
@@ -355,7 +359,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcJm
 		}
 
 		private int timeElapsed() {
-			return (int)(stopwatch.elapsed(TimeUnit.MILLISECONDS));
+			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
 		}
 	}
 }

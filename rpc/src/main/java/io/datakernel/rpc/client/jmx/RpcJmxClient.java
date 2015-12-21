@@ -17,11 +17,12 @@
 package io.datakernel.rpc.client.jmx;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * Thread-safe
+ * Implementations are supposed to be thread-safe
  */
 public interface RpcJmxClient {
 
@@ -33,11 +34,45 @@ public interface RpcJmxClient {
 
 	void reset(double smoothingWindow, double smoothingPrecision);
 
-	void getGeneralRequestsStats(BlockingQueue<RpcJmxRequestsStatsSet> container);
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchGeneralRequestsStats(BlockingQueue<RpcJmxRequestsStatsSet> container);
 
-	void getRequestsStatsPerClass(BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container);
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchRequestsStatsPerClass(BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container);
 
-	void getConnectsStats(BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container);
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchConnectsStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container);
 
-	void getRequestStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container);
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchRequestStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container);
+
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchActiveConnectionsCount(BlockingQueue<Integer> container);
+
+	/**
+	 * Stats will be placed in {@code container}
+	 *
+	 * @param container container for stats
+	 */
+	void fetchAddresses(BlockingQueue<List<InetSocketAddress>> container);
 }

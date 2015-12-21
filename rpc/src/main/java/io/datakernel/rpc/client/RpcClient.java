@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.RpcJmxClient;
@@ -350,7 +349,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 				for (InetSocketAddress address : addresses) {
 					RpcClientConnection connection = pool.get(address);
 					if (connection != null && connection instanceof RpcJmxClientConnection) {
-						((RpcJmxClientConnection)(connection)).startMonitoring();
+						((RpcJmxClientConnection) (connection)).startMonitoring();
 					}
 				}
 			}
@@ -369,7 +368,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 				for (InetSocketAddress address : addresses) {
 					RpcClientConnection connection = pool.get(address);
 					if (connection != null && connection instanceof RpcJmxClientConnection) {
-						((RpcJmxClientConnection)(connection)).stopMonitoring();
+						((RpcJmxClientConnection) (connection)).stopMonitoring();
 					}
 				}
 			}
@@ -419,16 +418,20 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = pool.get(address);
 			if (connection != null && connection instanceof RpcJmxClientConnection) {
-				((RpcJmxClientConnection)(connection)).reset(smoothingWindow, smoothingPrecision);
+				((RpcJmxClientConnection) (connection)).reset(smoothingWindow, smoothingPrecision);
 			}
 		}
 	}
 
 	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
 	 * Thread-safe operation
+	 *
+	 * @param container container for stats
 	 */
 	@Override
-	public void getGeneralRequestsStats(final BlockingQueue<RpcJmxRequestsStatsSet> container) {
+	public void fetchGeneralRequestsStats(final BlockingQueue<RpcJmxRequestsStatsSet> container) {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -443,10 +446,14 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	}
 
 	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
 	 * Thread-safe operation
+	 *
+	 * @param container container for stats
 	 */
 	@Override
-	public void getRequestsStatsPerClass(final BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container) {
+	public void fetchRequestsStatsPerClass(final BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container) {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -461,10 +468,14 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	}
 
 	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
 	 * Thread-safe operation
+	 *
+	 * @param container container for stats
 	 */
 	@Override
-	public void getConnectsStats(final BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container) {
+	public void fetchConnectsStatsPerAddress(final BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container) {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -479,10 +490,14 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	}
 
 	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
 	 * Thread-safe operation
+	 *
+	 * @param container container for stats
 	 */
 	@Override
-	public void getRequestStatsPerAddress(final BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container) {
+	public void fetchRequestStatsPerAddress(final BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container) {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -496,6 +511,57 @@ public final class RpcClient implements NioService, RpcJmxClient {
 						}
 					}
 					container.add(requestStatsPerAddress);
+				} catch (Exception e) {
+					// TODO(vmykhalko): is this logging level correct ?
+					logger.warn("Cannot add stats to blocking queue for jmx using", e);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
+	 * Thread-safe operation
+	 *
+	 * @param container container for stats
+	 */
+	@Override
+	public void fetchActiveConnectionsCount(final BlockingQueue<Integer> container) {
+		eventloop.postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					int activeConnectionsCount = 0;
+					for (InetSocketAddress address : addresses) {
+						RpcClientConnection connection = pool.get(address);
+						if (connection != null) {
+							++activeConnectionsCount;
+						}
+					}
+					container.add(activeConnectionsCount);
+				} catch (Exception e) {
+					// TODO(vmykhalko): is this logging level correct ?
+					logger.warn("Cannot add stats to blocking queue for jmx using", e);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Stats will be placed in {@code container}
+	 * <p/>
+	 * Thread-safe operation
+	 *
+	 * @param container container for stats
+	 */
+	@Override
+	public void fetchAddresses(final BlockingQueue<List<InetSocketAddress>> container) {
+		eventloop.postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					container.add(new ArrayList<InetSocketAddress>(addresses));
 				} catch (Exception e) {
 					// TODO(vmykhalko): is this logging level correct ?
 					logger.warn("Cannot add stats to blocking queue for jmx using", e);
@@ -564,7 +630,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		}
 
 		private int timeElapsed() {
-			return (int)(stopwatch.elapsed(TimeUnit.MILLISECONDS));
+			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
 		}
 	}
 }

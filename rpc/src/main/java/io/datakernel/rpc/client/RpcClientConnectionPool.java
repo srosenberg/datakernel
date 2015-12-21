@@ -16,14 +16,13 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.rpc.client.sender.RpcSender;
-
 import java.net.InetSocketAddress;
 
 public interface RpcClientConnectionPool {
 
 	/**
 	 * Returns connection for specified address or null if there is no such connection
+	 *
 	 * @param address address
 	 * @return connection for specified address or null if there is no such connection
 	 */
