@@ -17,6 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.MBeanFormat;
@@ -40,7 +41,9 @@ import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -767,8 +770,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 
 	/**
 	 * Posts a new task from other threads.
-	 * Wakes up the selector if necessary.
-	 * This is the preferred method of communicating with this eventloop from other threads.
+	 * This is the preferred method of communicating with eventloop from another threads.
 	 *
 	 * @param runnable runnable of this task
 	 */
@@ -778,6 +780,40 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 		if (selector != null) {
 			selector.wakeup();
 		}
+	}
+
+	/**
+	 * Posts from another thread task, which is expected to return result.
+	 * <p/>
+	 * This is preferred method to communicate with eventloop from another thread when a result is expected
+	 *
+	 * @param callable task to be executed
+	 * @param <V>      type of result
+	 * @return {@code Future}, which can be used to retrieve result
+	 */
+	@Override
+	public <V> Future<V> postConcurrently(final Callable<V> callable) {
+		final ResultCallbackFuture<V> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				V result = null;
+				Exception throwedException = null;
+
+				try {
+					result = callable.call();
+				} catch (Exception e) {
+					throwedException = e;
+				}
+
+				if (throwedException == null) {
+					future.onResult(result);
+				} else {
+					future.onException(throwedException);
+				}
+			}
+		});
+		return future;
 	}
 
 	/**
@@ -795,7 +831,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
-	 *
+	 * <p/>
 	 * If eventloop contains only background tasks, it will be closed
 	 *
 	 * @param timestamp timestamp after which task will be ran
