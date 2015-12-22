@@ -242,4 +242,58 @@ public final class StatsCounter {
 		return windowBase2InSeconds * ONE_SECOND_IN_MILLIS / log(2);
 	}
 
+	public static Accumulator accumulator() {
+		return new Accumulator();
+	}
+
+	public static final class Accumulator {
+
+		private double totalSmoothedAverage;
+		private double totalSmoothedVariance;
+		private int minValue;
+		private int maxValue;
+		private int totalCounters;
+
+		private Accumulator() {
+			this.totalSmoothedAverage = 0.0;
+			this.totalSmoothedVariance = 0.0;
+			this.minValue = 0;
+			this.maxValue = 0;
+			this.totalCounters = 0;
+		}
+
+		public void add(StatsCounter counter) {
+			if (counter.minValue < this.minValue) {
+				this.minValue = counter.minValue;
+			}
+			if (counter.maxValue > this.maxValue) {
+				this.maxValue = counter.maxValue;
+			}
+			this.totalSmoothedAverage += counter.smoothedAverage;
+			this.totalSmoothedVariance += counter.smoothedVariance;
+			this.totalCounters++;
+		}
+
+		public double getSmoothedAverage() {
+			return totalSmoothedAverage / totalCounters;
+		}
+
+		public double getSmoothedStandardDeviation() {
+			return sqrt(totalSmoothedVariance / totalCounters);
+		}
+
+		public int getMinValue() {
+			return minValue;
+		}
+
+		public int getMaxValue() {
+			return maxValue;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("%.2f±%.3f   min: %d   max: %d",
+					getSmoothedAverage(), getSmoothedStandardDeviation(), getMinValue(), getMaxValue());
+		}
+	}
 }

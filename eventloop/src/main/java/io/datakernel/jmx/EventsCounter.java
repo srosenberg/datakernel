@@ -186,4 +186,36 @@ public final class EventsCounter {
 	private static double transformWindow(double windowBase2InSeconds) {
 		return windowBase2InSeconds * ONE_SECOND_IN_MILLIS / log(2);
 	}
+
+	public static Accumulator accumulator() {
+		return new Accumulator();
+	}
+
+	public static final class Accumulator {
+		private long totalEvents;
+		private double smoothedRate;
+
+		private Accumulator() {
+			this.totalEvents = 0L;
+			this.smoothedRate = 0.0;
+		}
+
+		public void add(EventsCounter counter) {
+			this.totalEvents += counter.getEventsCount();
+			this.smoothedRate += counter.getSmoothedRate();
+		}
+
+		public long getTotalEvents() {
+			return totalEvents;
+		}
+
+		public double getSmoothedRate() {
+			return smoothedRate;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("total: %d   smoothedRate: %.4f", getTotalEvents(), getSmoothedRate());
+		}
+	}
 }

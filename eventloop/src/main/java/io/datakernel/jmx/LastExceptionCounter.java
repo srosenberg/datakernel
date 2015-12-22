@@ -96,4 +96,47 @@ public final class LastExceptionCounter {
 			return null;
 		}
 	}
+
+	public static Accumulator accumulator() {
+		return new Accumulator();
+	}
+
+	public static final class Accumulator {
+		private Throwable throwable;
+		private Object causeObject;
+		private long timestamp;
+		private int total;
+
+		private Accumulator() {
+			this.throwable = null;
+			this.causeObject = null;
+			this.timestamp = 0L;
+			this.total = 0;
+		}
+
+		public void add(LastExceptionCounter counter) {
+			this.total += counter.total;
+			if (counter.timestamp > this.timestamp) {
+				this.throwable = counter.throwable;
+				this.causeObject = counter.causeObject;
+				this.timestamp = counter.timestamp;
+			}
+		}
+
+		public Throwable getLastException() {
+			return throwable;
+		}
+
+		public Object getCauseObject() {
+			return causeObject;
+		}
+
+		public long getTimestamp() {
+			return timestamp;
+		}
+
+		public int getTotalExceptions() {
+			return total;
+		}
+	}
 }

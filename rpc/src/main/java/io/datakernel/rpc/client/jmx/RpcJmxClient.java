@@ -34,45 +34,15 @@ public interface RpcJmxClient {
 
 	void reset(double smoothingWindow, double smoothingPrecision);
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchGeneralRequestsStats(BlockingQueue<RpcJmxRequestsStatsSet> container);
+	RpcJmxRequestsStatsSet getGeneralRequestsStats();
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchRequestsStatsPerClass(BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container);
+	Map<Class<?>, RpcJmxRequestsStatsSet> getRequestsStatsPerClass();
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchConnectsStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container);
+	Map<InetSocketAddress, RpcJmxConnectsStatsSet> getConnectsStatsPerAddress();
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchRequestStatsPerAddress(BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container);
+	Map<InetSocketAddress, RpcJmxRequestsStatsSet> getRequestStatsPerAddress();
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchActiveConnectionsCount(BlockingQueue<Integer> container);
+	int getActiveConnectionsCount();
 
-	/**
-	 * Stats will be placed in {@code container}
-	 *
-	 * @param container container for stats
-	 */
-	void fetchAddresses(BlockingQueue<List<InetSocketAddress>> container);
+	List<InetSocketAddress> getAddresses();
 }

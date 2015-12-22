@@ -43,6 +43,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
@@ -424,150 +426,137 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	}
 
 	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
 	 * Thread-safe operation
-	 *
-	 * @param container container for stats
 	 */
 	@Override
-	public void fetchGeneralRequestsStats(final BlockingQueue<RpcJmxRequestsStatsSet> container) {
-		eventloop.postConcurrently(new Runnable() {
+	public RpcJmxRequestsStatsSet getGeneralRequestsStats() {
+		Callable<RpcJmxRequestsStatsSet> statsFetcher = new Callable<RpcJmxRequestsStatsSet>() {
 			@Override
-			public void run() {
-				try {
-					container.add(generalRequestsStats);
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
+			public RpcJmxRequestsStatsSet call() throws Exception {
+				return generalRequestsStats;
 			}
-		});
+		};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
 	 * Thread-safe operation
-	 *
-	 * @param container container for stats
 	 */
 	@Override
-	public void fetchRequestsStatsPerClass(final BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> container) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					container.add(requestStatsPerClass);
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
-			}
-		});
-	}
-
-	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
-	 * Thread-safe operation
-	 *
-	 * @param container container for stats
-	 */
-	@Override
-	public void fetchConnectsStatsPerAddress(final BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> container) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					container.add(connectsStatsPerAddress);
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
-			}
-		});
-	}
-
-	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
-	 * Thread-safe operation
-	 *
-	 * @param container container for stats
-	 */
-	@Override
-	public void fetchRequestStatsPerAddress(final BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> container) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Map<InetSocketAddress, RpcJmxRequestsStatsSet> requestStatsPerAddress = new HashMap<>();
-					for (InetSocketAddress address : addresses) {
-						RpcClientConnection connection = pool.get(address);
-						if (connection != null && connection instanceof RpcJmxClientConnection) {
-							RpcJmxRequestsStatsSet stats = ((RpcJmxClientConnection) (connection)).getRequestStats();
-							requestStatsPerAddress.put(address, stats);
-						}
+	public Map<Class<?>, RpcJmxRequestsStatsSet> getRequestsStatsPerClass() {
+		Callable<Map<Class<?>, RpcJmxRequestsStatsSet>> statsFetcher =
+				new Callable<Map<Class<?>, RpcJmxRequestsStatsSet>>() {
+					@Override
+					public Map<Class<?>, RpcJmxRequestsStatsSet> call() throws Exception {
+						return requestStatsPerClass;
 					}
-					container.add(requestStatsPerAddress);
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
-			}
-		});
+				};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
 	 * Thread-safe operation
-	 *
-	 * @param container container for stats
 	 */
 	@Override
-	public void fetchActiveConnectionsCount(final BlockingQueue<Integer> container) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					int activeConnectionsCount = 0;
-					for (InetSocketAddress address : addresses) {
-						RpcClientConnection connection = pool.get(address);
-						if (connection != null) {
-							++activeConnectionsCount;
-						}
+	public Map<InetSocketAddress, RpcJmxConnectsStatsSet> getConnectsStatsPerAddress() {
+		Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> statsFetcher =
+				new Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>>() {
+					@Override
+					public Map<InetSocketAddress, RpcJmxConnectsStatsSet> call() throws Exception {
+						return connectsStatsPerAddress;
 					}
-					container.add(activeConnectionsCount);
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
-			}
-		});
+				};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
-	 * Stats will be placed in {@code container}
-	 * <p/>
 	 * Thread-safe operation
-	 *
-	 * @param container container for stats
 	 */
 	@Override
-	public void fetchAddresses(final BlockingQueue<List<InetSocketAddress>> container) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					container.add(new ArrayList<InetSocketAddress>(addresses));
-				} catch (Exception e) {
-					// TODO(vmykhalko): is this logging level correct ?
-					logger.warn("Cannot add stats to blocking queue for jmx using", e);
-				}
-			}
-		});
+	public Map<InetSocketAddress, RpcJmxRequestsStatsSet> getRequestStatsPerAddress() {
+		Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> statsFetcher =
+				new Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>>() {
+					@Override
+					public Map<InetSocketAddress, RpcJmxRequestsStatsSet> call() throws Exception {
+						Map<InetSocketAddress, RpcJmxRequestsStatsSet> requestStatsPerAddress = new HashMap<>();
+						for (InetSocketAddress address : addresses) {
+							RpcClientConnection connection = pool.get(address);
+							if (connection != null && connection instanceof RpcJmxClientConnection) {
+								RpcJmxRequestsStatsSet stats = ((RpcJmxClientConnection) (connection)).getRequestStats();
+								requestStatsPerAddress.put(address, stats);
+							}
+						}
+						return requestStatsPerAddress;
+					}
+				};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * Thread-safe operation
+	 */
+	@Override
+	public int getActiveConnectionsCount() {
+		Callable<Integer> statsFetcher =
+				new Callable<Integer>() {
+					@Override
+					public Integer call() throws Exception {
+						int activeConnectionsCount = 0;
+						for (InetSocketAddress address : addresses) {
+							RpcClientConnection connection = pool.get(address);
+							if (connection != null) {
+								++activeConnectionsCount;
+							}
+						}
+						return activeConnectionsCount;
+					}
+				};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * Thread-safe operation
+	 */
+	@Override
+	public List<InetSocketAddress> getAddresses() {
+		Callable<List<InetSocketAddress>> statsFetcher =
+				new Callable<List<InetSocketAddress>>() {
+					@Override
+					public List<InetSocketAddress> call() throws Exception {
+						return new ArrayList<InetSocketAddress>(addresses);
+					}
+				};
+
+		try {
+			return eventloop.postConcurrently(statsFetcher).get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private RpcJmxRequestsStatsSet ensureRequestStatsSetPerClass(Class<?> requestClass) {

@@ -41,7 +41,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	public static final String REQUEST_CLASS_KEY = "Request class";
 	public static final String ADDRESS_KEY = "Address";
 	public static final String TOTAL_REQUESTS_KEY = "Total requests";
-	public static final String PENDING_REQUESTS_KEY = "Pending requests";
 	public static final String SUCCESSFUL_REQUESTS_KEY = "Successful requests";
 	public static final String FAILED_REQUESTS_KEY = "Failed requests";
 	public static final String REJECTED_REQUESTS_KEY = "Rejected requests";
@@ -55,8 +54,6 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	private static final String REQUEST_CLASS_COMPOSITE_DATA_NAME = "Request class stats";
 	private static final String ADDRESS_COMPOSITE_DATA_NAME = "Address stats";
-
-	private static final int BLOCKING_QUEUE_CAPACITY = 10000;
 
 	// settings
 	private volatile boolean monitoring;    // TODO(vmykhalko): add thread-safety
@@ -124,10 +121,9 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	@Override
 	public int getActiveConnectionsCount() {
-		List<Integer> connectionsCountPerClient = getConnectionsCountPerClient();
 		int totalConnectionsCount = 0;
-		for (int connectionCount : connectionsCountPerClient) {
-			totalConnectionsCount += connectionCount;
+		for (RpcJmxClient rpcClient : rpcClients) {
+			totalConnectionsCount += rpcClient.getActiveConnectionsCount();
 		}
 		return totalConnectionsCount;
 	}
@@ -146,8 +142,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 			List<RpcJmxConnectsStatsSet> connectsStatsSets = addressToGatheredConnectsStats.get(address);
 
 			if (requestsStatsSets != null && requestsStatsSets.size() > 0) {
-				AggregatedExceptionCounter aggregatedExceptionCounter = aggregateExceptionCounters(requestsStatsSets);
-				Throwable lastException = aggregatedExceptionCounter.getLastException();
+				LastExceptionCounter.Accumulator exeptionCounterAccumulator = aggregateExceptionCounters(requestsStatsSets);
+				Throwable lastException = exeptionCounterAccumulator.getLastException();
 				builder = builder.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, aggregateTotalRequestsCounters(requestsStatsSets).toString())
 						.add(SUCCESSFUL_REQUESTS_KEY, SimpleType.STRING, aggregateSuccessfulRequestsCounters(requestsStatsSets).toString())
 						.add(FAILED_REQUESTS_KEY, SimpleType.STRING, aggregateFailedRequestsCounters(requestsStatsSets).toString())
@@ -157,7 +153,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 						.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
 								lastException != null ? lastException.toString() : "")
 						.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
-								Integer.toString(aggregatedExceptionCounter.getTotalExceptions()));
+								Integer.toString(exeptionCounterAccumulator.getTotalExceptions()));
 			}
 
 			if (connectsStatsSets != null && connectsStatsSets.size() > 0) {
@@ -181,8 +177,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		Map<Class<?>, List<RpcJmxRequestsStatsSet>> classToGatheredStats = getGatheredStatsPerClass();
 		for (Class<?> requestClass : classToGatheredStats.keySet()) {
 			List<RpcJmxRequestsStatsSet> listOfStats = classToGatheredStats.get(requestClass);
-			AggregatedExceptionCounter aggregatedExceptionCounter = aggregateExceptionCounters(listOfStats);
-			Throwable lastException = aggregatedExceptionCounter.getLastException();
+			LastExceptionCounter.Accumulator lastExceptionAccumulator = aggregateExceptionCounters(listOfStats);
+			Throwable lastException = lastExceptionAccumulator.getLastException();
 			CompositeData compositeData = CompositeDataBuilder.builder(REQUEST_CLASS_COMPOSITE_DATA_NAME)
 					.add(REQUEST_CLASS_KEY, SimpleType.STRING, requestClass.getName())
 					.add(TOTAL_REQUESTS_KEY, SimpleType.STRING, aggregateTotalRequestsCounters(listOfStats).toString())
@@ -194,7 +190,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 					.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
 							lastException != null ? lastException.toString() : "")
 					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
-							Integer.toString(aggregatedExceptionCounter.getTotalExceptions()))
+							Integer.toString(lastExceptionAccumulator.getTotalExceptions()))
 					.build();
 			compositeDataList.add(compositeData);
 		}
@@ -204,77 +200,77 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	@Override
 	public long getTotalRequests() {
-		return aggregateTotalRequestsCounters(getClientsGeneralRequestsStats()).getTotalEvents();
+		return aggregateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
 	public double getTotalRequestsRate() {
-		return aggregateTotalRequestsCounters(getClientsGeneralRequestsStats()).getSmoothedRate();
+		return aggregateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
 	public String getTotalRequestsDetails() {
-		return aggregateTotalRequestsCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
 	public long getSuccessfulRequests() {
-		return aggregateSuccessfulRequestsCounters(getClientsGeneralRequestsStats()).getTotalEvents();
+		return aggregateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
 	public double getSuccessfulRequestsRate() {
-		return aggregateSuccessfulRequestsCounters(getClientsGeneralRequestsStats()).getSmoothedRate();
+		return aggregateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
 	public String getSuccessfulRequestsDetails() {
-		return aggregateSuccessfulRequestsCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
 	public long getFailedOnServerRequests() {
-		return aggregateFailedRequestsCounters(getClientsGeneralRequestsStats()).getTotalEvents();
+		return aggregateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
 	public double getFailedOnServerRequestsRate() {
-		return aggregateFailedRequestsCounters(getClientsGeneralRequestsStats()).getSmoothedRate();
+		return aggregateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
 	public String getFailedOnServerRequestsDetails() {
-		return aggregateFailedRequestsCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
 	public long getRejectedRequests() {
-		return aggregateRejectedRequestsCounters(getClientsGeneralRequestsStats()).getTotalEvents();
+		return aggregateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
 	public double getRejectedRequestsRate() {
-		return aggregateRejectedRequestsCounters(getClientsGeneralRequestsStats()).getSmoothedRate();
+		return aggregateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
 	public String getRejectedRequestsDetails() {
-		return aggregateRejectedRequestsCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
 	public long getExpiredRequests() {
-		return aggregateExpiredRequestsCounters(getClientsGeneralRequestsStats()).getTotalEvents();
+		return aggregateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
 	public double getExpiredRequestsRate() {
-		return aggregateExpiredRequestsCounters(getClientsGeneralRequestsStats()).getSmoothedRate();
+		return aggregateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
 	public String getExpiredRequestsDetails() {
-		return aggregateExpiredRequestsCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
@@ -309,212 +305,150 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	@Override
 	public double getAverageResponseTime() {
-		return aggregatedResponseTimeCounters(getClientsGeneralRequestsStats()).getSmoothedAverage();
+		return aggregatedResponseTimeCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedAverage();
 	}
 
 	@Override
 	public String getAverageResponseTimeDetails() {
-		return aggregatedResponseTimeCounters(getClientsGeneralRequestsStats()).toString();
+		return aggregatedResponseTimeCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
 	public String getLastServerException() {
-		Throwable lastException = aggregateExceptionCounters(getClientsGeneralRequestsStats()).getLastException();
+		Throwable lastException = aggregateExceptionCounters(collectGeneralRequestsStatsFromAllClients()).getLastException();
 		return lastException != null ? lastException.toString() : "";
 	}
 
 	@Override
 	public int getExceptionsCount() {
-		return (int) aggregateExceptionCounters(getClientsGeneralRequestsStats()).getTotalExceptions();
+		return (int) aggregateExceptionCounters(collectGeneralRequestsStatsFromAllClients()).getTotalExceptions();
 	}
 
-	// methods to simplify fetching stats from rpcClients
-	private List<RpcJmxRequestsStatsSet> getClientsGeneralRequestsStats() {
+	// methods to simplify collecting stats from rpcClients
+	private List<RpcJmxRequestsStatsSet> collectGeneralRequestsStatsFromAllClients() {
 		List<RpcJmxRequestsStatsSet> clientsGeneralRequestsStats = new ArrayList<>();
-		BlockingQueue<RpcJmxRequestsStatsSet> blockingQueue = new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchGeneralRequestsStats(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				clientsGeneralRequestsStats.add(blockingQueue.take());
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
-			}
+			clientsGeneralRequestsStats.add(rpcClient.getGeneralRequestsStats());
 		}
 		return clientsGeneralRequestsStats;
 	}
 
-	private List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> getClientsConnectsStatsPerAddress() {
+	private List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> collectConnectsStatsPerAddressFromAllClients() {
 		List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> clientsConnectsStats = new ArrayList<>();
-		BlockingQueue<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> blockingQueue =
-				new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchConnectsStatsPerAddress(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				clientsConnectsStats.add(blockingQueue.take());
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
-			}
+			clientsConnectsStats.add(rpcClient.getConnectsStatsPerAddress());
 		}
 		return clientsConnectsStats;
 	}
 
 	private List<Map<Class<?>, RpcJmxRequestsStatsSet>> getClientsRequestsStatsPerClass() {
 		List<Map<Class<?>, RpcJmxRequestsStatsSet>> clientsStatsPerClass = new ArrayList<>();
-		BlockingQueue<Map<Class<?>, RpcJmxRequestsStatsSet>> blockingQueue =
-				new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchRequestsStatsPerClass(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				clientsStatsPerClass.add(blockingQueue.take());
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
-			}
+			clientsStatsPerClass.add(rpcClient.getRequestsStatsPerClass());
 		}
 		return clientsStatsPerClass;
 	}
 
 	private List<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> getClientsRequestsStatsPerAddress() {
 		List<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> clientsAddressesStats = new ArrayList<>();
-		BlockingQueue<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> blockingQueue =
-				new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchRequestStatsPerAddress(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				clientsAddressesStats.add(blockingQueue.take());
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
-			}
+			clientsAddressesStats.add(rpcClient.getRequestStatsPerAddress());
 		}
 		return clientsAddressesStats;
 	}
 
 	private List<InetSocketAddress> getClientsAddresses() {
 		List<InetSocketAddress> allClientsAddresses = new ArrayList<>();
-		BlockingQueue<List<InetSocketAddress>> blockingQueue =
-				new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchAddresses(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				List<InetSocketAddress> clientAddresses = blockingQueue.take();
-				for (InetSocketAddress address : clientAddresses) {
-					if (!allClientsAddresses.contains(address)) {
-						allClientsAddresses.add(address);
-					}
+			for (InetSocketAddress address : rpcClient.getAddresses()) {
+				if (!allClientsAddresses.contains(address)) {
+					allClientsAddresses.add(address);
 				}
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
 			}
 		}
 		return allClientsAddresses;
 	}
 
-	private List<Integer> getConnectionsCountPerClient() {
-		List<Integer> connectionCountPerClient = new ArrayList<>();
-		BlockingQueue<Integer> blockingQueue =
-				new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
-		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.fetchActiveConnectionsCount(blockingQueue);
-		}
-		for (int i = 0; i < rpcClients.size(); i++) {
-			try {
-				int connectionCount = blockingQueue.take();
-				connectionCountPerClient.add(connectionCount);
-			} catch (InterruptedException e) {
-				propagateInterruptedException(e);
-			}
-		}
-		return getConnectionsCountPerClient();
-	}
-
 	// aggregating methods
-	private AggregatedEventsCounter aggregateTotalRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<EventsCounter> totalRequestsCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateTotalRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			totalRequestsCounters.add(stat.getTotalRequests());
+			accumulator.add(stat.getTotalRequests());
 		}
-		return AggregatedEventsCounter.aggregate(totalRequestsCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateSuccessfulRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<EventsCounter> successfulRequestsCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateSuccessfulRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			successfulRequestsCounters.add(stat.getSuccessfulRequests());
+			accumulator.add(stat.getSuccessfulRequests());
 		}
-		return AggregatedEventsCounter.aggregate(successfulRequestsCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateFailedRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<EventsCounter> failedRequestsCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateFailedRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			failedRequestsCounters.add(stat.getFailedRequests());
+			accumulator.add(stat.getFailedRequests());
 		}
-		return AggregatedEventsCounter.aggregate(failedRequestsCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateExpiredRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<EventsCounter> expiredRequestsCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateExpiredRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			expiredRequestsCounters.add(stat.getExpiredRequests());
+			accumulator.add(stat.getExpiredRequests());
 		}
-		return AggregatedEventsCounter.aggregate(expiredRequestsCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateRejectedRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<EventsCounter> rejectedRequestsCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateRejectedRequestsCounters(List<RpcJmxRequestsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			rejectedRequestsCounters.add(stat.getRejectedRequests());
+			accumulator.add(stat.getRejectedRequests());
 		}
-		return AggregatedEventsCounter.aggregate(rejectedRequestsCounters);
+		return accumulator;
 	}
 
-	private AggregatedStatsCounter aggregatedResponseTimeCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<StatsCounter> responseTimeCounters = new ArrayList<>(stats.size());
+	private StatsCounter.Accumulator aggregatedResponseTimeCounters(List<RpcJmxRequestsStatsSet> stats) {
+		StatsCounter.Accumulator accumulator = StatsCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			responseTimeCounters.add(stat.getResponseTimeStats());
+			accumulator.add(stat.getResponseTimeStats());
 		}
-		return AggregatedStatsCounter.aggregate(responseTimeCounters);
+		return accumulator;
 	}
 
-	private AggregatedExceptionCounter aggregateExceptionCounters(List<RpcJmxRequestsStatsSet> stats) {
-		List<LastExceptionCounter> exceptionCounters = new ArrayList<>(stats.size());
+	private LastExceptionCounter.Accumulator aggregateExceptionCounters(List<RpcJmxRequestsStatsSet> stats) {
+		LastExceptionCounter.Accumulator accumulator = LastExceptionCounter.accumulator();
 		for (RpcJmxRequestsStatsSet stat : stats) {
-			exceptionCounters.add(stat.getLastServerExceptionCounter());
+			accumulator.add(stat.getLastServerExceptionCounter());
 		}
-		return AggregatedExceptionCounter.aggregate(exceptionCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateSuccessfulConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
-		List<EventsCounter> successfulConnectCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateSuccessfulConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxConnectsStatsSet stat : stats) {
-			successfulConnectCounters.add(stat.getSuccessfulConnects());
+			accumulator.add(stat.getSuccessfulConnects());
 		}
-		return AggregatedEventsCounter.aggregate(successfulConnectCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateFailedConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
+	private EventsCounter.Accumulator aggregateFailedConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
 		List<EventsCounter> failedConnectCounters = new ArrayList<>(stats.size());
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxConnectsStatsSet stat : stats) {
-			failedConnectCounters.add(stat.getFailedConnects());
+			accumulator.add(stat.getFailedConnects());
 		}
-		return AggregatedEventsCounter.aggregate(failedConnectCounters);
+		return accumulator;
 	}
 
-	private AggregatedEventsCounter aggregateClosedConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
-		List<EventsCounter> closedConnectCounters = new ArrayList<>(stats.size());
+	private EventsCounter.Accumulator aggregateClosedConnectsCounters(List<RpcJmxConnectsStatsSet> stats) {
+		EventsCounter.Accumulator accumulator = EventsCounter.accumulator();
 		for (RpcJmxConnectsStatsSet stat : stats) {
-			closedConnectCounters.add(stat.getClosedConnects());
+			accumulator.add(stat.getClosedConnects());
 		}
-		return AggregatedEventsCounter.aggregate(closedConnectCounters);
+		return accumulator;
 	}
 
 	// methods for regrouping / reducing / gathering
@@ -551,7 +485,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	private Map<InetSocketAddress, List<RpcJmxConnectsStatsSet>> getGatheredConnectsStatsPerAddress() {
-		List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> allClientsConnectsStats = getClientsConnectsStatsPerAddress();
+		List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> allClientsConnectsStats =
+				collectConnectsStatsPerAddressFromAllClients();
 		Map<InetSocketAddress, List<RpcJmxConnectsStatsSet>> addressToGatheredConnectsStatsList = new HashMap<>();
 		for (Map<InetSocketAddress, RpcJmxConnectsStatsSet> singleClientConnectsStatsPerAddress : allClientsConnectsStats) {
 			for (InetSocketAddress address : singleClientConnectsStatsPerAddress.keySet()) {
@@ -568,7 +503,8 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// other helpers
 	private List<RpcJmxConnectsStatsSet> fetchAllConnectsStatsSets() {
-		List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> clientsStats = getClientsConnectsStatsPerAddress();
+		List<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> clientsStats =
+				collectConnectsStatsPerAddressFromAllClients();
 		List<RpcJmxConnectsStatsSet> connectsStatsSets = new ArrayList<>();
 		for (Map<InetSocketAddress, RpcJmxConnectsStatsSet> clientConnectsStats : clientsStats) {
 			for (RpcJmxConnectsStatsSet statsSet : clientConnectsStats.values()) {
@@ -580,202 +516,5 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	private static void propagateInterruptedException(InterruptedException e) {
 		throw new RuntimeException(e);
-	}
-
-	// classes for aggregation
-	private static class AggregatedStatsCounter {
-
-		private double smoothedAverage;
-		private double smoothedStandardDeviation;
-		private int min;
-		private int max;
-		// smoothed min is chosen from client, which has minimum value of smoothed min (it is not properly aggregated)
-		private double smoothedMin;
-		// smoothed max is chosen from client, which has maximim value of smoothed max (it is not properly aggregated)
-		private double smoothedMax;
-		// actually it may not be last value of all clients, but last value of specific client
-		private int last;
-
-		private AggregatedStatsCounter(double smoothedAverage, double smoothedStandardDeviation, int min, int max,
-		                               double smoothedMin, double smoothedMax, int last) {
-			this.smoothedAverage = smoothedAverage;
-			this.smoothedStandardDeviation = smoothedStandardDeviation;
-			this.min = min;
-			this.max = max;
-			this.smoothedMin = smoothedMin;
-			this.smoothedMax = smoothedMax;
-			this.last = last;
-		}
-
-		public static AggregatedStatsCounter aggregate(List<StatsCounter> counters) {
-			double totalSmoothedAverage = 0;
-			double totalStdDeviation = 0;
-			int min = Integer.MAX_VALUE;
-			int max = Integer.MIN_VALUE;
-			double smoothedMin = min;
-			double smoothedMax = max;
-
-			for (StatsCounter counter : counters) {
-				totalSmoothedAverage += counter.getSmoothedAverage();
-				totalStdDeviation += counter.getSmoothedStandardDeviation();
-				int counterMin = counter.getMinValue();
-				if (counterMin < min) {
-					min = counterMin;
-				}
-				int counterMax = counter.getMaxValue();
-				if (counterMax > max) {
-					max = counterMax;
-				}
-				double counterSmoothedMin = counter.getSmoothedMin();
-				if (counterSmoothedMin < smoothedMin) {
-					smoothedMin = counterSmoothedMin;
-				}
-				double counterSmoothedMax = counter.getSmoothedMax();
-				if (counterSmoothedMax > smoothedMax) {
-					smoothedMax = counterSmoothedMax;
-				}
-			}
-
-			double smoothedAverage = 0;
-			double smoothedStdDeviation = 0;
-			int last = 0;
-			if (counters.size() > 0) {
-				smoothedAverage = totalSmoothedAverage / counters.size();
-				smoothedStdDeviation = totalStdDeviation / counters.size();
-				last = counters.get(counters.size() - 1).getLastValue();
-			}
-
-			return new AggregatedStatsCounter(smoothedAverage, smoothedStdDeviation, min, max,
-					smoothedMin, smoothedMax, last);
-		}
-
-		public double getSmoothedAverage() {
-			return smoothedAverage;
-		}
-
-		public double getSmoothedStandardDeviation() {
-			return smoothedStandardDeviation;
-		}
-
-		public int getMin() {
-			return min;
-		}
-
-		public int getMax() {
-			return max;
-		}
-
-		public double getSmoothedMin() {
-			return smoothedMin;
-		}
-
-		public double getSmoothedMax() {
-			return smoothedMax;
-		}
-
-		public int getLast() {
-			return last;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   smoothedMin: %.2f   smoothedMax: %.2f",
-					getSmoothedAverage(), getSmoothedStandardDeviation(), getMin(), getMax(), getLast(),
-					getSmoothedMin(), getSmoothedMax());
-		}
-	}
-
-	private static class AggregatedEventsCounter {
-
-		private long totalEvents;
-		private double smoothedRate;
-		// smoothed min is chosen from client, which has minimum value of smoothed min (it is not properly aggregated)
-		private double smoothedMinRate;
-		// smoothed max is chosen from client, which has maximim value of smoothed max (it is not properly aggregated)
-		private double smoothedMaxRate;
-
-		public AggregatedEventsCounter(long totalEvents, double smoothedRate, double smoothedMinRate, double smoothedMaxRate) {
-			this.totalEvents = totalEvents;
-			this.smoothedRate = smoothedRate;
-			this.smoothedMinRate = smoothedMinRate;
-			this.smoothedMaxRate = smoothedMaxRate;
-		}
-
-		public static AggregatedEventsCounter aggregate(List<EventsCounter> counters) {
-			long totalEvents = 0;
-			double aggregatedSmoothedRate = 0;
-			double smoothedMin = Integer.MAX_VALUE;
-			double smoothedMax = Integer.MIN_VALUE;
-
-			for (EventsCounter counter : counters) {
-				totalEvents += counter.getEventsCount();
-				aggregatedSmoothedRate += counter.getSmoothedRate();
-				double counterSmoothedMin = counter.getSmoothedMinRate();
-				if (counterSmoothedMin < smoothedMin) {
-					smoothedMin = counterSmoothedMin;
-				}
-				double counterSmoothedMax = counter.getSmoothedMaxRate();
-				if (counterSmoothedMax > smoothedMax) {
-					smoothedMax = counterSmoothedMax;
-				}
-
-			}
-			return new AggregatedEventsCounter(totalEvents, aggregatedSmoothedRate, smoothedMin, smoothedMax);
-		}
-
-		public long getTotalEvents() {
-			return totalEvents;
-		}
-
-		public double getSmoothedRate() {
-			return smoothedRate;
-		}
-
-		public double getSmoothedMinRate() {
-			return smoothedMinRate;
-		}
-
-		public double getSmoothedMaxRate() {
-			return smoothedMaxRate;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("total: %d   smoothedRate: %.4f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
-					getTotalEvents(), getSmoothedRate(), getSmoothedMinRate(), getSmoothedMaxRate());
-		}
-	}
-
-	private static class AggregatedExceptionCounter {
-
-		private int totalExceptions;
-		// actually it may not be last exception of all clients, but last exception of specific client
-		private Throwable lastException;
-
-		public AggregatedExceptionCounter(int totalExceptions, Throwable lastException) {
-			this.totalExceptions = totalExceptions;
-			this.lastException = lastException;
-		}
-
-		public static AggregatedExceptionCounter aggregate(List<LastExceptionCounter> counters) {
-			int totalExceptions = 0;
-
-			for (LastExceptionCounter counter : counters) {
-				totalExceptions += counter.getTotal();
-			}
-			Throwable lastException = null;
-			if (counters.size() > 0) {
-				lastException = counters.get(counters.size() - 1).getLastException();
-			}
-			return new AggregatedExceptionCounter(totalExceptions, lastException);
-		}
-
-		public int getTotalExceptions() {
-			return totalExceptions;
-		}
-
-		public Throwable getLastException() {
-			return lastException;
-		}
 	}
 }
