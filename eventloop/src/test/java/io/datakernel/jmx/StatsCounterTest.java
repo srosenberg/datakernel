@@ -90,22 +90,22 @@ public class StatsCounterTest {
 		assertEquals(0.0, avgAfterReset, acceptableError);
 	}
 
-	@Test
-	public void example() {
-		double window = 10.0;
-		double precision = 0.001;
-		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
-		int iterations = 1000;
-		int minValue = 0;
-		int maxValue = 500;
-
-		for (int i = 0; i < iterations; i++) {
-			MANUAL_TIME_PROVIDER.upgradeTime(100);
-			int currentValue = uniformRandom(minValue, maxValue);
-			counter.recordValue(currentValue);
-			System.out.println(i + ":   stats: " + counter);
-		}
-	}
+//	@Test
+//	public void example() {
+//		double window = 10.0;
+//		double precision = 0.001;
+//		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+//		int iterations = 1000;
+//		int minValue = 0;
+//		int maxValue = 500;
+//
+//		for (int i = 0; i < iterations; i++) {
+//			MANUAL_TIME_PROVIDER.upgradeTime(100);
+//			int currentValue = uniformRandom(minValue, maxValue);
+//			counter.recordValue(currentValue);
+//			System.out.println(i + ":   stats: " + counter);
+//		}
+//	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {
 

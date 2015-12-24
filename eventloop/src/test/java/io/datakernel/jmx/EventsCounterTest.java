@@ -109,7 +109,7 @@ public class EventsCounterTest {
 		for (int i = 0; i < events; i++) {
 			eventsCounter.recordEvent();
 			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-			System.out.println(i + ": " + eventsCounter.getSmoothedRate());
+//			System.out.println(i + ": " + eventsCounter.toString());
 		}
 
 		assertEquals(events, eventsCounter.getEventsCount());
