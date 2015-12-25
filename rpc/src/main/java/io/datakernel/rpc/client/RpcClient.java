@@ -112,6 +112,8 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	}
 
 	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
+		checkState(this.strategy == null, "Strategy is already set");
+
 		this.strategy = requestSendingStrategy;
 		this.addresses = new ArrayList<>(requestSendingStrategy.getAddresses());
 
@@ -430,15 +432,13 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public RpcJmxRequestsStatsSet getGeneralRequestsStats() {
-		Callable<RpcJmxRequestsStatsSet> statsFetcher = new Callable<RpcJmxRequestsStatsSet>() {
-			@Override
-			public RpcJmxRequestsStatsSet call() throws Exception {
-				return generalRequestsStats;
-			}
-		};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<RpcJmxRequestsStatsSet>() {
+				@Override
+				public RpcJmxRequestsStatsSet call() throws Exception {
+					return generalRequestsStats;
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}
@@ -449,16 +449,13 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public Map<Class<?>, RpcJmxRequestsStatsSet> getRequestsStatsPerClass() {
-		Callable<Map<Class<?>, RpcJmxRequestsStatsSet>> statsFetcher =
-				new Callable<Map<Class<?>, RpcJmxRequestsStatsSet>>() {
-					@Override
-					public Map<Class<?>, RpcJmxRequestsStatsSet> call() throws Exception {
-						return requestStatsPerClass;
-					}
-				};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<Map<Class<?>, RpcJmxRequestsStatsSet>>() {
+				@Override
+				public Map<Class<?>, RpcJmxRequestsStatsSet> call() throws Exception {
+					return requestStatsPerClass;
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}
@@ -469,16 +466,13 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public Map<InetSocketAddress, RpcJmxConnectsStatsSet> getConnectsStatsPerAddress() {
-		Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>> statsFetcher =
-				new Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>>() {
-					@Override
-					public Map<InetSocketAddress, RpcJmxConnectsStatsSet> call() throws Exception {
-						return connectsStatsPerAddress;
-					}
-				};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>>() {
+				@Override
+				public Map<InetSocketAddress, RpcJmxConnectsStatsSet> call() throws Exception {
+					return connectsStatsPerAddress;
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}
@@ -489,24 +483,21 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public Map<InetSocketAddress, RpcJmxRequestsStatsSet> getRequestStatsPerAddress() {
-		Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>> statsFetcher =
-				new Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>>() {
-					@Override
-					public Map<InetSocketAddress, RpcJmxRequestsStatsSet> call() throws Exception {
-						Map<InetSocketAddress, RpcJmxRequestsStatsSet> requestStatsPerAddress = new HashMap<>();
-						for (InetSocketAddress address : addresses) {
-							RpcClientConnection connection = pool.get(address);
-							if (connection != null && connection instanceof RpcJmxClientConnection) {
-								RpcJmxRequestsStatsSet stats = ((RpcJmxClientConnection) (connection)).getRequestStats();
-								requestStatsPerAddress.put(address, stats);
-							}
-						}
-						return requestStatsPerAddress;
-					}
-				};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>>() {
+				@Override
+				public Map<InetSocketAddress, RpcJmxRequestsStatsSet> call() throws Exception {
+					Map<InetSocketAddress, RpcJmxRequestsStatsSet> requestStatsPerAddress = new HashMap<>();
+					for (InetSocketAddress address : addresses) {
+						RpcClientConnection connection = pool.get(address);
+						if (connection != null && connection instanceof RpcJmxClientConnection) {
+							RpcJmxRequestsStatsSet stats = ((RpcJmxClientConnection) (connection)).getRequestStats();
+							requestStatsPerAddress.put(address, stats);
+						}
+					}
+					return requestStatsPerAddress;
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}
@@ -517,23 +508,20 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public int getActiveConnectionsCount() {
-		Callable<Integer> statsFetcher =
-				new Callable<Integer>() {
-					@Override
-					public Integer call() throws Exception {
-						int activeConnectionsCount = 0;
-						for (InetSocketAddress address : addresses) {
-							RpcClientConnection connection = pool.get(address);
-							if (connection != null) {
-								++activeConnectionsCount;
-							}
-						}
-						return activeConnectionsCount;
-					}
-				};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<Integer>() {
+				@Override
+				public Integer call() throws Exception {
+					int activeConnectionsCount = 0;
+					for (InetSocketAddress address : addresses) {
+						RpcClientConnection connection = pool.get(address);
+						if (connection != null) {
+							++activeConnectionsCount;
+						}
+					}
+					return activeConnectionsCount;
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}
@@ -544,16 +532,13 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	 */
 	@Override
 	public List<InetSocketAddress> getAddresses() {
-		Callable<List<InetSocketAddress>> statsFetcher =
-				new Callable<List<InetSocketAddress>>() {
-					@Override
-					public List<InetSocketAddress> call() throws Exception {
-						return new ArrayList<InetSocketAddress>(addresses);
-					}
-				};
-
 		try {
-			return eventloop.postConcurrently(statsFetcher).get();
+			return eventloop.postConcurrently(new Callable<List<InetSocketAddress>>() {
+				@Override
+				public List<InetSocketAddress> call() throws Exception {
+					return new ArrayList<>(addresses);
+				}
+			}).get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw new RuntimeException(e);
 		}

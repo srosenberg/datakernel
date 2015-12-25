@@ -38,7 +38,7 @@ import java.util.concurrent.BlockingQueue;
 public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// CompositeData keys
-	public static final String REQUEST_CLASS_KEY = "Request class";
+	public static final String REQUEST_CLASS_KEY = "_Request class";
 	public static final String ADDRESS_KEY = "Address";
 	public static final String TOTAL_REQUESTS_KEY = "Total requests";
 	public static final String SUCCESSFUL_REQUESTS_KEY = "Successful requests";
@@ -61,7 +61,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private volatile double smoothingPrecision;
 	private final List<RpcJmxClient> rpcClients;
 
-	public RpcJmxStatsManager(double smoothingWindow, double smoothingPrecision, List<RpcJmxClient> rpcClients) {
+	public RpcJmxStatsManager(double smoothingWindow, double smoothingPrecision, List<? extends RpcJmxClient> rpcClients) {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingPrecision = smoothingPrecision;
 		this.rpcClients = new ArrayList<>(rpcClients);
