@@ -106,7 +106,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getAddresses() throws OpenDataException {
+	public CompositeData[] getConnectionStats_Addresses() throws OpenDataException {
 		List<InetSocketAddress> addresses = getClientsAddresses();
 
 		List<CompositeData> compositeDataList = new ArrayList<>();
@@ -120,7 +120,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public int getActiveConnectionsCount() {
+	public int getConnectionStats_ActiveConnectionsCount() {
 		int totalConnectionsCount = 0;
 		for (RpcJmxClient rpcClient : rpcClients) {
 			totalConnectionsCount += rpcClient.getActiveConnectionsCount();
@@ -129,7 +129,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getAddressesStats() throws OpenDataException {
+	public CompositeData[] getDistributedStats_AddressesStats() throws OpenDataException {
 		List<CompositeData> compositeDataList = new ArrayList<>();
 		Map<InetSocketAddress, List<RpcJmxRequestsStatsSet>> addressToGatheredRequestsStats = getGatheredRequestsStatsPerAddress();
 		Map<InetSocketAddress, List<RpcJmxConnectsStatsSet>> addressToGatheredConnectsStats = getGatheredConnectsStatsPerAddress();
@@ -172,7 +172,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public CompositeData[] getRequestClassesStats() throws OpenDataException {
+	public CompositeData[] getDistributedStats_RequestClassesStats() throws OpenDataException {
 		List<CompositeData> compositeDataList = new ArrayList<>();
 		Map<Class<?>, List<RpcJmxRequestsStatsSet>> classToGatheredStats = getGatheredStatsPerClass();
 		for (Class<?> requestClass : classToGatheredStats.keySet()) {
@@ -199,128 +199,128 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	}
 
 	@Override
-	public long getTotalRequests() {
+	public long getRequestStats_TotalRequests() {
 		return accumulateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
-	public double getTotalRequestsRate() {
+	public double getRequestStats_TotalRequestsRate() {
 		return accumulateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
-	public String getTotalRequestsDetails() {
+	public String getRequestStats_TotalRequestsDetails() {
 		return accumulateTotalRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public long getSuccessfulRequests() {
+	public long getRequestStats_SuccessfulRequests() {
 		return accumulateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
-	public double getSuccessfulRequestsRate() {
+	public double getRequestStats_SuccessfulRequestsRate() {
 		return accumulateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
-	public String getSuccessfulRequestsDetails() {
+	public String getRequestStats_SuccessfulRequestsDetails() {
 		return accumulateSuccessfulRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public long getFailedOnServerRequests() {
+	public long getRequestStats_FailedOnServerRequests() {
 		return accumulateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
-	public double getFailedOnServerRequestsRate() {
+	public double getRequestStats_FailedOnServerRequestsRate() {
 		return accumulateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
-	public String getFailedOnServerRequestsDetails() {
+	public String getRequestStats_FailedOnServerRequestsDetails() {
 		return accumulateFailedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public long getRejectedRequests() {
+	public long getRequestStats_RejectedRequests() {
 		return accumulateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
-	public double getRejectedRequestsRate() {
+	public double getRequestStats_RejectedRequestsRate() {
 		return accumulateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
-	public String getRejectedRequestsDetails() {
+	public String getRequestStats_RejectedRequestsDetails() {
 		return accumulateRejectedRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public long getExpiredRequests() {
+	public long getRequestStats_ExpiredRequests() {
 		return accumulateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getTotalEvents();
 	}
 
 	@Override
-	public double getExpiredRequestsRate() {
+	public double getRequestStats_ExpiredRequestsRate() {
 		return accumulateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedRate();
 	}
 
 	@Override
-	public String getExpiredRequestsDetails() {
+	public String getRequestStats_ExpiredRequestsDetails() {
 		return accumulateExpiredRequestsCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public int getSuccessfulConnects() {
+	public int getConnectionStats_SuccessfulConnects() {
 		return (int) accumulateSuccessfulConnectsCounters(fetchAllConnectsStatsSets()).getTotalEvents();
 	}
 
 	@Override
-	public String getSuccessfulConnectsDetails() {
+	public String getConnectionStats_SuccessfulConnectsDetails() {
 		return accumulateSuccessfulConnectsCounters(fetchAllConnectsStatsSets()).toString();
 	}
 
 	@Override
-	public int getFailedConnects() {
+	public int getConnectionStats_FailedConnects() {
 		return (int) accumulateFailedConnectsCounters(fetchAllConnectsStatsSets()).getTotalEvents();
 	}
 
 	@Override
-	public String getFailedRequestsDetails() {
+	public String getConnectionStats_FailedRequestsDetails() {
 		return accumulateFailedConnectsCounters(fetchAllConnectsStatsSets()).toString();
 	}
 
 	@Override
-	public int getClosedConnects() {
+	public int getConnectionStats_ClosedConnects() {
 		return (int) accumulateClosedConnectsCounters(fetchAllConnectsStatsSets()).getTotalEvents();
 	}
 
 	@Override
-	public String getClosedConnectsDetails() {
+	public String getConnectionStats_ClosedConnectsDetails() {
 		return accumulateClosedConnectsCounters(fetchAllConnectsStatsSets()).toString();
 	}
 
 	@Override
-	public double getAverageResponseTime() {
+	public double getTimeStats_AverageResponseTime() {
 		return accumulatedResponseTimeCounters(collectGeneralRequestsStatsFromAllClients()).getSmoothedAverage();
 	}
 
 	@Override
-	public String getAverageResponseTimeDetails() {
+	public String getTimeStats_AverageResponseTimeDetails() {
 		return accumulatedResponseTimeCounters(collectGeneralRequestsStatsFromAllClients()).toString();
 	}
 
 	@Override
-	public String getLastServerException() {
+	public String getExceptionStats_LastServerException() {
 		Throwable lastException = accumulateExceptionCounters(collectGeneralRequestsStatsFromAllClients()).getLastException();
 		return lastException != null ? lastException.toString() : "";
 	}
 
 	@Override
-	public int getExceptionsCount() {
+	public int getExceptionStats_ExceptionsCount() {
 		return (int) accumulateExceptionCounters(collectGeneralRequestsStatsFromAllClients()).getTotalExceptions();
 	}
 

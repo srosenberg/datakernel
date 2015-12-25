@@ -34,66 +34,66 @@ public interface RpcJmxStatsManagerMBean {
 	// TODO(vmykhalko): is such functionality needed?
 //	void resetStats(double shortTermWindow, double shortTermPrecision, double longTermWindow, double longTermPrecision);
 
-	CompositeData[] getAddresses() throws OpenDataException;
+	CompositeData[] getConnectionStats_Addresses() throws OpenDataException;
 
-	int getActiveConnectionsCount();
+	int getConnectionStats_ActiveConnectionsCount();
 
 	// grouped stats
-	CompositeData[] getAddressesStats() throws OpenDataException;
+	CompositeData[] getDistributedStats_AddressesStats() throws OpenDataException;
 
-	CompositeData[] getRequestClassesStats() throws OpenDataException;
+	CompositeData[] getDistributedStats_RequestClassesStats() throws OpenDataException;
 
-	// requests stats
-	long getTotalRequests();
+	// request stats
+	long getRequestStats_TotalRequests();
 
-	double getTotalRequestsRate();
+	double getRequestStats_TotalRequestsRate();
 
-	String getTotalRequestsDetails();
+	String getRequestStats_TotalRequestsDetails();
 
-	long getSuccessfulRequests();
+	long getRequestStats_SuccessfulRequests();
 
-	double getSuccessfulRequestsRate();
+	double getRequestStats_SuccessfulRequestsRate();
 
-	String getSuccessfulRequestsDetails();
+	String getRequestStats_SuccessfulRequestsDetails();
 
-	long getFailedOnServerRequests();
+	long getRequestStats_FailedOnServerRequests();
 
-	double getFailedOnServerRequestsRate();
+	double getRequestStats_FailedOnServerRequestsRate();
 
-	String getFailedOnServerRequestsDetails();
+	String getRequestStats_FailedOnServerRequestsDetails();
 
-	long getRejectedRequests();
+	long getRequestStats_RejectedRequests();
 
-	double getRejectedRequestsRate();
+	double getRequestStats_RejectedRequestsRate();
 
-	String getRejectedRequestsDetails();
+	String getRequestStats_RejectedRequestsDetails();
 
-	long getExpiredRequests();
+	long getRequestStats_ExpiredRequests();
 
-	double getExpiredRequestsRate();
+	double getRequestStats_ExpiredRequestsRate();
 
-	String getExpiredRequestsDetails();
+	String getRequestStats_ExpiredRequestsDetails();
 
 	// connects stats
-	int getSuccessfulConnects();
+	int getConnectionStats_SuccessfulConnects();
 
-	String getSuccessfulConnectsDetails();
+	String getConnectionStats_SuccessfulConnectsDetails();
 
-	int getFailedConnects();
+	int getConnectionStats_FailedConnects();
 
-	String getFailedRequestsDetails();
+	String getConnectionStats_FailedRequestsDetails();
 
-	int getClosedConnects();
+	int getConnectionStats_ClosedConnects();
 
-	String getClosedConnectsDetails();
+	String getConnectionStats_ClosedConnectsDetails();
 
 	// response time
-	double getAverageResponseTime();
+	double getTimeStats_AverageResponseTime();
 
-	String getAverageResponseTimeDetails();
+	String getTimeStats_AverageResponseTimeDetails();
 
 	// exceptions
-	String getLastServerException();
+	String getExceptionStats_LastServerException();
 
-	int getExceptionsCount();
+	int getExceptionStats_ExceptionsCount();
 }
