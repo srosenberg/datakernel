@@ -217,24 +217,24 @@ public final class EventsCounter {
 	}
 
 	public static final class Accumulator {
-		private long totalEvents;
+		private long eventsCount;
 		private double smoothedRate;
 		private double smoothedRateVariance;
 
 		private Accumulator() {
-			this.totalEvents = 0L;
+			this.eventsCount = 0L;
 			this.smoothedRate = 0.0;
 			this.smoothedRateVariance = 0.0;
 		}
 
 		public void add(EventsCounter counter) {
-			this.totalEvents += counter.getEventsCount();
+			this.eventsCount += counter.getEventsCount();
 			this.smoothedRate += counter.getSmoothedRate();
 			this.smoothedRateVariance += counter.smoothedRateVariance;
 		}
 
-		public long getTotalEvents() {
-			return totalEvents;
+		public long getEventsCount() {
+			return eventsCount;
 		}
 
 		public double getSmoothedRate() {
@@ -248,7 +248,7 @@ public final class EventsCounter {
 		@Override
 		public String toString() {
 			return String.format("total: %d   smoothedRate: %.3f±%.4f",
-					getTotalEvents(), getSmoothedRate(), getSmoothedStandardDeviation());
+					getEventsCount(), getSmoothedRate(), getSmoothedStandardDeviation());
 		}
 	}
 }

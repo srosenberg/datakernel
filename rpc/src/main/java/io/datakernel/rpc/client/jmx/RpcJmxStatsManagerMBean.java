@@ -81,7 +81,7 @@ public interface RpcJmxStatsManagerMBean {
 
 	int getConnectionStats_FailedConnects();
 
-	String getConnectionStats_FailedRequestsDetails();
+	String getConnectionStats_FailedConnectsDetails();
 
 	int getConnectionStats_ClosedConnects();
 

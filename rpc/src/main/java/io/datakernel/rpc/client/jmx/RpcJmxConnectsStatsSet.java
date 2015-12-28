@@ -61,4 +61,38 @@ public final class RpcJmxConnectsStatsSet {
 	public EventsCounter getClosedConnects() {
 		return closedConnects;
 	}
+
+	public static Accumulator accumulator() {
+		return new Accumulator();
+	}
+
+	public static final class Accumulator {
+		private final EventsCounter.Accumulator successfulConnects;
+		private final EventsCounter.Accumulator failedConnects;
+		private final EventsCounter.Accumulator closedConnects;
+
+		private Accumulator() {
+			this.successfulConnects = EventsCounter.accumulator();
+			this.failedConnects = EventsCounter.accumulator();
+			this.closedConnects = EventsCounter.accumulator();
+		}
+
+		public void add(RpcJmxConnectsStatsSet statsSet) {
+			successfulConnects.add(statsSet.getSuccessfulConnects());
+			failedConnects.add(statsSet.getFailedConnects());
+			closedConnects.add(statsSet.getClosedConnects());
+		}
+
+		public EventsCounter.Accumulator getSuccessfulConnects() {
+			return successfulConnects;
+		}
+
+		public EventsCounter.Accumulator getFailedConnects() {
+			return failedConnects;
+		}
+
+		public EventsCounter.Accumulator getClosedConnects() {
+			return closedConnects;
+		}
+	}
 }

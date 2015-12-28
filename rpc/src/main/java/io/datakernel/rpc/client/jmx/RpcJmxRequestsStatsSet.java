@@ -93,4 +93,66 @@ public final class RpcJmxRequestsStatsSet {
 	public LastExceptionCounter getLastServerExceptionCounter() {
 		return lastServerException;
 	}
+
+	public static Accumulator accumulator() {
+		return new Accumulator();
+	}
+
+	public static final class Accumulator {
+		private final EventsCounter.Accumulator totalRequests;
+		private final EventsCounter.Accumulator successfulRequests;
+		private final EventsCounter.Accumulator failedRequests;
+		private final EventsCounter.Accumulator rejectedRequests;
+		private final EventsCounter.Accumulator expiredRequests;
+		private final StatsCounter.Accumulator responseTimeStats;
+		private final LastExceptionCounter.Accumulator lastServerException;
+
+		private Accumulator() {
+			this.totalRequests = EventsCounter.accumulator();
+			this.successfulRequests = EventsCounter.accumulator();
+			this.failedRequests = EventsCounter.accumulator();
+			this.rejectedRequests = EventsCounter.accumulator();
+			this.expiredRequests = EventsCounter.accumulator();
+			this.responseTimeStats = StatsCounter.accumulator();
+			this.lastServerException = LastExceptionCounter.accumulator();
+		}
+
+		public void add(RpcJmxRequestsStatsSet statsSet) {
+			totalRequests.add(statsSet.getTotalRequests());
+			successfulRequests.add(statsSet.getSuccessfulRequests());
+			failedRequests.add(statsSet.getFailedRequests());
+			rejectedRequests.add(statsSet.getRejectedRequests());
+			expiredRequests.add(statsSet.getExpiredRequests());
+			responseTimeStats.add(statsSet.getResponseTimeStats());
+			lastServerException.add(statsSet.getLastServerExceptionCounter());
+		}
+
+		public EventsCounter.Accumulator getTotalRequests() {
+			return totalRequests;
+		}
+
+		public EventsCounter.Accumulator getSuccessfulRequests() {
+			return successfulRequests;
+		}
+
+		public EventsCounter.Accumulator getFailedRequests() {
+			return failedRequests;
+		}
+
+		public EventsCounter.Accumulator getRejectedRequests() {
+			return rejectedRequests;
+		}
+
+		public EventsCounter.Accumulator getExpiredRequests() {
+			return expiredRequests;
+		}
+
+		public StatsCounter.Accumulator getResponseTimeStats() {
+			return responseTimeStats;
+		}
+
+		public LastExceptionCounter.Accumulator getLastServerException() {
+			return lastServerException;
+		}
+	}
 }
