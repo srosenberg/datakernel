@@ -36,7 +36,7 @@ import java.util.Random;
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
+import static io.datakernel.eventloop.jmx.NioEventloopStatsSet.exceptionMarker;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;

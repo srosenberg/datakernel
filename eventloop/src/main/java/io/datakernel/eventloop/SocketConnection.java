@@ -24,7 +24,7 @@ import java.nio.channels.Channel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
+import static io.datakernel.eventloop.jmx.NioEventloopStatsSet.exceptionMarker;
 
 /**
  * Common abstract class, which represents any kind of connection.

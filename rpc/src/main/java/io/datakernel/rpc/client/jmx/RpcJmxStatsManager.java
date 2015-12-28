@@ -52,7 +52,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	private static final String ADDRESS_COMPOSITE_DATA_NAME = "Address stats";
 
 	// settings
-	private volatile boolean monitoring;    // TODO(vmykhalko): add thread-safety
+	private volatile boolean monitoring;
 	private volatile double smoothingWindow;
 	private volatile double smoothingPrecision;
 	private final List<RpcJmxClient> rpcClients;
@@ -61,6 +61,9 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 		this.smoothingWindow = smoothingWindow;
 		this.smoothingPrecision = smoothingPrecision;
 		this.rpcClients = new ArrayList<>(rpcClients);
+		for (RpcJmxClient rpcClient : this.rpcClients) {
+			rpcClient.reset(smoothingWindow, smoothingPrecision);
+		}
 	}
 
 	// jmx api
@@ -88,7 +91,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 	@Override
 	public void resetStats() {
 		for (RpcJmxClient rpcClient : rpcClients) {
-			rpcClient.reset();
+			rpcClient.reset(smoothingWindow, smoothingPrecision);
 		}
 	}
 

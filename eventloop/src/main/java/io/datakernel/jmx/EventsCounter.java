@@ -28,8 +28,8 @@ import static java.lang.Math.*;
  */
 public final class EventsCounter {
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
-	private static final int MIN_PRECISION_IN_MILLIS = 1;
-	private static final int MAX_PRECISION_IM_MILLIS = Integer.MAX_VALUE;
+//	private static final int MIN_PRECISION_IN_MILLIS = 1;
+//	private static final int MAX_PRECISION_IM_MILLIS = Integer.MAX_VALUE;
 
 	private final CurrentTimeProvider timeProvider;
 	private double windowE;
@@ -91,9 +91,18 @@ public final class EventsCounter {
 	 * Records event and updates rate
 	 */
 	public void recordEvent() {
+		recordEvents(1);
+	}
+
+	/**
+	 * Records events and updates rate
+	 * @param events number of events
+	 */
+	public void recordEvents(int events) {
+		checkArgument(events >= 0, "Number of events cannot be negative");
 		int timeElapsedMillis = (int) (timeProvider.currentTimeMillis() - lastTimestampMillis);
-		++eventPerLastTimePeriod;
-		++totalEvents;
+		eventPerLastTimePeriod += events;
+		totalEvents += events;
 		if (timeElapsedMillis >= precision) {
 			if (eventPerLastTimePeriod > 0) {
 				double lastPeriodAvg = (double) (timeElapsedMillis) / eventPerLastTimePeriod;
@@ -111,7 +120,7 @@ public final class EventsCounter {
 				lastTimestampMillis += timeElapsedMillis;
 				eventPerLastTimePeriod = 0;
 			} else {
-				// we don't update lastTimestamp
+				// we don't update last timestamp
 			}
 		}
 	}

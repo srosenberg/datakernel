@@ -19,6 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
+import io.datakernel.eventloop.jmx.NioEventloopStatsSet;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -64,8 +65,8 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "CloseException");
+	private static final ExceptionMarker PREPARE_SOCKET_MARKER = NioEventloopStatsSet.exceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
+	private static final ExceptionMarker CLOSE_MARKER = NioEventloopStatsSet.exceptionMarker(PrimaryNioServer.class, "CloseException");
 	protected long totalAccepts;
 
 	public AbstractNioServer(NioEventloop eventloop) {

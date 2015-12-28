@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop;
+package io.datakernel.eventloop.jmx;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+public interface NioEventloopJmx {
 
-public interface NioEventloopMBean {
-	long getLastActivityAgoMillis();
+	void startMonitoring();
 
-	int getConcurrentOperationsCount();
+	void stopMonitoring();
 
-	int getConcurrentRunnables();
+	boolean isMonitoring();
 
-	int getLocalRunnables();
+	void resetStats();
 
-	int getScheduledRunnables();
+	void resetStats(double smoothingWindow, double smoothingPrecision);
 
-	CompositeData getThrottlingControllerState() throws OpenDataException;
-
-	String getThreadName();
-
+	/**
+	 * Operation is supposed to be thread-safe
+	 * @return stats set
+	 */
+	NioEventloopStatsSet getStatsSet();
 }
