@@ -37,8 +37,6 @@ public final class EventsCounter {
 	private long lastTimestampMillis;
 	private int eventPerLastTimePeriod;
 	private double smoothedPeriod;
-	private double smoothedRate;
-	private double smoothedRateVariance;
 	private long totalEvents;
 	private double smoothedMinRate;
 	private double smoothedMaxRate;
@@ -74,9 +72,9 @@ public final class EventsCounter {
 	}
 
 	private void resetValues(double windowE, double precisionInMillis) {
-		checkArgument(precisionInMillis >= MIN_PRECISION_IN_MILLIS && precisionInMillis <= MAX_PRECISION_IM_MILLIS,
-				"Smoothing precision must be in range [%d, %d] milliseconds",
-				MIN_PRECISION_IN_MILLIS, MAX_PRECISION_IM_MILLIS);
+//		checkArgument(precisionInMillis >= MIN_PRECISION_IN_MILLIS && precisionInMillis <= MAX_PRECISION_IM_MILLIS,
+//				"Smoothing precision must be in range [%d, %d] milliseconds",
+//				MIN_PRECISION_IN_MILLIS, MAX_PRECISION_IM_MILLIS);
 
 		this.windowE = windowE;
 		this.precision = (int) precisionInMillis;
@@ -87,8 +85,6 @@ public final class EventsCounter {
 		this.smoothedMinRate = Double.MAX_VALUE;
 		this.smoothedMaxRate = Double.MIN_VALUE;
 		this.firstIterationCompleted = false;
-		this.smoothedRate = 0.0;
-		this.smoothedRateVariance = 0.0;
 	}
 
 	/**
@@ -104,20 +100,12 @@ public final class EventsCounter {
 
 				if (!firstIterationCompleted) {
 					smoothedPeriod = lastPeriodAvg;
-					smoothedRate = 1 / lastPeriodAvg;
 					firstIterationCompleted = true;
 				} else {
 					double weight = 1 - exp(-timeElapsedMillis / windowE);
 					smoothedPeriod += (lastPeriodAvg - smoothedPeriod) * weight;
-
-					double lastStepRate = (1.0 / lastPeriodAvg) * ONE_SECOND_IN_MILLIS;
-					updateSmoothedMin(weight, lastStepRate);
-					updateSmoothedMax(weight, lastStepRate);
-
-					smoothedRate = 1.0 / (smoothedPeriod / ONE_SECOND_IN_MILLIS);
-					double currentRate = 1.0 / (lastPeriodAvg / ONE_SECOND_IN_MILLIS);
-					double currentRateDeviationSquared = pow((currentRate - smoothedRate), 2.0);
-					smoothedRateVariance += (currentRateDeviationSquared - smoothedRateVariance) * weight;
+					updateSmoothedMin(weight);
+					updateSmoothedMax(weight);
 				}
 
 				lastTimestampMillis += timeElapsedMillis;
@@ -128,17 +116,19 @@ public final class EventsCounter {
 		}
 	}
 
-	private void updateSmoothedMax(double weight, double lastStepRate) {
-		if (lastStepRate > smoothedMaxRate) {
-			smoothedMaxRate = lastStepRate;
+	private void updateSmoothedMax(double weight) {
+		double smoothedRate = getSmoothedRate();
+		if (smoothedRate > smoothedMaxRate) {
+			smoothedMaxRate = smoothedRate;
 		} else {
 			smoothedMaxRate += (smoothedMinRate - smoothedMaxRate) * weight;
 		}
 	}
 
-	private void updateSmoothedMin(double weight, double lastStepRate) {
-		if (lastStepRate < smoothedMinRate) {
-			smoothedMinRate = lastStepRate;
+	private void updateSmoothedMin(double weight) {
+		double smoothedRate = getSmoothedRate();
+		if (smoothedRate < smoothedMinRate) {
+			smoothedMinRate = smoothedRate;
 		} else {
 			smoothedMinRate += (smoothedMaxRate - smoothedMinRate) * weight;
 		}
@@ -152,18 +142,11 @@ public final class EventsCounter {
 	 * @return smoothed value of rate in events per second
 	 */
 	public double getSmoothedRate() {
-		return smoothedRate;
-	}
-
-	/**
-	 * Returns smoothed value of rate's standard deviation
-	 * <p/>
-	 * Value may be delayed. Last update was performed during {@code recordEvent()} method invocation
-	 *
-	 * @return smoothed value of rate's standard deviation
-	 */
-	public double getSmoothedStandardDeviation() {
-		return sqrt(smoothedRateVariance);
+		if (firstIterationCompleted) {
+			return 1.0 / (smoothedPeriod / ONE_SECOND_IN_MILLIS);
+		} else {
+			return 0.0;
+		}
 	}
 
 	/**
@@ -199,9 +182,8 @@ public final class EventsCounter {
 
 	@Override
 	public String toString() {
-		return String.format("total: %d   smoothedRate: %.3f±%.4f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
-				getEventsCount(), getSmoothedRate(), getSmoothedStandardDeviation(), getSmoothedMinRate(),
-				getSmoothedMaxRate());
+		return String.format("total: %d   smoothedRate: %.3f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
+				getEventsCount(), getSmoothedRate(), getSmoothedMinRate(),getSmoothedMaxRate());
 	}
 
 	private static double secondsToMillis(double seconds) {
@@ -219,18 +201,21 @@ public final class EventsCounter {
 	public static final class Accumulator {
 		private long eventsCount;
 		private double smoothedRate;
-		private double smoothedRateVariance;
+		private double smoothedMinRate;
+		private double smoothedMaxRate;
 
 		private Accumulator() {
 			this.eventsCount = 0L;
 			this.smoothedRate = 0.0;
-			this.smoothedRateVariance = 0.0;
+			this.smoothedMinRate = 0.0;
+			this.smoothedMaxRate = 0.0;
 		}
 
 		public void add(EventsCounter counter) {
 			this.eventsCount += counter.getEventsCount();
 			this.smoothedRate += counter.getSmoothedRate();
-			this.smoothedRateVariance += counter.smoothedRateVariance;
+			this.smoothedMaxRate += counter.getSmoothedMaxRate();
+			this.smoothedMinRate += counter.getSmoothedMinRate();
 		}
 
 		public long getEventsCount() {
@@ -241,14 +226,18 @@ public final class EventsCounter {
 			return smoothedRate;
 		}
 
-		public double getSmoothedStandardDeviation() {
-			return sqrt(smoothedRateVariance);
+		public double getSmoothedMinRate() {
+			return smoothedMinRate;
+		}
+
+		public double getSmoothedMaxRate() {
+			return smoothedMaxRate;
 		}
 
 		@Override
 		public String toString() {
-			return String.format("total: %d   smoothedRate: %.3f±%.4f",
-					getEventsCount(), getSmoothedRate(), getSmoothedStandardDeviation());
+			return String.format("total: %d   smoothedRate: %.3f   smoothedMinRate: %.3f      smoothedMaxRate: %.3f",
+					getEventsCount(), getSmoothedRate(), getSmoothedMinRate(), getSmoothedMaxRate());
 		}
 	}
 }

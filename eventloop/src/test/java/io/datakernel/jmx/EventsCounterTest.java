@@ -41,6 +41,7 @@ public class EventsCounterTest {
 		double counter_2_initRate = eventsCounter_2.getSmoothedRate();
 		MANUAL_TIME_PROVIDER.upgradeTime(oneSecondInMillis);
 		eventsCounter_1.recordEvent();
+		eventsCounter_1.recordEvent();
 		eventsCounter_2.recordEvent();
 		double counter_1_rateAfterUpgrade_1 = eventsCounter_1.getSmoothedRate();
 		double counter_2_rateAfterUpgrade_1 = eventsCounter_2.getSmoothedRate();
@@ -115,27 +116,27 @@ public class EventsCounterTest {
 		assertEquals(events, eventsCounter.getEventsCount());
 	}
 
-//	@Test
-//	public void example() {
-//		EventsCounter eventsCounter = new EventsCounter(1.0, 0.01, MANUAL_TIME_PROVIDER);
-//		int events = 1000;
-//		int minPeriod = 100;
-//		int maxPeriod = 500;
-//
-//		for (int i = 0; i < events; i++) {
-//			eventsCounter.recordEvent();
-//			int periodInMillis = uniformRandom(minPeriod, maxPeriod);
-//			// after 100 iterations passed, smoothed max should jump to 100 events per second
-//			if (i > 100 && i < 200) {
-//				periodInMillis = 10;
-//			}
-//			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
-//			System.out.println(i + ":   currentPeriodInMillis:  " + periodInMillis + "   eventsStats:   "
-//					+ eventsCounter.toString());
-//		}
-//
-//		assertEquals(events, eventsCounter.getEventsCount());
-//	}
+	@Test
+	public void example() {
+		EventsCounter eventsCounter = new EventsCounter(1.0, 0.1, MANUAL_TIME_PROVIDER);
+		int events = 1000;
+		int minPeriod = 100;
+		int maxPeriod = 500;
+
+		for (int i = 0; i < events; i++) {
+			eventsCounter.recordEvent();
+			int periodInMillis = uniformRandom(minPeriod, maxPeriod);
+			// after 100 iterations passed, smoothed rate should be increased
+			if (i > 100 && i < 200) {
+				periodInMillis = 10;
+			}
+			MANUAL_TIME_PROVIDER.upgradeTime(periodInMillis);
+			System.out.println(i + ":   currentPeriodInMillis:  " + periodInMillis + "   eventsStats:   "
+					+ eventsCounter.toString());
+		}
+
+		assertEquals(events, eventsCounter.getEventsCount());
+	}
 
 	public static final class ManualTimeProvider implements CurrentTimeProvider {
 
