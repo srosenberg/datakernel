@@ -24,7 +24,7 @@ import java.util.Random;
 import static java.lang.Math.sqrt;
 import static org.junit.Assert.assertEquals;
 
-public class StatsCounterTest {
+public class ValuesCounterTest {
 
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
@@ -34,24 +34,24 @@ public class StatsCounterTest {
 	public void dynamicAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
 		double window = 10.0;
 		double precision = 0.1;
-		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		ValuesCounter valuesCounter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
 		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			statsCounter.recordValue(inputValue);
+			valuesCounter.recordValue(inputValue);
 		}
 
 		double acceptableError = 10E-5;
-		assertEquals(inputValue, statsCounter.getSmoothedAverage(), acceptableError);
+		assertEquals(inputValue, valuesCounter.getSmoothedAverage(), acceptableError);
 	}
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
 		double window = 100.0;
 		double precision = 0.1;
-		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		ValuesCounter counter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
 		int iterations = 10000;
 		int minValue = 0;
 		int maxValue = 10;
@@ -72,18 +72,18 @@ public class StatsCounterTest {
 	public void itShouldResetStatsAfterResetMethodCall() {
 		double window = 10.0;
 		double precision = 0.1;
-		StatsCounter statsCounter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+		ValuesCounter valuesCounter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
 		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			statsCounter.recordValue(inputValue);
+			valuesCounter.recordValue(inputValue);
 		}
 
-		double avgBeforeReset = statsCounter.getSmoothedAverage();
-		statsCounter.reset();
-		double avgAfterReset = statsCounter.getSmoothedAverage();
+		double avgBeforeReset = valuesCounter.getSmoothedAverage();
+		valuesCounter.reset();
+		double avgAfterReset = valuesCounter.getSmoothedAverage();
 
 		double acceptableError = 10E-5;
 		assertEquals(inputValue, avgBeforeReset, acceptableError);
@@ -94,7 +94,7 @@ public class StatsCounterTest {
 //	public void example() {
 //		double window = 10.0;
 //		double precision = 0.001;
-//		StatsCounter counter = new StatsCounter(window, precision, MANUAL_TIME_PROVIDER);
+//		ValuesCounter counter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
 //		int iterations = 1000;
 //		int minValue = 0;
 //		int maxValue = 500;

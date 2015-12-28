@@ -24,7 +24,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.jmx.StatsCounter;
+import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.jmx.MBeanFormat;
 
 import java.nio.channels.SocketChannel;
@@ -54,8 +54,8 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	//JMX
-	private final StatsCounter timeCheckExpired;
-	private final StatsCounter expiredConnections;
+	private final ValuesCounter timeCheckExpired;
+	private final ValuesCounter expiredConnections;
 	private boolean monitoring;
 
 	/**
@@ -76,8 +76,8 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 		this.headerChars = chars;
 
 		// JMX
-		this.timeCheckExpired = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.expiredConnections = new StatsCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeCheckExpired = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.expiredConnections = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {

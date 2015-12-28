@@ -25,7 +25,7 @@ import static java.lang.Math.*;
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class StatsCounter {
+public final class ValuesCounter {
 
 	private static final double ONE_SECOND_IN_MILLIS = 1000.0;
 	private static final double DEFAULT_INITIAL_DYNAMIC_AVG = 0.0;
@@ -48,13 +48,13 @@ public final class StatsCounter {
 	private double smoothedMax;
 
 	/**
-	 * Creates {@link StatsCounter} with specified parameters
+	 * Creates {@link ValuesCounter} with specified parameters
 	 *
 	 * @param window       time in seconds at which weight of appropriate value is 0.5
 	 * @param precision    time in seconds to update dynamic average
 	 * @param timeProvider provider of current time
 	 */
-	public StatsCounter(double window, double precision, CurrentTimeProvider timeProvider) {
+	public ValuesCounter(double window, double precision, CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		resetValues(transformWindow(window), secondsToMillis(precision));
 	}
@@ -262,7 +262,7 @@ public final class StatsCounter {
 			this.totalCounters = 0;
 		}
 
-		public void add(StatsCounter counter) {
+		public void add(ValuesCounter counter) {
 			if (counter.minValue < this.minValue) {
 				this.minValue = counter.minValue;
 			}

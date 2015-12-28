@@ -59,29 +59,29 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		}
 	}
 
-	private final StatsCounter selectorSelectTimeStats;
-	private final StatsCounter businessLogicTimeStats;
-	private final StatsCounter selectedKeysStats;
-	private final StatsCounter invalidKeysStats;
-	private final StatsCounter acceptKeysStats;
-	private final StatsCounter connectKeysStats;
-	private final StatsCounter readKeysStats;
-	private final StatsCounter writeKeysStats;
-	private final StatsCounter localTasksStats;
-	private final StatsCounter concurrentTasksStats;
-	private final StatsCounter scheduledTasksStats;
+	private final ValuesCounter selectorSelectTimeStats;
+	private final ValuesCounter businessLogicTimeStats;
+	private final ValuesCounter selectedKeysStats;
+	private final ValuesCounter invalidKeysStats;
+	private final ValuesCounter acceptKeysStats;
+	private final ValuesCounter connectKeysStats;
+	private final ValuesCounter readKeysStats;
+	private final ValuesCounter writeKeysStats;
+	private final ValuesCounter localTasksStats;
+	private final ValuesCounter concurrentTasksStats;
+	private final ValuesCounter scheduledTasksStats;
 
-	private final StatsCounter localTaskDuration;
+	private final ValuesCounter localTaskDuration;
 	private final DurationRunnable lastLongestLocalRunnable;
-	private final StatsCounter concurrentTaskDuration;
+	private final ValuesCounter concurrentTaskDuration;
 	private final DurationRunnable lastLongestConcurrentRunnable;
-	private final StatsCounter scheduledTaskDuration;
+	private final ValuesCounter scheduledTaskDuration;
 	private final DurationRunnable lastLongestScheduledRunnable;
 
-	private final StatsCounter selectedKeysTimeStats;
-	private final StatsCounter localTasksTimeStats;
-	private final StatsCounter concurrentTasksTimeStats;
-	private final StatsCounter scheduledTasksTimeStats;
+	private final ValuesCounter selectedKeysTimeStats;
+	private final ValuesCounter localTasksTimeStats;
+	private final ValuesCounter concurrentTasksTimeStats;
+	private final ValuesCounter scheduledTasksTimeStats;
 
 	private boolean monitoring;
 	private long monitoringTimestamp;
@@ -90,9 +90,9 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 	// long loop monitoring
 	private volatile long longLoopMillis = DEFAULT_LONGLOOP_TIME;
 	private final EventsCounter longLoopsRate;
-	private final StatsCounter longLoopLocalTasksStats;
-	private final StatsCounter longLoopConcurrentTasksStats;
-	private final StatsCounter longLoopScheduledTasksStats;
+	private final ValuesCounter longLoopLocalTasksStats;
+	private final ValuesCounter longLoopConcurrentTasksStats;
+	private final ValuesCounter longLoopScheduledTasksStats;
 	private String longLoopLongestLocalTask;
 	private String longLoopLongestConcurrentTask;
 	private String longLoopLongestScheduledTask;
@@ -129,8 +129,8 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 		this.longLoopScheduledTasksStats = createDynamicStatsCounter(timeProvider);
 	}
 
-	private static StatsCounter createDynamicStatsCounter(CurrentTimeProvider timeProvider) {
-		return new StatsCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
+	private static ValuesCounter createDynamicStatsCounter(CurrentTimeProvider timeProvider) {
+		return new ValuesCounter(DEFAULT_STATS_WINDOW, DEFAULT_STATS_PRECISION, timeProvider);
 	}
 
 	void incMonitoringLoop() {
@@ -174,7 +174,7 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 			selectedKeysTimeStats.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
 	}
 
-	private void updateTaskDuration(StatsCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
+	private void updateTaskDuration(ValuesCounter counter, DurationRunnable longestCounter, Runnable runnable, @Nullable Stopwatch sw) {
 		if (sw != null) {
 			int elapsed = (int) sw.elapsed(TimeUnit.MICROSECONDS);
 			counter.recordValue(elapsed);

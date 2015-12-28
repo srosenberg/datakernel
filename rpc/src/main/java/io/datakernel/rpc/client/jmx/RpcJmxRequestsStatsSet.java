@@ -18,7 +18,7 @@ package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.EventsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.StatsCounter;
+import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.time.CurrentTimeProvider;
 
 public final class RpcJmxRequestsStatsSet {
@@ -32,7 +32,7 @@ public final class RpcJmxRequestsStatsSet {
 	private final EventsCounter failedRequests;
 	private final EventsCounter rejectedRequests;
 	private final EventsCounter expiredRequests;
-	private final StatsCounter responseTimeStats;
+	private final ValuesCounter responseTimeStats;
 	private final LastExceptionCounter lastServerException;
 
 	public RpcJmxRequestsStatsSet(double smoothingWindow, double smoothingPrecision, CurrentTimeProvider timeProvider) {
@@ -44,7 +44,7 @@ public final class RpcJmxRequestsStatsSet {
 		this.failedRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.rejectedRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.expiredRequests = new EventsCounter(smoothingWindow, smoothingPrecision, timeProvider);
-		this.responseTimeStats = new StatsCounter(smoothingWindow, smoothingPrecision, timeProvider);
+		this.responseTimeStats = new ValuesCounter(smoothingWindow, smoothingPrecision, timeProvider);
 		this.lastServerException = new LastExceptionCounter(LAST_SERVER_EXCEPTION_COUNTER_NAME);
 	}
 
@@ -86,7 +86,7 @@ public final class RpcJmxRequestsStatsSet {
 		return expiredRequests;
 	}
 
-	public StatsCounter getResponseTimeStats() {
+	public ValuesCounter getResponseTimeStats() {
 		return responseTimeStats;
 	}
 
@@ -104,7 +104,7 @@ public final class RpcJmxRequestsStatsSet {
 		private final EventsCounter.Accumulator failedRequests;
 		private final EventsCounter.Accumulator rejectedRequests;
 		private final EventsCounter.Accumulator expiredRequests;
-		private final StatsCounter.Accumulator responseTimeStats;
+		private final ValuesCounter.Accumulator responseTimeStats;
 		private final LastExceptionCounter.Accumulator lastServerException;
 
 		private Accumulator() {
@@ -113,7 +113,7 @@ public final class RpcJmxRequestsStatsSet {
 			this.failedRequests = EventsCounter.accumulator();
 			this.rejectedRequests = EventsCounter.accumulator();
 			this.expiredRequests = EventsCounter.accumulator();
-			this.responseTimeStats = StatsCounter.accumulator();
+			this.responseTimeStats = ValuesCounter.accumulator();
 			this.lastServerException = LastExceptionCounter.accumulator();
 		}
 
@@ -147,7 +147,7 @@ public final class RpcJmxRequestsStatsSet {
 			return expiredRequests;
 		}
 
-		public StatsCounter.Accumulator getResponseTimeStats() {
+		public ValuesCounter.Accumulator getResponseTimeStats() {
 			return responseTimeStats;
 		}
 
