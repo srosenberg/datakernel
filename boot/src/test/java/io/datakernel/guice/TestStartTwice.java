@@ -17,8 +17,8 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.boot.AsyncServiceAdapters;
+import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.ServiceGraph;
@@ -34,11 +34,7 @@ public class TestStartTwice {
 
 	interface A extends AsyncService {}
 
-	interface B extends AsyncService {}
-
-	interface C extends AsyncService {}
-
-	static class ServiceImpl implements A, B, C {
+	static class ServiceImpl implements A {
 
 		@Override
 		public void start(AsyncServiceCallback callback) {
@@ -53,48 +49,33 @@ public class TestStartTwice {
 		}
 	}
 
-	private static ServiceImpl serviceImpl = new ServiceImpl();
-
 	static class TestModule extends AbstractModule {
 
 		@Override
 		protected void configure() {
-			install(new ServiceGraphModule()
+			install(BootModule.defaultInstance()
 					.register(ServiceImpl.class, AsyncServiceAdapters.forAsyncService())
-					.register(A.class, AsyncServiceAdapters.forAsyncService())
-					.register(B.class, AsyncServiceAdapters.forAsyncService())
-					.register(C.class, AsyncServiceAdapters.forAsyncService()));
+					.register(A.class, AsyncServiceAdapters.forAsyncService()));
 		}
 
 		@Provides
 		@Singleton
-		ServiceImpl serviceImpl(A a, B b, C c) {
-			return serviceImpl;
+		ServiceImpl serviceImpl(A a) {
+			return (ServiceImpl) a;
 		}
 
 		@Provides
 		@Singleton
-		A createA(B b, C c) {
-			return serviceImpl;
+		A createA() {
+			return new ServiceImpl();
 		}
 
-		@Provides
-		@Singleton
-		B createB(C c) {
-			return serviceImpl;
-		}
-
-		@Provides
-		@Singleton
-		C createC() {
-			return serviceImpl;
-		}
 	}
 
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, ServiceImpl.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {
 			serviceGraph.start();

@@ -280,7 +280,6 @@ public final class RpcClient implements NioService, RpcJmxClient {
 			if (connection instanceof RpcJmxClientConnection)
 				((RpcJmxClientConnection) connection).startMonitoring();
 		}
-
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
 	}

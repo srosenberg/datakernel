@@ -24,14 +24,55 @@ public class ServiceGraphTest {
 		return new ServiceGraph.Node(s, AsyncServices.immediateService());
 	}
 
+	private static ServiceGraph.Node badStringNode(String s) {
+		return new ServiceGraph.Node(s, AsyncServices.immediateFailedService(new RuntimeException("Can't process service: " + s)));
+	}
+
 	@Test
 	public void testStart() throws Exception {
 		ServiceGraph graph = new ServiceGraph();
 		graph.add(stringNode("x"), stringNode("a"), stringNode("b"), stringNode("c"));
 		graph.add(stringNode("y"), stringNode("c"));
 		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
+
+		try {
+			graph.start();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			graph.stop();
+		}
+	}
+
+	@Test
+	public void testWithCircularDependencies() throws Exception {
+		ServiceGraph graph = new ServiceGraph() {
+			@Override
+			protected void onStart() {
+				breakCircularDependencies();
+			}
+		};
+		graph.add(stringNode("x"), stringNode("a"), stringNode("b"), stringNode("c"));
+		graph.add(stringNode("y"), stringNode("c"));
+		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
 		graph.add(new ServiceGraph.Node("t1", null), new ServiceGraph.Node("t2", AsyncServices.immediateService()));
 		graph.add(new ServiceGraph.Node("t2", AsyncServices.immediateService()), new ServiceGraph.Node("t1", null));
+
+		try {
+			graph.start();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			graph.stop();
+		}
+	}
+
+	@Test
+	public void testBadNode() throws Exception {
+		ServiceGraph graph = new ServiceGraph();
+		graph.add(stringNode("x"), badStringNode("a"), stringNode("b"), stringNode("c"));
+		graph.add(stringNode("y"), stringNode("c"));
+		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
 
 		try {
 			graph.start();

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.guice;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ScopeAnnotation;
@@ -30,5 +30,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({TYPE, METHOD, PARAMETER})
 @Retention(RUNTIME)
 public @interface WorkerThread {
-	String value() default "default";
+	String value() default "";
 }

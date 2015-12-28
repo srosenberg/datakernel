@@ -18,13 +18,16 @@ package io.datakernel.launcher;
 
 import com.google.inject.*;
 import io.datakernel.config.Config;
+import io.datakernel.guice.Args;
 import io.datakernel.guice.ConfigModule;
 import io.datakernel.guice.ShutdownNotification;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,13 +41,11 @@ public abstract class Launcher {
 
 	private Module[] modules;
 
-	private String[] configs;
+	private File[] configs;
 
 	private FileLocker fileLocker;
 
 	private boolean useLockFile;
-
-	private boolean useProductionMode;
 
 	@Inject
 	protected Injector injector;
@@ -59,20 +60,46 @@ public abstract class Launcher {
 
 	protected Config config;
 
+	private File saveConfigFile;
+
 	protected void useLockFile() {
 		this.useLockFile = true;
 	}
 
-	protected void useProductionMode() {
-		this.useProductionMode = true;
+	protected void configs(File... files) {
+		this.configs = files;
 	}
 
 	protected void configs(String... config) {
-		this.configs = config;
+		File[] files = new File[config.length];
+		for (int i = 0; i < config.length; i++) {
+			files[i] = new File(config[i]);
+		}
+		this.configs = files;
+	}
+
+	protected void configs(Path... paths) {
+		File[] files = new File[paths.length];
+		for (int i = 0; i < paths.length; i++) {
+			files[i] = paths[i].toFile();
+		}
+		this.configs = files;
 	}
 
 	protected void modules(Module... modules) {
 		this.modules = modules;
+	}
+
+	public void saveConfig(Path path) {
+		saveConfigFile = path.toFile();
+	}
+
+	public void saveConfig(File file) {
+		saveConfigFile = file;
+	}
+
+	public void saveConfig(String string) {
+		saveConfigFile = new File(string);
 	}
 
 	protected abstract void configure();
@@ -95,6 +122,8 @@ public abstract class Launcher {
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
 				doRun();
+			} catch (Exception e) {
+				logger.error(e.getMessage());
 			} finally {
 				logger.info("=== STOPPING APPLICATION");
 				doStop();
@@ -120,28 +149,32 @@ public abstract class Launcher {
 	}
 
 	private void writeConfig() throws IOException {
-		if (configs == null || configs[0] == null)
+		if (saveConfigFile == null || configs == null || configs[0] == null)
 			return;
-		int pos = configs[0].lastIndexOf('.');
-		if (pos == -1) {
-			config.saveToPropertiesFile(configs[0] + "-all");
-			return;
-		}
-		config.saveToPropertiesFile(configs[0].substring(0, pos) + "-all" + configs[0].substring(pos));
+
+		config.saveToPropertiesFile(saveConfigFile);
 	}
 
 	protected void doWire() throws Exception {
 		List<Module> modules = new ArrayList<>(Arrays.asList(this.modules));
+
+		// adding Launcher's internal module
+		modules.add(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String[].class).annotatedWith(Args.class).toInstance(args);
+			}
+		});
+
 		if (configs != null && configs.length != 0) {
 			List<Config> configsList = new ArrayList<>();
-			for (String config : configs) {
+			for (File config : configs) {
 				configsList.add(Config.ofProperties(config));
 			}
 			config = Config.union(configsList);
 			modules.add(new ConfigModule(config));
 		}
-		Stage stage = useProductionMode ? Stage.PRODUCTION : Stage.DEVELOPMENT;
-		Injector injector = Guice.createInjector(stage, modules);
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, modules);
 		injector.injectMembers(this);
 	}
 

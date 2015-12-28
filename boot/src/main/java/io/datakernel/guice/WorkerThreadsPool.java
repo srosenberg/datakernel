@@ -14,19 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.guice;
 
-import com.google.inject.BindingAnnotation;
+import com.google.inject.Provider;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+import java.util.List;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PARAMETER;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@BindingAnnotation
-@Target({PARAMETER, METHOD})
-@Retention(RUNTIME)
-public @interface WorkerId {
+public interface WorkerThreadsPool {
+	<T> List<T> getPoolInstances(int workerThreadsCount, Provider<T> workerThreadInstanceProvider);
 }
