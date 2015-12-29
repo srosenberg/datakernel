@@ -21,8 +21,6 @@ import io.datakernel.jmx.*;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -50,44 +48,6 @@ public final class NioEventloopStatsSet {
 		@Override
 		public String toString() {
 			return (runnable == null) ? "" : runnable.getClass().getName() + ": " + duration;
-		}
-	}
-
-	private static final class ExceptionMarkerImpl implements ExceptionMarker {
-		private final Class<?> clazz;
-		private final Marker marker;
-
-		ExceptionMarkerImpl(Class<?> clazz, String name) {
-			this.clazz = clazz;
-			this.marker = MarkerFactory.getMarker(name);
-		}
-
-		@Override
-		public Marker getMarker() {
-			return marker;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			ExceptionMarkerImpl that = (ExceptionMarkerImpl) o;
-			return equal(this.clazz, that.clazz) &&
-					equal(this.marker, that.marker);
-		}
-
-		private static boolean equal(Object a, Object b) {
-			return a == b || (a != null && a.equals(b));
-		}
-
-		@Override
-		public int hashCode() {
-			return Arrays.hashCode(new Object[]{clazz, marker});
-		}
-
-		@Override
-		public String toString() {
-			return clazz.getName() + "." + marker.getName();
 		}
 	}
 
@@ -120,6 +80,7 @@ public final class NioEventloopStatsSet {
 	private final ValuesCounter scheduledTasksTimeStats;
 
 	private final Map<ExceptionMarker, LastExceptionCounter> exceptionCounters = new HashMap<>();
+	private final Map<Class<? extends Throwable>, LastExceptionCounter> severeExceptionCounters = new HashMap<>();
 
 	public NioEventloopStatsSet(double smoothingWindow, double smoothingPrecision, CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
@@ -219,12 +180,6 @@ public final class NioEventloopStatsSet {
 		scheduledTasks.recordEvents(newTasks);
 	}
 
-	// Exceptions stats
-
-	public static ExceptionMarker exceptionMarker(Class<?> clazz, String name) {
-		return new ExceptionMarkerImpl(clazz, name);
-	}
-
 	public LastExceptionCounter getExceptionCounter(ExceptionMarker marker) {
 		return exceptionCounters.get(marker);
 	}
@@ -235,8 +190,19 @@ public final class NioEventloopStatsSet {
 		return exceptionCounters.get(marker);
 	}
 
+	public LastExceptionCounter ensureSevereExceptionCounter(Class<? extends Throwable> exceptionType) {
+		if (!severeExceptionCounters.containsKey(exceptionType))
+			severeExceptionCounters.put(exceptionType, new LastExceptionCounter(exceptionType.getName()));
+		return severeExceptionCounters.get(exceptionType);
+	}
+
 	public void updateExceptionCounter(ExceptionMarker marker, Throwable e, Object o, long timestamp) {
 		ensureExceptionCounter(marker).update(e, o, timestamp);
+	}
+
+	public void updateSevereExceptionCounter(Throwable e, Object o, long timestamp) {
+		ensureSevereExceptionCounter((e.getClass())).update(e, o, timestamp);
+
 	}
 
 	public void resetExceptionCounter(ExceptionMarker marker) {
@@ -373,6 +339,10 @@ public final class NioEventloopStatsSet {
 		return exceptionCounters;
 	}
 
+	public Map<Class<? extends Throwable>, LastExceptionCounter> getSevereExceptionCounters() {
+		return severeExceptionCounters;
+	}
+
 	public static Accumulator accumulator() {
 		return new Accumulator();
 	}
@@ -399,7 +369,8 @@ public final class NioEventloopStatsSet {
 		private final ValuesCounter.Accumulator concurrentTasksTimeStats;
 		private final ValuesCounter.Accumulator scheduledTasksTimeStats;
 
-		private final Map<ExceptionMarker, LastExceptionCounter.Accumulator> exceptionCounters = new HashMap<>();
+		private final Map<ExceptionMarker, LastExceptionCounter.Accumulator> allExceptionCounters = new HashMap<>();
+		private final Map<Class<? extends Throwable>, LastExceptionCounter.Accumulator> severeExceptionCounters = new HashMap<>();
 
 		private Accumulator() {
 			this.selectorSelectTimeStats = ValuesCounter.accumulator();
@@ -447,11 +418,19 @@ public final class NioEventloopStatsSet {
 			scheduledTasksTimeStats.add(statsSet.scheduledTasksTimeStats);
 
 			for (ExceptionMarker marker : statsSet.exceptionCounters.keySet()) {
-				if (!this.exceptionCounters.containsKey(marker)) {
-					this.exceptionCounters.put(marker, LastExceptionCounter.accumulator());
+				if (!this.allExceptionCounters.containsKey(marker)) {
+					this.allExceptionCounters.put(marker, LastExceptionCounter.accumulator());
 				}
-				LastExceptionCounter.Accumulator exceptionAccumulator = this.exceptionCounters.get(marker);
+				LastExceptionCounter.Accumulator exceptionAccumulator = this.allExceptionCounters.get(marker);
 				exceptionAccumulator.add(statsSet.exceptionCounters.get(marker));
+			}
+
+			for (Class<? extends Throwable> exceptionType : statsSet.severeExceptionCounters.keySet()) {
+				if (!this.severeExceptionCounters.containsKey(exceptionType)) {
+					this.severeExceptionCounters.put(exceptionType, LastExceptionCounter.accumulator());
+				}
+				LastExceptionCounter.Accumulator exceptionAccumulator = this.severeExceptionCounters.get(exceptionType);
+				exceptionAccumulator.add(statsSet.severeExceptionCounters.get(exceptionType));
 			}
 		}
 
@@ -527,8 +506,12 @@ public final class NioEventloopStatsSet {
 			return scheduledTasksTimeStats;
 		}
 
-		public Map<ExceptionMarker, LastExceptionCounter.Accumulator> getExceptionCounters() {
-			return exceptionCounters;
+		public Map<ExceptionMarker, LastExceptionCounter.Accumulator> getAllExceptionCounters() {
+			return allExceptionCounters;
+		}
+
+		public Map<Class<? extends Throwable>, LastExceptionCounter.Accumulator> getSevereExceptionCounters() {
+			return severeExceptionCounters;
 		}
 	}
 }

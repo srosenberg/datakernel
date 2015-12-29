@@ -129,6 +129,10 @@ public interface NioEventloopJmxStatsManagerMBean {
 	String getDurationStats_ScheduledTasksDetails();
 
 	// exception stats
-	CompositeData[] getExceptionStats() throws OpenDataException;
+	CompositeData[] getExceptionStats_AllExceptions() throws OpenDataException;
+
+	int getExceptionStats_SevereExceptionsCount();
+
+	CompositeData[] getExceptionStats_SevereExceptionsDetails();
 
 }

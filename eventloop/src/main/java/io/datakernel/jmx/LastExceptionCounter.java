@@ -87,7 +87,7 @@ public final class LastExceptionCounter {
 			return CompositeDataBuilder.builder(marker.getName())
 					.add("ExceptionMarker", SimpleType.STRING, marker.getName())
 					.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-					.add("Exception", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
+					.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
 					.add("CauseObject", SimpleType.STRING, getCauseObject())
 					.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
 					.add("Total", SimpleType.INTEGER, total)
@@ -102,6 +102,8 @@ public final class LastExceptionCounter {
 	}
 
 	public static final class Accumulator {
+		private static final String COMPOSITE_DATE_NAME = "Last Exception Accumulator";
+
 		private Throwable throwable;
 		private Object causeObject;
 		private long timestamp;
@@ -131,12 +133,28 @@ public final class LastExceptionCounter {
 			return causeObject;
 		}
 
-		public long getTimestamp() {
+		public long getExceptionTimestamp() {
 			return timestamp;
 		}
 
 		public int getTotalExceptions() {
 			return total;
+		}
+
+		public CompositeData compositeData() {
+			if (total == 0 || throwable == null)
+				return null;
+			try {
+				return CompositeDataBuilder.builder(COMPOSITE_DATE_NAME)
+						.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
+						.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), MBeanFormat.formatException(throwable))
+						.add("CauseObject", SimpleType.STRING, getCauseObject())
+						.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
+						.add("Total", SimpleType.INTEGER, total)
+						.build();
+			} catch (OpenDataException e) {
+				return null;
+			}
 		}
 	}
 }

@@ -60,9 +60,9 @@ public final class MBeanFormat {
 	public static String[] formatException(Throwable exception) {
 		if (exception == null)
 			return null;
-		StringBuilder sb = new StringBuilder();
-		exception.printStackTrace(new PrintWriter(new AppendableWriter(sb)));
-		return formatMultilines(sb.toString());
+		StringWriter stringWriter = new StringWriter();
+		exception.printStackTrace(new PrintWriter(stringWriter));
+		return formatMultilines(stringWriter.toString());
 	}
 
 	private static String formatHours(long period) {
@@ -119,40 +119,5 @@ public final class MBeanFormat {
 		}
 
 		return list.toArray(new String[list.size()]);
-	}
-
-	private static class AppendableWriter extends Writer {
-		private final Appendable appendable;
-		private boolean closed;
-
-		private AppendableWriter(Appendable appendable) {this.appendable = checkNotNull(appendable);}
-
-		@Override
-		public void write(char[] chars, int off, int len) throws IOException {
-			checkNotClosed();
-			appendable.append(new String(chars, off, len));
-		}
-
-		@Override
-		public void flush() throws IOException {
-			checkNotClosed();
-			if (appendable instanceof Flushable) {
-				((Flushable) appendable).flush();
-			}
-		}
-
-		@Override
-		public void close() throws IOException {
-			this.closed = true;
-			if (appendable instanceof Closeable) {
-				((Closeable) appendable).close();
-			}
-		}
-
-		private void checkNotClosed() throws IOException {
-			if (closed) {
-				throw new IOException("Cannot write to a closed writer.");
-			}
-		}
 	}
 }

@@ -314,14 +314,14 @@ public class NioEventloopJmxStatsManager implements NioEventloopJmxStatsManagerM
 	}
 
 	@Override
-	public CompositeData[] getExceptionStats() throws OpenDataException {
+	public CompositeData[] getExceptionStats_AllExceptions() throws OpenDataException {
 		List<CompositeData> compositeDataList = new ArrayList<>();
-		Map<ExceptionMarker, LastExceptionCounter.Accumulator> exceptionCounters = collectAllStats().getExceptionCounters();
+		Map<ExceptionMarker, LastExceptionCounter.Accumulator> exceptionCounters = collectAllStats().getAllExceptionCounters();
 		for (ExceptionMarker marker : exceptionCounters.keySet()) {
 			LastExceptionCounter.Accumulator exceptionCounter = exceptionCounters.get(marker);
 			Throwable lastException = exceptionCounter.getLastException();
 			CompositeData compositeData = CompositeDataBuilder.builder(EXCEPTION_COMPOSITE_DATE_NAME)
-					.add(EXCEPTION_MARKER_KEY, SimpleType.STRING, marker.getMarker().getName())
+					.add(EXCEPTION_MARKER_KEY, SimpleType.STRING, marker.getMarker().toString())
 					.add(LAST_EXCEPTION_KEY, SimpleType.STRING,
 							lastException != null ? lastException.toString() : "")
 					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
@@ -338,5 +338,31 @@ public class NioEventloopJmxStatsManager implements NioEventloopJmxStatsManagerM
 			accumulator.add(eventloop.getStatsSet());
 		}
 		return accumulator;
+	}
+
+	@Override
+	public int getExceptionStats_SevereExceptionsCount() {
+		Map<Class<? extends Throwable>, LastExceptionCounter.Accumulator> severeExceptionCounters =
+				collectAllStats().getSevereExceptionCounters();
+		int severeExceptionsCount = 0;
+		for (LastExceptionCounter.Accumulator accumulator : severeExceptionCounters.values()) {
+			severeExceptionsCount += accumulator.getTotalExceptions();
+		}
+		return severeExceptionsCount;
+	}
+
+	@Override
+	public CompositeData[] getExceptionStats_SevereExceptionsDetails() {
+		Map<Class<? extends Throwable>, LastExceptionCounter.Accumulator> severeExceptionCounters =
+				collectAllStats().getSevereExceptionCounters();
+		List<CompositeData> compositeDataList = new ArrayList<>();
+		for (Class<? extends Throwable> exceptionType : severeExceptionCounters.keySet()) {
+			LastExceptionCounter.Accumulator exceptionCounter = severeExceptionCounters.get(exceptionType);
+			CompositeData compositeData = exceptionCounter.compositeData();
+			if (compositeData != null) {
+				compositeDataList.add(compositeData);
+			}
+		}
+		return compositeDataList.toArray(new CompositeData[compositeDataList.size()]);
 	}
 }

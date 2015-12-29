@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.jmx.MBeanUtils.register;
+import static java.util.Arrays.asList;
 
 /**
  * It is internal class for asynchronous programming. NioEventloop represents infinite loop with only one
@@ -126,16 +127,19 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0; // 10 seconds
 	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 seconds
 
-	private static final ExceptionMarker ACCEPT_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "AcceptException");
-	private static final ExceptionMarker CONNECT_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "ConnectException");
-	private static final ExceptionMarker CONNECT_TIMEOUT_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "ConnectTimeout");
-	private static final ExceptionMarker READ_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "ReadException");
-	private static final ExceptionMarker WRITE_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "WriteException");
-	private static final ExceptionMarker CLOSE_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "CloseException");
-	private static final ExceptionMarker LOCAL_TASK_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "LocalTaskException");
-	private static final ExceptionMarker CONCURRENT_TASK_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "ConcurrentTaskException");
-	private static final ExceptionMarker SCHEDULED_TASK_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "ScheduledTaskException");
-	private static final ExceptionMarker UNCHECKED_MARKER = NioEventloopStatsSet.exceptionMarker(NioEventloop.class, "UncheckedException");
+	private static final ExceptionMarker ACCEPT_MARKER = new ExceptionMarker(NioEventloop.class, "AcceptException");
+	private static final ExceptionMarker CONNECT_MARKER = new ExceptionMarker(NioEventloop.class, "ConnectException");
+	private static final ExceptionMarker CONNECT_TIMEOUT_MARKER = new ExceptionMarker(NioEventloop.class, "ConnectTimeout");
+	private static final ExceptionMarker READ_MARKER = new ExceptionMarker(NioEventloop.class, "ReadException");
+	private static final ExceptionMarker WRITE_MARKER = new ExceptionMarker(NioEventloop.class, "WriteException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(NioEventloop.class, "CloseException");
+	private static final ExceptionMarker LOCAL_TASK_MARKER = new ExceptionMarker(NioEventloop.class, "LocalTaskException");
+	private static final ExceptionMarker CONCURRENT_TASK_MARKER = new ExceptionMarker(NioEventloop.class, "ConcurrentTaskException");
+	private static final ExceptionMarker SCHEDULED_TASK_MARKER = new ExceptionMarker(NioEventloop.class, "ScheduledTaskException");
+	private static final ExceptionMarker UNCHECKED_MARKER = new ExceptionMarker(NioEventloop.class, "UncheckedException");
+
+	private final Collection<ExceptionMarker> severeExceptionsMarkers =
+			new HashSet<>(asList(LOCAL_TASK_MARKER, CONCURRENT_TASK_MARKER, SCHEDULED_TASK_MARKER, UNCHECKED_MARKER));
 
 	private final NioEventloopStatsSet statsSet;
 
@@ -940,11 +944,24 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 
 	public void updateExceptionCounter(ExceptionMarker marker, Throwable e, Object o) {
 		assert inEventloopThread();
-		statsSet.updateExceptionCounter(marker, e, o, currentTimeMillis());
+
+		long timestamp = currentTimeMillis();
+		statsSet.updateExceptionCounter(marker, e, o, timestamp);
+		if (isExceptionSevere(marker)) {
+			statsSet.updateSevereExceptionCounter(e, o, timestamp);
+		}
+	}
+
+	private boolean isExceptionSevere(ExceptionMarker marker) {
+		return severeExceptionsMarkers.contains(marker);
 	}
 
 	public void resetExceptionCounter(ExceptionMarker marker) {
 		assert inEventloopThread();
 		statsSet.resetExceptionCounter(marker);
+	}
+
+	public String getThreadName() {
+		return (eventloopThread == null) ? null : eventloopThread.getName();
 	}
 }
