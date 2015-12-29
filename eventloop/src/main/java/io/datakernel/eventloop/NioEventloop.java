@@ -41,7 +41,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.jmx.MBeanUtils.register;
 import static java.util.Arrays.asList;
 
 /**
@@ -922,7 +921,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 
 	/**
 	 * Thread-safe operation
-	 * @return
+	 *
+	 * @return stats set
 	 */
 	@Override
 	public NioEventloopStatsSet getStatsSet() {

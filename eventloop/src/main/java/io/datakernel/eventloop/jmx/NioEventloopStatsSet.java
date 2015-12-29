@@ -17,12 +17,15 @@
 package io.datakernel.eventloop.jmx;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventsCounter;
+import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class NioEventloopStatsSet {

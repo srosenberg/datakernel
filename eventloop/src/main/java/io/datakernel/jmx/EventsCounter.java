@@ -19,7 +19,8 @@ package io.datakernel.jmx;
 import io.datakernel.time.CurrentTimeProvider;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.lang.Math.*;
+import static java.lang.Math.exp;
+import static java.lang.Math.log;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm
@@ -96,6 +97,7 @@ public final class EventsCounter {
 
 	/**
 	 * Records events and updates rate
+	 *
 	 * @param events number of events
 	 */
 	public void recordEvents(int events) {
@@ -192,7 +194,7 @@ public final class EventsCounter {
 	@Override
 	public String toString() {
 		return String.format("total: %d   smoothedRate: %.3f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
-				getEventsCount(), getSmoothedRate(), getSmoothedMinRate(),getSmoothedMaxRate());
+				getEventsCount(), getSmoothedRate(), getSmoothedMinRate(), getSmoothedMaxRate());
 	}
 
 	private static double secondsToMillis(double seconds) {

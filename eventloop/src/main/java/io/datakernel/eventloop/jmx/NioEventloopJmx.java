@@ -30,6 +30,7 @@ public interface NioEventloopJmx {
 
 	/**
 	 * Operation is supposed to be thread-safe
+	 *
 	 * @return stats set
 	 */
 	NioEventloopStatsSet getStatsSet();

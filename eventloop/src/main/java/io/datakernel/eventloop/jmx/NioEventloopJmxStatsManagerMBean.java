@@ -16,9 +16,6 @@
 
 package io.datakernel.eventloop.jmx;
 
-import io.datakernel.jmx.EventsCounter;
-import io.datakernel.jmx.ValuesCounter;
-
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 

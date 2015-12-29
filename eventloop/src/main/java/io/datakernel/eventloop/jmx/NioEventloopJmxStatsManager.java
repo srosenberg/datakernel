@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class NioEventloopJmxStatsManager implements NioEventloopJmxStatsManagerMBean{
+public class NioEventloopJmxStatsManager implements NioEventloopJmxStatsManagerMBean {
 
 	private static final String EXCEPTION_COMPOSITE_DATE_NAME = "Exception Composite Data";
 	private static final String EXCEPTION_MARKER_KEY = "Marker";

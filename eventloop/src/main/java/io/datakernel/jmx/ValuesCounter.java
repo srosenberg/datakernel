@@ -142,7 +142,7 @@ public final class ValuesCounter {
 	}
 
 	private void updateSmoothedAverageAndDeviation(double weight) {
-		double lastValuesAvg = lastValuesSum / (double)lastValuesAmount;
+		double lastValuesAvg = lastValuesSum / (double) lastValuesAmount;
 		smoothedAverage += (lastValuesAvg - smoothedAverage) * weight;
 		double currentDeviationSquared = pow((smoothedAverage - lastValuesAvg), 2.0);
 		smoothedVariance += (currentDeviationSquared - smoothedVariance) * weight;

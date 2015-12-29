@@ -19,7 +19,6 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.eventloop.jmx.NioEventloopStatsSet;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;

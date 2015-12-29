@@ -18,13 +18,12 @@ package io.datakernel.jmx;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import java.io.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class MBeanFormat {
 	private static final char SPLITTER_LN = '\n';
