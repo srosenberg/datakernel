@@ -19,7 +19,6 @@ package io.datakernel.rpc.client.jmx;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 
 /**
  * Implementations are supposed to be thread-safe

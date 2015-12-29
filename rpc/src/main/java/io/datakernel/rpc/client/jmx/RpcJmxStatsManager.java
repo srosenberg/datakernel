@@ -342,7 +342,7 @@ public final class RpcJmxStatsManager implements RpcJmxStatsManagerMBean {
 
 	// methods to simplify collecting stats from rpcClients
 	private RpcJmxRequestsStatsSet.Accumulator collectGeneralRequestsStatsFromAllClients() {
-		RpcJmxRequestsStatsSet.Accumulator accumulator  = RpcJmxRequestsStatsSet.accumulator();
+		RpcJmxRequestsStatsSet.Accumulator accumulator = RpcJmxRequestsStatsSet.accumulator();
 		for (RpcJmxClient rpcClient : rpcClients) {
 			accumulator.add(rpcClient.getGeneralRequestsStats());
 		}
