@@ -205,12 +205,12 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	}
 
 	@Override
-	public CompositeData getLastResponseException() {
+	public CompositeData getLastResponseException() throws OpenDataException {
 		return lastRemoteException.compositeData();
 	}
 
 	@Override
-	public CompositeData getLastInternalException() {
+	public CompositeData getLastInternalException() throws OpenDataException {
 		return lastInternalException.compositeData();
 	}
 }

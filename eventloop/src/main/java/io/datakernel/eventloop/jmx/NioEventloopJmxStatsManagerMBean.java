@@ -130,6 +130,6 @@ public interface NioEventloopJmxStatsManagerMBean {
 
 	int getExceptionStats_SevereExceptionsCount();
 
-	CompositeData[] getExceptionStats_SevereExceptionsDetails();
+	CompositeData[] getExceptionStats_SevereExceptionsDetails() throws OpenDataException;
 
 }

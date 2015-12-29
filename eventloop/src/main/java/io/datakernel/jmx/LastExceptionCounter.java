@@ -80,21 +80,18 @@ public final class LastExceptionCounter {
 		return throwable;
 	}
 
-	public CompositeData compositeData() {
-		if (total == 0 || throwable == null)
-			return null;
-		try {
-			return CompositeDataBuilder.builder(marker.getName())
-					.add("ExceptionMarker", SimpleType.STRING, marker.getName())
-					.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-					.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
-					.add("CauseObject", SimpleType.STRING, getCauseObject())
-					.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
-					.add("Total", SimpleType.INTEGER, total)
-					.build();
-		} catch (OpenDataException e) {
+	public CompositeData compositeData() throws OpenDataException {
+		if (total == 0 || throwable == null) {
 			return null;
 		}
+		return CompositeDataBuilder.builder(marker.getName())
+				.add("ExceptionMarker", SimpleType.STRING, marker.getName())
+				.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
+				.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
+				.add("CauseObject", SimpleType.STRING, getCauseObject())
+				.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
+				.add("Total", SimpleType.INTEGER, total)
+				.build();
 	}
 
 	public static Accumulator accumulator() {
@@ -141,20 +138,17 @@ public final class LastExceptionCounter {
 			return total;
 		}
 
-		public CompositeData compositeData() {
-			if (total == 0 || throwable == null)
-				return null;
-			try {
-				return CompositeDataBuilder.builder(COMPOSITE_DATE_NAME)
-						.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-						.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), MBeanFormat.formatException(throwable))
-						.add("CauseObject", SimpleType.STRING, getCauseObject())
-						.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
-						.add("Total", SimpleType.INTEGER, total)
-						.build();
-			} catch (OpenDataException e) {
+		public CompositeData compositeData() throws OpenDataException {
+			if (total == 0 || throwable == null) {
 				return null;
 			}
+			return CompositeDataBuilder.builder(COMPOSITE_DATE_NAME)
+					.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
+					.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), MBeanFormat.formatException(throwable))
+					.add("CauseObject", SimpleType.STRING, causeObject != null ? causeObject.toString() : "")
+					.add("Timestamp", SimpleType.STRING, MBeanFormat.formatPeriodAgo(timestamp))
+					.add("Total", SimpleType.INTEGER, total)
+					.build();
 		}
 	}
 }

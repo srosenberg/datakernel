@@ -352,7 +352,7 @@ public class NioEventloopJmxStatsManager implements NioEventloopJmxStatsManagerM
 	}
 
 	@Override
-	public CompositeData[] getExceptionStats_SevereExceptionsDetails() {
+	public CompositeData[] getExceptionStats_SevereExceptionsDetails() throws OpenDataException {
 		Map<Class<? extends Throwable>, LastExceptionCounter.Accumulator> severeExceptionCounters =
 				collectAllStats().getSevereExceptionCounters();
 		List<CompositeData> compositeDataList = new ArrayList<>();

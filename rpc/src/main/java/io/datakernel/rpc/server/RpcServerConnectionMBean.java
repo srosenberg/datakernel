@@ -36,7 +36,7 @@ public interface RpcServerConnectionMBean {
 
 	String getTimeExecutionMillis();
 
-	CompositeData getLastResponseException();
+	CompositeData getLastResponseException() throws OpenDataException;
 
-	CompositeData getLastInternalException();
+	CompositeData getLastInternalException() throws OpenDataException;
 }
