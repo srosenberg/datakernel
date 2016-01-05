@@ -25,26 +25,27 @@ import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.DELETE;
 import static io.datakernel.http.HttpMethod.PUT;
-import static io.datakernel.uikernel.Utils.decodeUtf8Query;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
 
 /**
- * Rest API for UiKernel Module
+ * Rest API for UiKernel Tables
  */
-@SuppressWarnings("unused")
 public class UiKernelServlets {
-	public static final ContentType JSON_UTF8 = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
+	public static final ContentType DEFAULT_CONTENT_TYPE_ENCODING = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
+	private static final int BAD_REQUEST = 400;
+	private static final String ID_PARAMETER_NAME = "id";
 
-	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel model, Gson gson) {
+	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
-		main.get("/", read(model, gson));
-		main.get("/:id", get(model, gson));
-		main.post("/", create(model, gson));
-		main.use("/", PUT, update(model, gson));
-		main.use("/:id", DELETE, delete(model, gson));
+		main.post(create(model, gson));
+		main.get(read(model, gson));
+		main.use(PUT, update(model, gson));
+		main.use("/:" + ID_PARAMETER_NAME, DELETE, delete(model, gson));
+		main.get("/:" + ID_PARAMETER_NAME, get(model, gson));
 		return main;
 	}
 
@@ -53,24 +54,24 @@ public class UiKernelServlets {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String query = decodeUtf8Query(req.getUrl().getQuery());
-					ReadSettings settings = ReadSettings.parse(gson, query);
+					Map<String, String> parameters = req.getParameters();
+					ReadSettings settings = ReadSettings.parse(gson, parameters);
 					model.read(settings, new ResultCallback<ReadResponse<K, R>>() {
 						@Override
 						public void onResult(ReadResponse<K, R> response) {
 							JsonObject json = response.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.setContentType(DEFAULT_CONTENT_TYPE_ENCODING)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(404));
+							callback.onResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.onResult(HttpResponse.create(400));
+					callback.onResult(HttpResponse.create(BAD_REQUEST));
 				}
 			}
 		};
@@ -81,25 +82,25 @@ public class UiKernelServlets {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String query = decodeUtf8Query(req.getUrl().getQuery());
-					ReadSettings settings = ReadSettings.parse(gson, query);
-					K id = gson.fromJson(req.getUrlParameter("id"), model.getIdType());
+					Map<String, String> parameters = req.getParameters();
+					ReadSettings settings = ReadSettings.parse(gson, parameters);
+					K id = gson.fromJson(req.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
 					model.read(id, settings, new ResultCallback<R>() {
 						@Override
 						public void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
 							callback.onResult(HttpResponse.create()
-//									.setContentType(JSON_UTF8)
+									.setContentType(DEFAULT_CONTENT_TYPE_ENCODING)
 									.body(ByteBufStrings.wrapUTF8(json)));
 						}
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(404));
+							callback.onResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (NumberFormatException e) {
-					callback.onResult(HttpResponse.create(400));
+					callback.onResult(HttpResponse.create(BAD_REQUEST));
 				}
 			}
 		};
@@ -117,18 +118,18 @@ public class UiKernelServlets {
 						public void onResult(CreateResponse<K> response) {
 							JsonObject json = response.toJson(gson, model.getIdType());
 							HttpResponse res = HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.setContentType(DEFAULT_CONTENT_TYPE_ENCODING)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json)));
 							callback.onResult(res);
 						}
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(404));
+							callback.onResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.onResult(HttpResponse.create(400));
+					callback.onResult(HttpResponse.create(BAD_REQUEST));
 				}
 			}
 		};
@@ -146,17 +147,17 @@ public class UiKernelServlets {
 						public void onResult(UpdateResponse<K, R> result) {
 							JsonObject json = result.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.setContentType(DEFAULT_CONTENT_TYPE_ENCODING)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(404));
+							callback.onResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.onResult(HttpResponse.create(400));
+					callback.onResult(HttpResponse.create(BAD_REQUEST));
 				}
 			}
 		};
@@ -173,20 +174,20 @@ public class UiKernelServlets {
 						public void onResult(DeleteResponse response) {
 							HttpResponse res = HttpResponse.create();
 							if (response.hasErrors()) {
-								String json = gson.toJson(response.getErrors());
-								res.setContentType(JSON_UTF8)
-										.body(ByteBufStrings.wrapUTF8(json));
+								JsonObject json = response.toJson(gson);
+								res.setContentType(DEFAULT_CONTENT_TYPE_ENCODING)
+										.body(ByteBufStrings.wrapUTF8(gson.toJson(json)));
 							}
 							callback.onResult(res);
 						}
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(404));
+							callback.onResult(HttpResponse.notFound404());
 						}
 					});
 				} catch (Exception e) {
-					callback.onResult(HttpResponse.create(400));
+					callback.onResult(HttpResponse.create(BAD_REQUEST));
 				}
 			}
 		};

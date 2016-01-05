@@ -17,21 +17,60 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.util.*;
 
 public final class ReadSettings {
+	public enum SortOrder {
+		ASC, DESC
+	}
+
 	private List<String> fields = new ArrayList<>();
 	private int offset = 0;
 	private int limit = Integer.MAX_VALUE;
-	private Map<String, String> filters = new HashMap<>(); // TODO (arashev): use LinkedHashMap
-	private Map<String, String> sort = new HashMap<>(); // TODO (arashev): use LinkedHashMap, replace with ASC/DESC enum
-	private Set<Integer> extra = new HashSet<>(); // TODO (arashev): use LinkedHashSet
+	private Map<String, String> filters = new LinkedHashMap<>();
+	private Map<String, SortOrder> sort = new LinkedHashMap<>();
+	private Set<Integer> extra = new LinkedHashSet<>();
 
-	// TODO (arashev): write unit tests with UTF8 strings containing '&' and ',' characters, fix escaping
-	public static ReadSettings parse(Gson gson, String json) {
-		json = "{" + json.replace("&", ",") + "}";
-		return gson.fromJson(json, ReadSettings.class);
+	public static ReadSettings parse(Gson gson, Map<String, String> parameters) {
+		ReadSettings readSettings = new ReadSettings();
+
+		String fields = parameters.get("fields");
+		if (fields != null && !fields.isEmpty()) {
+			readSettings.fields = gson.fromJson(fields, new TypeToken<List<String>>() {}.getType());
+		}
+
+		String offset = parameters.get("offset");
+		if (offset != null && !offset.isEmpty()) {
+			readSettings.offset = Integer.valueOf(offset);
+		}
+
+		String limit = parameters.get("limit");
+		if (limit != null && !limit.isEmpty()) {
+			readSettings.limit = Integer.valueOf(limit);
+		}
+
+		String filters = parameters.get("filters");
+		if (filters != null && !filters.isEmpty()) {
+			readSettings.filters = gson.fromJson(filters, new TypeToken<Map<String, String>>() {}.getType());
+		}
+
+		String sort = parameters.get("sort");
+		if (sort != null && !sort.isEmpty()) {
+			List<List<String>> list = gson.fromJson(sort, new TypeToken<List<List<String>>>() {}.getType());
+			for (List<String> el : list) {
+				SortOrder order = el.get(1).equals("asc") ? SortOrder.ASC : SortOrder.DESC;
+				readSettings.sort.put(el.get(0), order);
+			}
+		}
+
+		String extra = parameters.get("extra");
+		if (extra != null && !extra.isEmpty()) {
+			readSettings.extra = gson.fromJson(extra, new TypeToken<Set<String>>() {}.getType());
+		}
+
+		return readSettings;
 	}
 
 	public List<String> getFields() {
@@ -66,11 +105,11 @@ public final class ReadSettings {
 		this.filters = filters;
 	}
 
-	public Map<String, String> getSort() {
+	public Map<String, SortOrder> getSort() {
 		return sort;
 	}
 
-	public void setSort(Map<String, String> sort) {
+	public void setSort(Map<String, SortOrder> sort) {
 		this.sort = sort;
 	}
 
@@ -80,5 +119,17 @@ public final class ReadSettings {
 
 	public void setExtra(Set<Integer> extra) {
 		this.extra = extra;
+	}
+
+	@Override
+	public String toString() {
+		return "ReadSettings{" +
+				"fields=" + fields +
+				", offset=" + offset +
+				", limit=" + limit +
+				", filters=" + filters +
+				", sort=" + sort +
+				", extra=" + extra +
+				'}';
 	}
 }

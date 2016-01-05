@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 
@@ -59,7 +59,7 @@ public final class StaticServletForResources extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(final String name, final ForwardingResultCallback<ByteBuf> callback) {
+	protected final void doServeAsync(final String name, final ResultCallback<ByteBuf> callback) {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes == ERROR_BYTES) {

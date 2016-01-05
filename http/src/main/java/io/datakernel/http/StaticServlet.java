@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -35,14 +34,23 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		if (pos != -1) {
 			path = path.substring(pos + 1);
 		}
-		ContentType type = ContentType.of(MediaType.getByExt(path));
-		if (type.getMediaType().isText()) {
-			type = type.setCharset(DEFAULT_TXT_ENCODING);
+
+		ContentType contentType;
+		MediaType mime = MediaType.getByExt(path);
+		if (mime == null) {
+			mime = MediaType.OCTET_STREAM;
 		}
-		return type == null ? ContentType.of(MediaType.ANY) : type;
+
+		if (mime.isText()) {
+			contentType = ContentType.of(mime, DEFAULT_TXT_ENCODING);
+		} else {
+			contentType = ContentType.of(mime);
+		}
+
+		return contentType;
 	}
 
-	protected abstract void doServeAsync(String name, ForwardingResultCallback<ByteBuf> callback);
+	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
 
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.create(200)
@@ -59,12 +67,16 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			assert path.charAt(0) == '/';
 			path = path.substring(1); // removing initial '/'
 		}
-		final ContentType type = getContentType(path);
 		final String finalPath = path;
-		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
+		doServeAsync(path, new ResultCallback<ByteBuf>() {
 			@Override
 			public void onResult(ByteBuf buf) {
 				callback.onResult(createHttpResponse(buf, finalPath));
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+				callback.onResult(HttpResponse.notFound404());
 			}
 		});
 	}

@@ -27,7 +27,7 @@ public interface GridModel<K, R extends AbstractRecord<K>> {
 
 	void read(ReadSettings settings, ResultCallback<ReadResponse<K, R>> callback);
 
-	void update(List<R> records, ResultCallback<UpdateResponse<K, R>> callback);
+	void update(List<R> changes, ResultCallback<UpdateResponse<K, R>> callback);
 
 	void delete(K id, ResultCallback<DeleteResponse> callback);
 
