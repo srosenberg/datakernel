@@ -34,7 +34,7 @@ public final class DeleteResponse {
 		this.errors = checkNotNull(errors, "Errors in DeleteResponse cannot be null;");
 	}
 
-	public static DeleteResponse of() {
+	public static DeleteResponse ok() {
 		return OK;
 	}
 

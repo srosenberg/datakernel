@@ -17,108 +17,139 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.util.*;
 
-public final class ReadSettings {
+import static io.datakernel.util.ByteBufStrings.decodeDecimal;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
+
+@SuppressWarnings("unused")
+public final class ReadSettings<K> {
 	public enum SortOrder {
-		ASC, DESC
+		ASCENDING, DESCENDING
 	}
 
-	private List<String> fields = new ArrayList<>();
-	private int offset = 0;
-	private int limit = Integer.MAX_VALUE;
-	private Map<String, String> filters = new LinkedHashMap<>();
-	private Map<String, SortOrder> sort = new LinkedHashMap<>();
-	private Set<Integer> extra = new LinkedHashSet<>();
+	private static final int DEFAULT_OFFSET = 0;
+	private static final int DEFAULT_LIMIT = Integer.MAX_VALUE;
+	private static final Type LIST_STRING_TYPE_TOKEN = new TypeToken<List<String>>() {}.getType();
+	private static final Type MAP_STRING_STRING_TYPE_TOKEN = new TypeToken<LinkedHashMap<String, String>>() {}.getType();
 
-	public static ReadSettings parse(Gson gson, Map<String, String> parameters) {
-		ReadSettings readSettings = new ReadSettings();
+	private final List<String> fields;
+	private final int offset;
+	private final int limit;
+	private final Map<String, String> filters;
+	private final Map<String, SortOrder> sort;
+	private final Set<K> extra;
 
-		String fields = parameters.get("fields");
-		if (fields != null && !fields.isEmpty()) {
-			readSettings.fields = gson.fromJson(fields, new TypeToken<List<String>>() {}.getType());
+	private ReadSettings(List<String> fields,
+	                     int offset,
+	                     int limit,
+	                     Map<String, String> filters,
+	                     Map<String, SortOrder> sort,
+	                     Set<K> extra) {
+		this.fields = fields;
+		this.offset = offset;
+		this.limit = limit;
+		this.filters = filters;
+		this.sort = sort;
+		this.extra = extra;
+	}
+
+	public static <K> ReadSettings<K> of(Gson gson, Map<String, String> parameters) {
+
+		String fieldsParameter = parameters.get("fields");
+		List<String> fields;
+		if (fieldsParameter != null && !fieldsParameter.isEmpty()) {
+			fields = gson.fromJson(fieldsParameter, LIST_STRING_TYPE_TOKEN);
+		} else {
+			fields = Collections.emptyList();
 		}
 
-		String offset = parameters.get("offset");
-		if (offset != null && !offset.isEmpty()) {
-			readSettings.offset = Integer.valueOf(offset);
+		String offsetParameter = parameters.get("offset");
+		int offset = DEFAULT_OFFSET;
+		if (offsetParameter != null && !offsetParameter.isEmpty()) {
+			offset = decodeDecimal(encodeAscii(offsetParameter), 0, offsetParameter.length());
 		}
 
-		String limit = parameters.get("limit");
-		if (limit != null && !limit.isEmpty()) {
-			readSettings.limit = Integer.valueOf(limit);
+		String limitParameter = parameters.get("limit");
+		int limit = DEFAULT_LIMIT;
+		if (limitParameter != null && !limitParameter.isEmpty()) {
+			limit = decodeDecimal(encodeAscii(limitParameter), 0, limitParameter.length());
 		}
 
-		String filters = parameters.get("filters");
-		if (filters != null && !filters.isEmpty()) {
-			readSettings.filters = gson.fromJson(filters, new TypeToken<Map<String, String>>() {}.getType());
+		String filtersParameter = parameters.get("filters");
+		Map<String, String> filters;
+		if (filtersParameter != null && !filtersParameter.isEmpty()) {
+			filters = gson.fromJson(filtersParameter, MAP_STRING_STRING_TYPE_TOKEN);
+			filters = Collections.unmodifiableMap(filters);
+		} else {
+			filters = Collections.emptyMap();
 		}
 
-		String sort = parameters.get("sort");
-		if (sort != null && !sort.isEmpty()) {
-			List<List<String>> list = gson.fromJson(sort, new TypeToken<List<List<String>>>() {}.getType());
-			for (List<String> el : list) {
-				SortOrder order = el.get(1).equals("asc") ? SortOrder.ASC : SortOrder.DESC;
-				readSettings.sort.put(el.get(0), order);
+		String sortParameter = parameters.get("sort");
+		Map<String, SortOrder> sort;
+		if (sortParameter != null && !sortParameter.isEmpty()) {
+			sort = new LinkedHashMap<>();
+			JsonArray array = gson.fromJson(sortParameter, JsonArray.class);
+			String key;
+			SortOrder value;
+			for (JsonElement element : array) {
+				JsonArray arr = element.getAsJsonArray();
+				key = arr.get(0).getAsString();
+				value = gson.fromJson(arr.get(1), SortOrder.class);
+				sort.put(key, value);
 			}
+			sort = Collections.unmodifiableMap(sort);
+		} else {
+			sort = Collections.emptyMap();
 		}
 
-		String extra = parameters.get("extra");
-		if (extra != null && !extra.isEmpty()) {
-			readSettings.extra = gson.fromJson(extra, new TypeToken<Set<String>>() {}.getType());
+		String extraParameter = parameters.get("extra");
+		Set<K> extra;
+		if (extraParameter != null && !extraParameter.isEmpty()) {
+			extra = gson.fromJson(extraParameter, new TypeToken<LinkedHashSet<K>>() {}.getType());
+		} else {
+			extra = Collections.emptySet();
 		}
 
-		return readSettings;
+		return new ReadSettings<>(fields, offset, limit, filters, sort, extra);
+	}
+
+	public static <K> ReadSettings<K> of(List<String> fields,
+	                                     int offset,
+	                                     int limit,
+	                                     Map<String, String> filters,
+	                                     Map<String, SortOrder> sort,
+	                                     Set<K> extra) {
+		return new ReadSettings<>(fields, offset, limit, filters, sort, extra);
 	}
 
 	public List<String> getFields() {
 		return fields;
 	}
 
-	public void setFields(List<String> fields) {
-		this.fields = fields;
-	}
-
 	public int getOffset() {
 		return offset;
-	}
-
-	public void setOffset(int offset) {
-		this.offset = offset;
 	}
 
 	public int getLimit() {
 		return limit;
 	}
 
-	public void setLimit(int limit) {
-		this.limit = limit;
-	}
-
 	public Map<String, String> getFilters() {
 		return filters;
-	}
-
-	public void setFilters(Map<String, String> filters) {
-		this.filters = filters;
 	}
 
 	public Map<String, SortOrder> getSort() {
 		return sort;
 	}
 
-	public void setSort(Map<String, SortOrder> sort) {
-		this.sort = sort;
-	}
-
-	public Set<Integer> getExtra() {
+	public Set<K> getExtra() {
 		return extra;
-	}
-
-	public void setExtra(Set<Integer> extra) {
-		this.extra = extra;
 	}
 
 	@Override

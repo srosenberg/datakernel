@@ -31,10 +31,9 @@ public class ReadSettingsTest {
 				"&limit=10" +
 				"&filters=%7B%22search%22%3A%22A%22%2C%22age%22%3A%225%22%2C%22gender%22%3A%22FEMALE%22%7D" +
 				"&extra=%5B%5D";
-
 		HttpRequest req = HttpRequest.get("http://127.0.0.1/?" + query);
 		Gson gson = new Gson();
-		ReadSettings settings = ReadSettings.parse(gson, req.getParameters());
+		ReadSettings settings = ReadSettings.of(gson, req.getParameters());
 		assertTrue(settings.getExtra().isEmpty());
 		assertEquals(10, settings.getLimit());
 		assertEquals("A", settings.getFilters().get("search"));
@@ -52,7 +51,7 @@ public class ReadSettingsTest {
 
 		HttpRequest req = HttpRequest.get("http://127.0.0.1/?" + query);
 		Gson gson = new Gson();
-		ReadSettings settings = ReadSettings.parse(gson, req.getParameters());
+		ReadSettings settings = ReadSettings.of(gson, req.getParameters());
 		assertEquals("Арт&уሴр", settings.getFilters().get("name"));
 	}
 }

@@ -23,8 +23,8 @@ import com.google.gson.JsonElement;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Utils {
-	public static <K, R extends AbstractRecord<K>> List<R> deserializeUpdateRequest(Gson gson, String json, Class<R> type, Class<K> idType) {
+class Utils {
+	static <K, R extends AbstractRecord<K>> List<R> deserializeUpdateRequest(Gson gson, String json, Class<R> type, Class<K> idType) {
 		List<R> result = new ArrayList<>();
 		JsonArray root = gson.fromJson(json, JsonArray.class);
 		for (JsonElement element : root) {
@@ -37,7 +37,7 @@ public class Utils {
 		return result;
 	}
 
-	public static <E> E checkNotNull(E object, String msg) {
+	static <E> E checkNotNull(E object, String msg) {
 		if (object == null)
 			throw new NullPointerException(msg);
 		return object;

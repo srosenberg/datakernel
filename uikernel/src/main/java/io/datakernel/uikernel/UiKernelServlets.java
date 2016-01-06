@@ -35,7 +35,7 @@ import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
  * Rest API for UiKernel Tables
  */
 public class UiKernelServlets {
-	public static final ContentType DEFAULT_CONTENT_TYPE_ENCODING = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
+	private static final ContentType DEFAULT_CONTENT_TYPE_ENCODING = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
 	private static final int BAD_REQUEST = 400;
 	private static final String ID_PARAMETER_NAME = "id";
 
@@ -55,7 +55,7 @@ public class UiKernelServlets {
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					Map<String, String> parameters = req.getParameters();
-					ReadSettings settings = ReadSettings.parse(gson, parameters);
+					ReadSettings<K> settings = ReadSettings.of(gson, parameters);
 					model.read(settings, new ResultCallback<ReadResponse<K, R>>() {
 						@Override
 						public void onResult(ReadResponse<K, R> response) {
@@ -83,7 +83,7 @@ public class UiKernelServlets {
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					Map<String, String> parameters = req.getParameters();
-					ReadSettings settings = ReadSettings.parse(gson, parameters);
+					ReadSettings<K> settings = ReadSettings.of(gson, parameters);
 					K id = gson.fromJson(req.getUrlParameter(ID_PARAMETER_NAME), model.getIdType());
 					model.read(id, settings, new ResultCallback<R>() {
 						@Override
