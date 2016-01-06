@@ -36,7 +36,7 @@ import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
  */
 @SuppressWarnings("unused")
 public class UiKernelServlets {
-	public static final ContentType JSON_UTF8 = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
+	public static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, Charset.forName("UTF-8"));
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel model, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();

@@ -73,7 +73,7 @@ public final class HttpUtils {
 	 * @param request received request
 	 */
 	public static InetAddress getRealIp(HttpRequest request) {
-		String s = request.getHeaderString(HttpHeader.X_FORWARDED_FOR);
+		String s = request.getHeaderString(HttpHeaders.X_FORWARDED_FOR);
 		if (!isNullOrEmpty(s)) {
 			String clientIP = splitComma.split(s).iterator().next();
 			try {
@@ -85,7 +85,7 @@ public final class HttpUtils {
 	}
 
 	public static InetAddress getRealIpNginx(HttpRequest request) {
-		String s = request.getHeaderString(HttpHeader.X_REAL_IP);
+		String s = request.getHeaderString(HttpHeaders.X_REAL_IP);
 		if (!isNullOrEmpty(s))
 			return InetAddresses.forString(s.trim());
 
@@ -123,7 +123,7 @@ public final class HttpUtils {
 	 * @return the list of cookies
 	 */
 	public static List<HttpCookie> getCookies(HttpRequest request) {
-		String header = request.getHeaderString(HttpHeader.COOKIE);
+		String header = request.getHeaderString(HttpHeaders.COOKIE);
 		return parseClientCookies(header);
 	}
 
@@ -237,7 +237,7 @@ public final class HttpUtils {
 	 * @param request Http request with header host
 	 */
 	public static String getHost(HttpRequest request) {
-		String host = request.getHeaderString(HttpHeader.HOST);
+		String host = request.getHeaderString(HttpHeaders.HOST);
 		if ((host == null) || host.isEmpty())
 			throw new IllegalArgumentException("Absent header host in " + request);
 		return host;

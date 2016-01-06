@@ -19,10 +19,12 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.http.HttpUtils.parseQ;
+import static io.datakernel.http.MediaTypes.JSON;
 import static io.datakernel.util.ByteBufStrings.*;
 import static java.nio.charset.Charset.forName;
 import static org.junit.Assert.assertEquals;
@@ -33,15 +35,15 @@ public class ContentTypeTest {
 	public void testMediaType() {
 		byte[] mediaType = encodeAscii("application/json");
 		int hash = hashCodeLowerCaseAscii(mediaType);
-		MediaType actual = MediaType.parse(mediaType, 0, mediaType.length, hash);
-		assertTrue(MediaType.JSON == actual);
+		MediaType actual = MediaTypes.parse(mediaType, 0, mediaType.length, hash);
+		assertTrue(JSON == actual);
 	}
 
 	@Test
 	public void testContentTypeParse() {
 		byte[] contentType = encodeAscii("text/plain;param=value; url-form=www;CHARSET=UTF-8; a=v");
-		ContentType actual = ContentType.parse(contentType, 0, contentType.length);
-		assertTrue(MediaType.PLAIN_TEXT == actual.getMediaType());
+		ContentType actual = ContentTypes.parse(contentType, 0, contentType.length);
+		assertTrue(MediaTypes.PLAIN_TEXT == actual.getMediaType());
 		assertTrue(forName("UTF-8") == actual.getCharset());
 	}
 
@@ -62,14 +64,14 @@ public class ContentTypeTest {
 		List<AcceptContentType> list = AcceptContentType.parse(acceptCts, 0, acceptCts.length);
 		assertEquals(5, list.size());
 		assertEquals(80, list.get(4).getQ());
-		assertTrue(MediaType.ANY == list.get(4).getMime());
+		assertTrue(MediaTypes.ANY == list.get(4).getMime());
 	}
 
 	@Test
 	public void testRenderMime() {
 		String expected = "application/json";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
-		MediaType.JSON.render(buf);
+		MediaTypes.render(JSON, buf);
 		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
@@ -79,8 +81,8 @@ public class ContentTypeTest {
 	public void testRenderContentType() {
 		String expected = "text/html; charset=utf-8";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
-		ContentType type = ContentType.of(MediaType.HTML, HttpCharset.UTF_8);
-		type.render(buf);
+		ContentType type = ContentType.of(MediaTypes.HTML, StandardCharsets.UTF_8);
+		ContentTypes.render(type, buf);
 		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
@@ -91,11 +93,11 @@ public class ContentTypeTest {
 		String expected = "text/html, application/xhtml+xml, application/xml; q=0.9, image/webp, */*; q=0.8";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
 		List<AcceptContentType> acts = new ArrayList<>();
-		acts.add(AcceptContentType.of(MediaType.HTML));
-		acts.add(AcceptContentType.of(MediaType.XHTML_APP));
-		acts.add(AcceptContentType.of(MediaType.XML_APP, 90));
-		acts.add(AcceptContentType.of(MediaType.WEBP));
-		acts.add(AcceptContentType.of(MediaType.ANY, 80));
+		acts.add(AcceptContentType.of(MediaTypes.HTML));
+		acts.add(AcceptContentType.of(MediaTypes.XHTML_APP));
+		acts.add(AcceptContentType.of(MediaTypes.XML_APP, 90));
+		acts.add(AcceptContentType.of(MediaTypes.WEBP));
+		acts.add(AcceptContentType.of(MediaTypes.ANY, 80));
 		AcceptContentType.render(acts, buf);
 		buf.flip();
 		String actual = decodeAscii(buf);

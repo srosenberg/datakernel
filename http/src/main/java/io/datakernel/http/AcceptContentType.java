@@ -72,7 +72,7 @@ public final class AcceptContentType {
 				lowerCaseHashCode = lowerCaseHashCode * 31 + b;
 				pos++;
 			}
-			MediaType mime = MediaType.parse(bytes, start, pos - start, lowerCaseHashCode);
+			MediaType mime = MediaTypes.parse(bytes, start, pos - start, lowerCaseHashCode);
 
 			if (pos < end && bytes[pos] == ',') {
 				pos++;
@@ -110,31 +110,31 @@ public final class AcceptContentType {
 		buf.position(pos);
 	}
 
-	static int render(List<AcceptContentType> types, byte[] bytes, int pos) {
+	static int render(List<AcceptContentType> types, byte[] container, int pos) {
 		for (int i = 0; i < types.size(); i++) {
 			AcceptContentType type = types.get(i);
-			pos += type.mime.render(bytes, pos);
+			pos += MediaTypes.render(type.mime, container, pos);
 			if (type.q != DEFAULT_Q) {
-				bytes[pos++] = ';';
-				bytes[pos++] = ' ';
-				bytes[pos++] = 'q';
-				bytes[pos++] = '=';
-				bytes[pos++] = '0';
-				bytes[pos++] = '.';
+				container[pos++] = ';';
+				container[pos++] = ' ';
+				container[pos++] = 'q';
+				container[pos++] = '=';
+				container[pos++] = '0';
+				container[pos++] = '.';
 				int q = type.q;
 				if (q % 10 == 0) q /= 10;
-				pos += ByteBufStrings.encodeDecimal(bytes, pos, q);
+				pos += ByteBufStrings.encodeDecimal(container, pos, q);
 			}
 			if (i < types.size() - 1) {
-				bytes[pos++] = ',';
-				bytes[pos++] = ' ';
+				container[pos++] = ',';
+				container[pos++] = ' ';
 			}
 		}
 		return pos;
 	}
 
 	int estimateSize() {
-		return mime.estimateSize() + 10;
+		return mime.size() + 10;
 	}
 
 	public int getQ() {

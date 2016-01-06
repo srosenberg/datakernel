@@ -23,12 +23,12 @@ import java.net.InetAddress;
 import java.util.*;
 
 import static com.google.common.base.Strings.nullToEmpty;
-import static io.datakernel.http.HttpHeader.*;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**
- * Represent the HTTP request which {@link HttpClientAsync} send to {@link AsyncHttpServer}. It must have only one owner in
+ * Represent the HTTP request which {@link AsyncHttpClient} send to {@link AsyncHttpServer}. It must have only one owner in
  * each  part of time. After creating in server {@link HttpResponse} it will be recycled and you can not
  * use it later.
  */
@@ -88,45 +88,39 @@ public final class HttpRequest extends HttpMessage {
 
 	public HttpRequest setAccept(List<AcceptContentType> value) {
 		assert !recycled;
-		addHeader(ofAcceptContentTypes(HttpHeader.ACCEPT, value));
+		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
 		return this;
 	}
 
-	public HttpRequest setAcceptCharset(AcceptCharset... values) {
+	public HttpRequest setAcceptCharsets(AcceptCharset... values) {
 		return setAcceptCharsets(Arrays.asList(values));
 	}
 
 	public HttpRequest setAcceptCharsets(List<AcceptCharset> values) {
 		assert !recycled;
-		addHeader(ofCharsets(HttpHeader.ACCEPT_CHARSET, values));
+		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
 		return this;
 	}
 
-	public HttpRequest cookie(HttpCookie... cookie) {
-		return cookie(Arrays.asList(cookie));
+	public HttpRequest setClientCookies(HttpCookie... cookie) {
+		return setClientCookies(Arrays.asList(cookie));
 	}
 
-	public HttpRequest cookie(List<HttpCookie> cookies) {
+	public HttpRequest setClientCookies(List<HttpCookie> cookies) {
 		assert !recycled;
 		addHeader(ofCookies(COOKIE, cookies));
 		return this;
 	}
 
-	public HttpRequest setContentLength(int value) {
-		assert !recycled;
-		setHeader(ofDecimal(CONTENT_LENGTH, value));
-		return this;
-	}
-
 	public HttpRequest setContentType(ContentType value) {
 		assert !recycled;
-		setHeader(ofContentType(HttpHeader.CONTENT_TYPE, value));
+		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, value));
 		return this;
 	}
 
 	public HttpRequest setDate(Date value) {
 		assert !recycled;
-		setHeader(ofDate(HttpHeader.DATE, value));
+		setHeader(ofDate(HttpHeaders.DATE, value));
 		return this;
 	}
 
@@ -146,7 +140,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		this.url = url;
 		if (!url.isPartial()) {
-			setHeader(HttpHeader.HOST, url.getHostAndPort());
+			setHeader(HttpHeaders.HOST, url.getHostAndPort());
 		}
 		return this;
 	}
@@ -300,7 +294,7 @@ public final class HttpRequest extends HttpMessage {
 	ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			setHeader(HttpHeader.ofDecimal(HttpHeader.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
@@ -322,7 +316,7 @@ public final class HttpRequest extends HttpMessage {
 
 	@Override
 	public String toString() {
-		String host = nullToEmpty(getHeaderString(HttpHeader.HOST));
+		String host = nullToEmpty(getHeaderString(HttpHeaders.HOST));
 		if (url == null)
 			return host;
 		return host + url.getPathAndQuery();

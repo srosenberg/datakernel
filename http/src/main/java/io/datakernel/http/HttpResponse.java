@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static io.datakernel.http.HttpHeader.*;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.putDecimal;
 
@@ -52,7 +52,7 @@ public final class HttpResponse extends HttpMessage {
 
 	public static HttpResponse redirect302(String url) {
 		return create(302)
-				.header(HttpHeader.LOCATION, url);
+				.header(HttpHeaders.LOCATION, url);
 	}
 
 	public static HttpResponse notFound404() {
@@ -94,9 +94,9 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	// specific builder methods
-	private static final Value CACHE_CONTROL__NO_STORE = HttpHeader.asBytes(CACHE_CONTROL, "no-store");
-	private static final Value PRAGMA__NO_CACHE = HttpHeader.asBytes(PRAGMA, "no-cache");
-	private static final Value AGE__0 = HttpHeader.asBytes(AGE, "0");
+	private static final Value CACHE_CONTROL__NO_STORE = HttpHeaders.asBytes(CACHE_CONTROL, "no-store");
+	private static final Value PRAGMA__NO_CACHE = HttpHeaders.asBytes(PRAGMA, "no-cache");
+	private static final Value AGE__0 = HttpHeaders.asBytes(AGE, "0");
 
 	public HttpResponse noCache() {
 		assert !recycled;
@@ -112,39 +112,33 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse setContentLength(int value) {
-		assert !recycled;
-		setHeader(ofDecimal(CONTENT_LENGTH, value));
-		return this;
-	}
-
 	public HttpResponse setContentType(ContentType value) {
 		assert !recycled;
-		setHeader(ofContentType(HttpHeader.CONTENT_TYPE, value));
+		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, value));
 		return this;
 	}
 
 	public HttpResponse setDate(Date value) {
 		assert !recycled;
-		setHeader(ofDate(HttpHeader.DATE, value));
+		setHeader(ofDate(HttpHeaders.DATE, value));
 		return this;
 	}
 
 	public HttpResponse setExpires(Date value) {
 		assert !recycled;
-		setHeader(ofDate(HttpHeader.EXPIRES, value));
+		setHeader(ofDate(HttpHeaders.EXPIRES, value));
 		return this;
 	}
 
 	public HttpResponse setLastModified(Date value) {
 		assert !recycled;
-		setHeader(ofDate(HttpHeader.LAST_MODIFIED, value));
+		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, value));
 		return this;
 	}
 
-	public HttpResponse setCookie(List<HttpCookie> values) {
+	public HttpResponse setServerCookie(List<HttpCookie> values) {
 		assert !recycled;
-		addHeader(ofSetCookies(HttpHeader.SET_COOKIE, values));
+		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, values));
 		return this;
 	}
 
@@ -156,7 +150,7 @@ public final class HttpResponse extends HttpMessage {
 
 	public int getAge() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(AGE);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(AGE);
 		if (header != null)
 			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
 		return 0;
@@ -164,7 +158,7 @@ public final class HttpResponse extends HttpMessage {
 
 	public Date getExpires() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(EXPIRES);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(EXPIRES);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
@@ -172,7 +166,7 @@ public final class HttpResponse extends HttpMessage {
 
 	public Date getLastModified() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(LAST_MODIFIED);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(LAST_MODIFIED);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
@@ -266,7 +260,7 @@ public final class HttpResponse extends HttpMessage {
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
-		setHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
 		ByteBuf buf = ByteBufPool.allocate(estimateSize);
 

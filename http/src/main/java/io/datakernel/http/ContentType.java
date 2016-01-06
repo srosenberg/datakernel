@@ -16,124 +16,46 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
-
 import java.nio.charset.Charset;
 
-import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-
-@SuppressWarnings("unused")
 public final class ContentType {
-	private static final byte[] CHARSET_KEY = encodeAscii("charset");
+	final MediaType mime;
+	final HttpCharset charset;
 
-	private final MediaType type;
-	private HttpCharset charset;
-
-	private ContentType(MediaType type) {
-		this(type, null);
-	}
-
-	private ContentType(MediaType type, HttpCharset charset) {
-		this.type = type;
+	ContentType(MediaType mime, HttpCharset charset) {
+		this.mime = mime;
 		this.charset = charset;
 	}
 
-	public static ContentType of(MediaType type, Charset charset) {
-		return new ContentType(type, HttpCharset.toHttpCharset(charset));
+	public static ContentType of(MediaType mime) {
+		return new ContentType(mime, null);
 	}
 
-	static ContentType of(MediaType type, HttpCharset charset) {
-		return new ContentType(type, charset);
-	}
-
-	public static ContentType of(MediaType type) {
-		return new ContentType(type);
-	}
-
-	public ContentType setCharset(Charset charset) {
-		this.charset = HttpCharset.toHttpCharset(charset);
-		return this;
+	public static ContentType of(MediaType mime, Charset charset) {
+		return ContentTypes.lookup(mime, HttpCharset.of(charset));
 	}
 
 	public Charset getCharset() {
-		return charset.toJavaCharset();
+		return charset == null ? null : charset.toJavaCharset();
 	}
 
 	public MediaType getMediaType() {
-		return type;
+		return mime;
 	}
 
-	static ContentType parse(byte[] bytes, int pos, int length) {
-		// parsing media type
-		pos = skipSpaces(bytes, pos, length);
-		int start = pos;
-		int lowerCaseHashCode = 1;
-		int end = pos + length;
-		while (pos < end && bytes[pos] != ';') {
-			byte b = bytes[pos];
-			if (b >= 'A' && b <= 'Z') {
-				b += 'a' - 'A';
-			}
-			lowerCaseHashCode = lowerCaseHashCode * 31 + b;
-			pos++;
-		}
-		MediaType type = MediaType.parse(bytes, start, pos - start, lowerCaseHashCode);
-		pos++;
-
-		// parsing parameters if any (interested in 'charset' only)
-		HttpCharset charset = null;
-		if (pos < end) {
-			pos = skipSpaces(bytes, pos, length);
-			start = pos;
-			while (pos < end) {
-				if (bytes[pos] == '=' && ByteBufStrings.equalsLowerCaseAscii(CHARSET_KEY, bytes, start, pos - start)) {
-					pos++;
-					start = pos;
-					while (pos < end && bytes[pos] != ';') {
-						pos++;
-					}
-					charset = HttpCharset.parse(bytes, start, pos - start);
-				} else if (bytes[pos] == ';' && pos + 1 < end) {
-					start = skipSpaces(bytes, pos + 1, length);
-				}
-				pos++;
-			}
-		}
-		return ContentType.of(type, charset);
-	}
-
-	int render(byte[] container, int pos) {
-		pos += type.render(container, pos);
+	int size() {
+		int size = mime.size();
 		if (charset != null) {
-			container[pos++] = ';';
-			container[pos++] = ' ';
-			System.arraycopy(CHARSET_KEY, 0, container, pos, CHARSET_KEY.length);
-			pos += CHARSET_KEY.length;
-			container[pos++] = '=';
-			pos += charset.render(container, pos);
+			size += charset.size();
+			size += 10; // '; charset='
 		}
-		return pos;
-	}
-
-	void render(ByteBuf buf) {
-		int pos = render(buf.array(), buf.position());
-		buf.position(pos);
-	}
-
-	int estimateSize() {
-		int size = type.estimateSize();
-		if (charset != null) {
-			size += charset.estimateSize();
-		}
-		return size + 10;
+		return size;
 	}
 
 	@Override
 	public String toString() {
 		return "ContentType{" +
-				"type=" + type +
+				"type=" + mime +
 				", charset=" + charset +
 				'}';
 	}

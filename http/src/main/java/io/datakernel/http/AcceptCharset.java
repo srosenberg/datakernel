@@ -29,7 +29,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 public final class AcceptCharset {
 	private static final byte[] Q_KEY = encodeAscii("q");
-	private static final int DEFAULT_Q = 100;
+	public static final int DEFAULT_Q = 100;
 
 	private HttpCharset charset;
 	private int q;
@@ -43,20 +43,20 @@ public final class AcceptCharset {
 		this(charset, DEFAULT_Q);
 	}
 
-	public static AcceptCharset of(Charset charset, int q) {
-		return new AcceptCharset(HttpCharset.toHttpCharset(charset), q);
-	}
-
 	public static AcceptCharset of(Charset charset) {
-		return new AcceptCharset(HttpCharset.toHttpCharset(charset));
+		return new AcceptCharset(HttpCharset.of(charset));
 	}
 
-	private static AcceptCharset of(HttpCharset charset, int q) {
-		return new AcceptCharset(charset, q);
+	public static AcceptCharset of(Charset charset, int q) {
+		return new AcceptCharset(HttpCharset.of(charset), q);
 	}
 
 	private static AcceptCharset of(HttpCharset charset) {
 		return new AcceptCharset(charset);
+	}
+
+	private static AcceptCharset of(HttpCharset charset, int q) {
+		return new AcceptCharset(charset, q);
 	}
 
 	public Charset getCharset() {
@@ -124,7 +124,7 @@ public final class AcceptCharset {
 	static int render(List<AcceptCharset> charsets, byte[] bytes, int pos) {
 		for (int i = 0; i < charsets.size(); i++) {
 			AcceptCharset charset = charsets.get(i);
-			pos += charset.charset.render(bytes, pos);
+			pos += HttpCharset.render(charset.charset, bytes, pos);
 			if (charset.q != DEFAULT_Q) {
 				bytes[pos++] = ';';
 				bytes[pos++] = ' ';
@@ -145,7 +145,7 @@ public final class AcceptCharset {
 	}
 
 	int estimateSize() {
-		return charset.estimateSize() + 10;
+		return charset.size() + 10;
 	}
 
 	@Override
