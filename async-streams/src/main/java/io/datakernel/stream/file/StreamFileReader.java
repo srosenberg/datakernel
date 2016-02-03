@@ -231,6 +231,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		logger.error("{}: onError", this, e);
 	}
 
+	@Override
 	protected void doCleanup() {
 		if (asyncFile != null) {
 			logger.info("Closing file at path {}", path);

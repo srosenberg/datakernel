@@ -46,7 +46,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
 		this.asyncExecutor = asyncExecutor;
-		this.client = SimpleFsClient.createInstance(eventloop, serverAddress);
+		this.client = SimpleFsClient.newInstance(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")

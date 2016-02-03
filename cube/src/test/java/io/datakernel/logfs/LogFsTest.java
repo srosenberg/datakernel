@@ -257,23 +257,23 @@ public class LogFsTest {
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage, Path tmpStorage) {
-		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage, tmpStorage)
+		return SimpleFsServer.build(eventloop, executor, serverStorage, tmpStorage)
 				.setListenAddress(address)
 				.build();
 	}
 
 	private HashFsServer createServer(ServerInfo serverInfo, List<ServerInfo> servers, Path serverStorage) {
-		return HashFsServer.buildInstance(eventloop, executor, serverStorage, tmpPath, serverInfo, new HashSet<>(servers))
+		return HashFsServer.build(eventloop, executor, serverStorage, tmpPath, serverInfo, new HashSet<>(servers))
 				.build();
 	}
 
 	private HashFsClient createClient(List<ServerInfo> servers) {
-		return HashFsClient.buildInstance(eventloop, servers)
+		return HashFsClient.build(eventloop, servers)
 				.setMaxRetryAttempts(1)
 				.build();
 	}
 
 	private SimpleFsClient createClient(InetSocketAddress address) {
-		return SimpleFsClient.buildInstance(eventloop, address).build();
+		return SimpleFsClient.newInstance(eventloop, address);
 	}
 }

@@ -19,7 +19,6 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
@@ -153,8 +152,9 @@ public class CubeTest {
 
 	private EventloopService prepareServer(Eventloop eventloop, Path serverStorage, Path tmpStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, tmpStorage,
-				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
+		SimpleFsServer fileServer = SimpleFsServer.build(eventloop, executor, serverStorage, tmpStorage)
+				.setListenPort(LISTEN_PORT)
+				.build();
 
 		fileServer.start(new CompletionCallback() {
 			@Override

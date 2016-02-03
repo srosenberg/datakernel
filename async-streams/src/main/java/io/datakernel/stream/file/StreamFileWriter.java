@@ -149,7 +149,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.trace("Completed writing in file"); // TODO (arashev): add filename here and everywhere! make sure it works
+				logger.trace("Completed writing in file", asyncFile); // TODO (arashev): add filename here and everywhere! make sure it works
 
 				buf.recycle();
 				pendingAsyncOperation = false;
@@ -164,18 +164,17 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			public void onException(final Exception e) {
 				logger.error("Failed to write data in file", e);
 
-				// TODO (arashev): async op is not complete yet, since we have callback
-				pendingAsyncOperation = false;
 				buf.recycle();
 				doCleanup(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						// TODO (arashev): now it is complete, move it here and below
+						pendingAsyncOperation = false;
 						closeWithError(e);
 					}
 
 					@Override
 					public void onException(Exception ignored) {
+						pendingAsyncOperation = false;
 						closeWithError(e);
 					}
 				});
@@ -187,7 +186,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		// TODO (arashev): if we have error, why waiting for queue.isEmpty? close everything immediately. write tests.
 		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
 			doCleanup(new CompletionCallback() {
-
 				// TODO (arashev): what if asyncFile.writeFully fails? consider moving this directly into doCleanup
 				private void tryRemoveFile() {
 					if (removeFileOnException) {
@@ -203,6 +201,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				@Override
 				public void onComplete() {
 					tryRemoveFile();
+					if (flushCallback != null) {
+						flushCallback.onComplete();
+					}
 				}
 
 				@Override
@@ -252,8 +253,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			@Override
 			public void onResult(AsyncFile result) {
 				logger.trace("File {} is opened for writing!", path.getFileName());
-				pendingAsyncOperation = false;
 				asyncFile = result;
+				pendingAsyncOperation = false;
 				postFlush();
 			}
 
