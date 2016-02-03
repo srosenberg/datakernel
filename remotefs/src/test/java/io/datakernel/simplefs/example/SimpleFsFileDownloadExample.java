@@ -16,7 +16,9 @@
 
 package io.datakernel.simplefs.example;
 
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -51,8 +53,9 @@ public class SimpleFsFileDownloadExample {
 
 		SimpleFsClient client = SimpleFsClient.newInstance(eventloop, new InetSocketAddress(SERVER_PORT));
 
-		StreamFileWriter consumer =
+		final StreamFileWriter consumer =
 				StreamFileWriter.create(eventloop, executor, CLIENT_STORAGE.resolve(downloadedFile));
+		
 		consumer.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -65,7 +68,17 @@ public class SimpleFsFileDownloadExample {
 			}
 		});
 
-		client.download(requiredFile, consumer);
+		client.download(requiredFile, new ResultCallback<StreamProducerWithCounter>() {
+			@Override
+			public void onResult(StreamProducerWithCounter result) {
+				result.getOutput().streamTo(consumer);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 
 		eventloop.run();
 		executor.shutdown();

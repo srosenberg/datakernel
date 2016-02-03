@@ -17,17 +17,14 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.FsClient;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.Util;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,7 +34,7 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public class HashFsClient implements FsClient {
+public class HashFsClient extends FsClient {
 	public final static class Builder {
 		private final Eventloop eventloop;
 		private final HashFsClientProtocol.Builder protocolBuilder;
@@ -169,23 +166,17 @@ public class HashFsClient implements FsClient {
 	}
 
 	@Override
-	public void download(final String sourceFileName, final StreamConsumer<ByteBuf> consumer) {
-		download(sourceFileName, 0, consumer, AsyncCallbacks.<Long>ignoreResultCallback());
-	}
-
-	@Override
-	public void download(final String sourceFileName, final long startPosition, final StreamConsumer<ByteBuf> consumer,
-	                     final ResultCallback<Long> sizeCallback) {
+	public void download(final String sourceFileName, final long startPosition, final ResultCallback<StreamProducerWithCounter> callback) {
 		getAliveServers(new ResultCallback<List<ServerInfo>>() {
 			@Override
 			public void onResult(List<ServerInfo> result) {
 				List<ServerInfo> candidates = hashing.sortServers(sourceFileName, result);
-				download(sourceFileName, startPosition, 0, candidates, consumer, sizeCallback);
+				download(sourceFileName, startPosition, 0, candidates, callback);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+				callback.onException(e);
 			}
 		});
 	}
@@ -248,14 +239,13 @@ public class HashFsClient implements FsClient {
 	}
 
 	private void download(final String fileName, final long startPosition, final int currentAttempt,
-	                      final List<ServerInfo> candidates, final StreamConsumer<ByteBuf> consumer,
-	                      final ResultCallback<Long> sizeCallback) {
-		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+	                      final List<ServerInfo> candidates, final ResultCallback<StreamProducerWithCounter> callback) {
+
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server.getAddress(), fileName, startPosition, forwarder.getInput(), sizeCallback, new CompletionCallback() {
+		protocol.download(server.getAddress(), fileName, startPosition, new ResultCallback<StreamProducerWithCounter>() {
 			@Override
-			public void onComplete() {
-				forwarder.getOutput().streamTo(consumer);
+			public void onResult(StreamProducerWithCounter result) {
+				callback.onResult(result);
 			}
 
 			@Override
@@ -265,11 +255,11 @@ public class HashFsClient implements FsClient {
 					schedule(attempt, new Runnable() {
 						@Override
 						public void run() {
-							download(fileName, startPosition, attempt, candidates, consumer, sizeCallback);
+							download(fileName, startPosition, attempt, candidates, callback);
 						}
 					});
 				} else {
-					StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+					callback.onException(e);
 				}
 			}
 		});

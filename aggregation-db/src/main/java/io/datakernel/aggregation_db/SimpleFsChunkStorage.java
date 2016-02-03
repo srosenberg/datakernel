@@ -16,13 +16,17 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.AsyncExecutor;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
@@ -53,12 +57,22 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, final long id) {
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		final StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
 
-		client.download(path(id), decompressor.getInput());
+		client.download(path(id), new ResultCallback<StreamProducerWithCounter>() {
+			@Override
+			public void onResult(StreamProducerWithCounter result) {
+				result.getOutput().streamTo(decompressor.getInput());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(decompressor.getInput());
+			}
+		});
 
 		return deserializer.getOutput();
 	}

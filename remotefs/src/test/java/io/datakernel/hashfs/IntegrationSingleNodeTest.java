@@ -19,6 +19,7 @@ package io.datakernel.hashfs;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.datakernel.FsClient;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
@@ -32,6 +33,7 @@ import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -235,6 +237,7 @@ public class IntegrationSingleNodeTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testDownload() throws Exception {
 		String dFileContents = "Local d.txt";
@@ -255,10 +258,10 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				client.download("this/g.txt", consumerG);
-				client.download("e.txt", consumerE);
-				client.download("d.txt", startPosition, consumerD, sizeFuture);
-				client.download("f.txt", consumerF);
+				client.download("this/g.txt", streamTo(consumerG));
+				client.download("e.txt", streamTo(consumerE));
+				client.download("d.txt", startPosition, streamTo(consumerD));
+				client.download("f.txt", streamTo(consumerF));
 
 				consumerD.setFlushCallback(new CompletionCallback() {
 					@Override
@@ -312,41 +315,80 @@ public class IntegrationSingleNodeTest {
 		System.out.println("Bye bye");
 	}
 
-	@Test
-	public void testFailedDownload() throws IOException {
-		Eventloop eventloop = new Eventloop();
-		ExecutorService executor = newCachedThreadPool();
-
-		final EventloopService server = getServer(eventloop, executor);
-		final FsClient client = getClient(eventloop);
-
-		final StreamFileWriter consumerA = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
-		consumerA.setFlushCallback(new CompletionCallback() {
+	private ResultCallback<StreamProducerWithCounter> streamTo(final StreamFileWriter consumerG) {
+		return new ResultCallback<StreamProducerWithCounter>() {
 			@Override
-			public void onComplete() {
-				logger.info("Can't flush the file");
+			public void onResult(StreamProducerWithCounter result) {
+				result.getOutput().streamTo(consumerG);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				server.stop(new CompletionCallback() {
+				throw new RuntimeException(e);
+			}
+		};
+	}
+
+	@Test
+	public void testFailedDownload() throws IOException {
+		final Eventloop eventloop = new Eventloop();
+		final ExecutorService executor = newCachedThreadPool();
+
+		final EventloopService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.download("file_does_not_exist", new ResultCallback<StreamProducerWithCounter>() {
 					@Override
-					public void onComplete() {
-						logger.info("Stopped");
+					public void onResult(StreamProducerWithCounter result) {
+						final StreamFileWriter consumerA;
+						try {
+							consumerA = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
+							consumerA.setFlushCallback(new CompletionCallback() {
+								@Override
+								public void onComplete() {
+									logger.info("Can't flush the file");
+								}
+
+								@Override
+								public void onException(Exception e) {
+									server.stop(new CompletionCallback() {
+										@Override
+										public void onComplete() {
+											logger.info("Stopped");
+										}
+
+										@Override
+										public void onException(Exception e) {
+											logger.error("Can't stop ", e);
+										}
+									});
+									logger.error("Can't flush the file");
+								}
+							});
+							result.getOutput().streamTo(consumerA);
+						} catch (IOException ignored) {
+							// ignored
+						}
 					}
 
 					@Override
 					public void onException(Exception e) {
-						logger.error("Can't stop ", e);
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Stopped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.error("Can't stop ", e);
+							}
+						});
 					}
 				});
-				logger.error("Can't flush the file");
-			}
-		});
-		server.start(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				client.download("file_does_not_exist", consumerA);
 			}
 
 			@Override
@@ -358,7 +400,7 @@ public class IntegrationSingleNodeTest {
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertTrue(Files.size(clientStorage.resolve("file_should_not exist.txt")) == 0);
+		assertFalse(Files.exists(clientStorage.resolve("file_should_not exist.txt")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 

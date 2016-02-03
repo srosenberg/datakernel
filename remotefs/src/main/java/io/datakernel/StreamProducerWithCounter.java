@@ -16,17 +16,25 @@
 
 package io.datakernel;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public class CounterTransformer extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public class StreamProducerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
-	private long expectedSize;
+	private final long expectedSize;
+	private long streamedSize = 0;
 
-	public CounterTransformer(Eventloop eventloop, long requiredSize) {
+	private ResultCallback<Long> positionCallback;
+
+	public void setPositionCallback(ResultCallback<Long> positionCallback) {
+		this.positionCallback = positionCallback;
+	}
+
+	public StreamProducerWithCounter(Eventloop eventloop, long requiredSize) {
 		super(eventloop);
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer();
@@ -36,10 +44,13 @@ public class CounterTransformer extends AbstractStreamTransformer_1_1<ByteBuf, B
 	private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
 		@Override
 		protected void onUpstreamEndOfStream() {
-			if (expectedSize == 0) {
+			if (expectedSize == streamedSize) {
 				outputProducer.sendEndOfStream();
+				positionCallback.onResult(streamedSize);
 			} else {
-				onError(new Exception("Expected and actual sizes mismatch: " + expectedSize));
+				Exception e = new Exception("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
+				onError(e);
+				positionCallback.onException(e);
 			}
 		}
 
@@ -50,7 +61,7 @@ public class CounterTransformer extends AbstractStreamTransformer_1_1<ByteBuf, B
 
 		@Override
 		public void onData(ByteBuf item) {
-			expectedSize -= (item.limit() - item.position());
+			streamedSize += (item.limit() - item.position());
 			outputProducer.send(item);
 		}
 	}

@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -50,8 +50,18 @@ public final class SimpleFsLogFileSystem extends AbstractRemoteLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
-		client.download(path(logPartition, logFile), startPosition, consumer, AsyncCallbacks.<Long>ignoreResultCallback());
+	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBuf> consumer) {
+		client.download(path(logPartition, logFile), startPosition, new ResultCallback<StreamProducerWithCounter>() {
+			@Override
+			public void onResult(StreamProducerWithCounter result) {
+				result.getOutput().streamTo(consumer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
 	}
 
 	@Override

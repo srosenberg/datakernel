@@ -17,6 +17,7 @@
 package io.datakernel.simplefs.stress;
 
 import com.google.common.base.Charsets;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -108,7 +109,7 @@ public class StressClient {
 				if (fileName == null) return;
 
 				try {
-					StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, downloads.resolve(fileName));
+					final StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, downloads.resolve(fileName));
 					consumer.setFlushCallback(new CompletionCallback() {
 						@Override
 						public void onComplete() {
@@ -120,8 +121,17 @@ public class StressClient {
 							logger.info("Failed to download: {}", e.getMessage());
 						}
 					});
+					client.download(fileName, new ResultCallback<StreamProducerWithCounter>() {
+						@Override
+						public void onResult(StreamProducerWithCounter result) {
+							result.getOutput().streamTo(consumer);
+						}
 
-					client.download(fileName, consumer);
+						@Override
+						public void onException(Exception exception) {
+							throw new RuntimeException();
+						}
+					});
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				}

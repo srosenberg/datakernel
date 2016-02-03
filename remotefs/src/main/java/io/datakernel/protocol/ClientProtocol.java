@@ -16,7 +16,7 @@
 
 package io.datakernel.protocol;
 
-import io.datakernel.CounterTransformer;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
@@ -30,9 +30,7 @@ import io.datakernel.protocol.FsCommands.FsCommand;
 import io.datakernel.protocol.FsResponses.Err;
 import io.datakernel.protocol.FsResponses.ListFiles;
 import io.datakernel.protocol.FsResponses.Ready;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.*;
 import io.datakernel.stream.processor.StreamByteChunker;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
@@ -185,9 +183,8 @@ public class ClientProtocol {
 		connect(address, uploadConnectCallback(address, fileName, producer, callback));
 	}
 
-	public void download(InetSocketAddress address, String fileName, long startPosition, StreamConsumer<ByteBuf> consumer,
-	                     ResultCallback<Long> sizeCallback, CompletionCallback callback) {
-		connect(address, downloadConnectCallback(fileName, startPosition, consumer, sizeCallback, callback));
+	public void download(InetSocketAddress address, String fileName, long startPosition, ResultCallback<StreamProducerWithCounter> callback) {
+		connect(address, downloadConnectCallback(fileName, startPosition, callback));
 	}
 
 	public void delete(InetSocketAddress address, String fileName, CompletionCallback callback) {
@@ -261,9 +258,7 @@ public class ClientProtocol {
 	}
 
 	protected ConnectCallback downloadConnectCallback(final String fileName, final long startPosition,
-	                                                  final StreamConsumer<ByteBuf> consumer,
-	                                                  final ResultCallback<Long> sizeCallback,
-	                                                  final CompletionCallback callback) {
+	                                                  final ResultCallback<StreamProducerWithCounter> callback) {
 		return new ForwardingConnectCallback(callback) {
 			@Override
 			public void onConnect(SocketChannel channel) {
@@ -278,13 +273,10 @@ public class ClientProtocol {
 						.addHandler(Ready.class, new MessagingHandler<Ready, FsCommand>() {
 							@Override
 							public void onMessage(Ready item, Messaging<FsCommand> messaging) {
-								callback.onComplete(); // used to show stream is being found
 								logger.trace("Received acknowledge for {} bytes ready", item.size);
-								sizeCallback.onResult(item.size);
-								CounterTransformer counter = new CounterTransformer(eventloop, item.size - startPosition);
+								StreamProducerWithCounter counter = new StreamProducerWithCounter(eventloop, item.size - startPosition);
 								messaging.read().streamTo(counter.getInput());
-								counter.getOutput().streamTo(consumer);
-								sizeCallback.onResult(item.size);
+								callback.onResult(counter);
 								messaging.shutdown();
 							}
 						})
@@ -294,7 +286,6 @@ public class ClientProtocol {
 								logger.trace("Can't upload file {}", item.msg);
 								messaging.shutdown();
 								Exception e = new Exception(item.msg);
-								StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 								callback.onException(e);
 							}
 						})

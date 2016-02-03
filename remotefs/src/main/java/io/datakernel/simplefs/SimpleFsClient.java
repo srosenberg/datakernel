@@ -17,23 +17,21 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.FsClient;
-import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.StreamProducerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.protocol.ClientProtocol;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class SimpleFsClient implements FsClient {
+public final class SimpleFsClient extends FsClient {
 	public static final class Builder {
 		private final InetSocketAddress address;
 		private final ClientProtocol.Builder protocolBuilder;
@@ -116,14 +114,8 @@ public final class SimpleFsClient implements FsClient {
 	}
 
 	@Override
-	public void download(String fileName, StreamConsumer<ByteBuf> consumer) {
-		protocol.download(serverAddress, fileName, 0, consumer,
-				AsyncCallbacks.<Long>ignoreResultCallback(), ignoreCompletionCallback());
-	}
-
-	@Override
-	public void download(String fileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> sizeCallback) {
-		protocol.download(serverAddress, fileName, startPosition, consumer, sizeCallback, ignoreCompletionCallback());
+	public void download(String fileName, long startPosition, ResultCallback<StreamProducerWithCounter> callback) {
+		protocol.download(serverAddress, fileName, startPosition, callback);
 	}
 
 	@Override
