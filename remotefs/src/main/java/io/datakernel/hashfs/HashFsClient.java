@@ -302,11 +302,11 @@ public class HashFsClient implements FsClient {
 	}
 
 	private void list(List<ServerInfo> servers, final ResultCallback<List<String>> callback) {
-		ResultCallback<Set<String>> waiter = Util.waitAnyResults(servers.size(), new Util.Resolver<Set<String>>() {
+		ResultCallback<List<String>> waiter = Util.waitAllResults(servers.size(), new Util.Resolver<List<String>>() {
 			@Override
-			public void resolve(List<Set<String>> results, List<Exception> exceptions) {
+			public void resolve(List<List<String>> results, List<Exception> exceptions) {
 				Set<String> files = new HashSet<>();
-				for (Set<String> fileSet : results) {
+				for (List<String> fileSet : results) {
 					files.addAll(fileSet);
 				}
 				callback.onResult(new ArrayList<>(files));
@@ -322,7 +322,7 @@ public class HashFsClient implements FsClient {
 	}
 
 	private void getAliveServers(final int currentAttempt, final ResultCallback<List<ServerInfo>> callback) {
-		ResultCallback<Set<ServerInfo>> waiter = Util.waitAnyResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
+		ResultCallback<Set<ServerInfo>> waiter = Util.waitAllResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
 			@Override
 			public void resolve(List<Set<ServerInfo>> results, List<Exception> exceptions) {
 				Set<ServerInfo> servers = new HashSet<>();

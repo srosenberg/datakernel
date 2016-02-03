@@ -18,75 +18,59 @@ package io.datakernel;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.file.AsyncFile;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.nio.file.StandardOpenOption.*;
+import static org.slf4j.LoggerFactory.getLogger;
 
 public final class FileSystem {
+	private static final Logger logger = getLogger(FileSystem.class);
 	public static final String DEFAULT_IN_PROGRESS_EXTENSION = ".partial";
-	public static final int DEFAULT_READER_BUFFER_SIZE = 256 * 1024;
-
-	private static final Logger logger = LoggerFactory.getLogger(FileSystem.class);
-	private final String inProgressExtension;
-	private final int bufferSize;
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 
-	private final Path fileStorage;
+	private final Path storage;
 	private final Path tmpStorage;
 
+	private final String inProgressExtension = DEFAULT_IN_PROGRESS_EXTENSION;
+
+	// creators
 	private FileSystem(Eventloop eventloop, ExecutorService executor,
-	                   Path fileStorage, Path tmpStorage, int bufferSize,
-	                   String inProgressExtension) {
+	                   Path storage, Path tmpStorage) {
 
 		this.eventloop = checkNotNull(eventloop);
 		this.executor = checkNotNull(executor);
 
-		check(!(fileStorage.startsWith(tmpStorage) || tmpStorage.startsWith(fileStorage)), "Directories must not relate(i.e. parent-child)");
-		this.fileStorage = fileStorage;
+		check(!(storage.startsWith(tmpStorage) || tmpStorage.startsWith(storage)), "Directories must not relate(i.e. parent-child)");
+		this.storage = storage;
 		this.tmpStorage = tmpStorage;
-
-		check(bufferSize > 0, "BufferSize should be positive %s", bufferSize);
-		this.bufferSize = bufferSize;
-
-		this.inProgressExtension = checkNotNull(inProgressExtension);
 	}
 
 	public static FileSystem newInstance(Eventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
-		return new FileSystem(eventloop, executor, storage, tmpStorage, DEFAULT_READER_BUFFER_SIZE, DEFAULT_IN_PROGRESS_EXTENSION);
+		return new FileSystem(eventloop, executor, storage, tmpStorage);
 	}
 
-	public static FileSystem newInstance(Eventloop eventloop, ExecutorService executor,
-	                                     Path storage, Path tmpStorage, int bufferSize,
-	                                     String inProgressExtension) {
-		return new FileSystem(eventloop, executor, storage, tmpStorage, bufferSize, inProgressExtension);
-	}
-
-	public void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	// api
+	public void saveToTmp(String fileName, ResultCallback<AsyncFile> callback) {
 		logger.trace("Saving to temporary dir {}", fileName);
-		Path tmpPath;
 		try {
-			tmpPath = ensureInProgressDirectory(fileName);
-			StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true, true);
-			producer.streamTo(diskWrite);
-			diskWrite.setFlushCallback(callback);
+			Path tmpPath = ensureInProgressDirectory(fileName);
+			AsyncFile.open(eventloop, executor, tmpPath, new OpenOption[]{CREATE, WRITE, TRUNCATE_EXISTING}, callback);
 		} catch (IOException e) {
 			logger.trace("Caught exception while trying to ensure in-progress-directory: {}", e.getMessage());
 			callback.onException(e);
@@ -122,38 +106,26 @@ public final class FileSystem {
 	public void deleteTmp(String fileName, CompletionCallback callback) {
 		logger.trace("Deleting temporary file {}", fileName);
 		Path path = tmpStorage.resolve(fileName + inProgressExtension);
-		try {
-			Files.delete(path);
-			callback.onComplete();
-		} catch (IOException e) {
-			logger.error("Can't delete temporary file {}", fileName, e);
-			callback.onException(e);
-		}
+		AsyncFile.delete(eventloop, executor, path, callback);
 	}
 
-	public StreamProducer<ByteBuf> get(String fileName, long startPosition) {
+	public void get(String fileName, ResultCallback<AsyncFile> callback) {
 		logger.trace("Streaming file {}", fileName);
-		Path destination = fileStorage.resolve(fileName);
-		return StreamFileReader.readFileFrom(eventloop, executor, bufferSize, destination, startPosition);
+		Path destination = storage.resolve(fileName);
+		AsyncFile.open(eventloop, executor, destination, new OpenOption[]{READ}, callback);
 	}
 
 	public void delete(String fileName, CompletionCallback callback) {
 		logger.trace("Deleting file {}", fileName);
-		Path path = fileStorage.resolve(fileName);
-		try {
-			Files.delete(path);
-			callback.onComplete();
-		} catch (IOException e) {
-			logger.error("Can't delete file {}", fileName, e);
-			callback.onException(e);
-		}
+		Path path = storage.resolve(fileName);
+		AsyncFile.delete(eventloop, executor, path, callback);
 	}
 
-	public void list(ResultCallback<Set<String>> callback) {
+	public void list(ResultCallback<List<String>> callback) {
 		logger.trace("Listing files");
-		Set<String> result = new HashSet<>();
+		List<String> result = new ArrayList<>();
 		try {
-			listFiles(fileStorage, result, "");
+			listFiles(storage, result, "");
 			callback.onResult(result);
 		} catch (IOException e) {
 			logger.error("Can't list files", e);
@@ -161,8 +133,8 @@ public final class FileSystem {
 		}
 	}
 
-	public long fileSize(String filePath) {
-		File file = fileStorage.resolve(filePath).toFile();
+	public long fileSize(String fileName) {
+		File file = storage.resolve(fileName).toFile();
 		if (!file.exists() || file.isDirectory()) {
 			return -1;
 		} else {
@@ -170,13 +142,12 @@ public final class FileSystem {
 		}
 	}
 
-	private void listFiles(Path parent, Set<String> files, String previousPath) throws IOException {
+	// utils
+	private void listFiles(Path parent, List<String> files, String previousPath) throws IOException {
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent)) {
 			for (Path path : directoryStream) {
 				if (Files.isDirectory(path)) {
-					if (!path.equals(tmpStorage)) {
-						listFiles(path, files, previousPath + path.getFileName().toString() + File.separator);
-					}
+					listFiles(path, files, previousPath + path.getFileName().toString() + File.separator);
 				} else {
 					files.add(previousPath + path.getFileName().toString());
 				}
@@ -185,7 +156,7 @@ public final class FileSystem {
 	}
 
 	private Path ensureDestinationDirectory(String path) throws IOException {
-		return ensureDirectory(fileStorage, path);
+		return ensureDirectory(storage, path);
 	}
 
 	private Path ensureInProgressDirectory(String path) throws IOException {
@@ -194,33 +165,30 @@ public final class FileSystem {
 
 	private Path ensureDirectory(Path container, String path) throws IOException {
 		String fileName = getFileName(path);
-		String filePath = getFilePath(path);
-
+		String filePath = getPathToFile(path);
 		Path destinationDirectory = container.resolve(filePath);
-
 		Files.createDirectories(destinationDirectory);
-
 		return destinationDirectory.resolve(fileName);
 	}
 
-	private String getFileName(String path) {
-		if (path.contains(File.separator)) {
-			path = path.substring(path.lastIndexOf(File.separator) + 1);
+	private String getFileName(String filePath) {
+		if (filePath.contains(File.separator)) {
+			filePath = filePath.substring(filePath.lastIndexOf(File.separator) + 1);
 		}
-		return path;
+		return filePath;
 	}
 
-	private String getFilePath(String path) {
-		if (path.contains(File.separator)) {
-			path = path.substring(0, path.lastIndexOf(File.separator));
+	private String getPathToFile(String filePath) {
+		if (filePath.contains(File.separator)) {
+			filePath = filePath.substring(0, filePath.lastIndexOf(File.separator));
 		} else {
-			path = "";
+			filePath = "";
 		}
-		return path;
+		return filePath;
 	}
 
 	public void initDirectories() throws IOException {
-		Files.createDirectories(fileStorage);
+		Files.createDirectories(storage);
 		Files.createDirectories(tmpStorage);
 		cleanDirectory(tmpStorage);
 	}

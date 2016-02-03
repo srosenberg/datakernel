@@ -27,6 +27,7 @@ import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -36,7 +37,7 @@ import java.util.concurrent.ExecutorService;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class FileUploadExample {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		final Logger logger = LoggerFactory.getLogger(FileUploadExample.class);
 
 		// Specifying file names: requested  - path to the file in your local file system,

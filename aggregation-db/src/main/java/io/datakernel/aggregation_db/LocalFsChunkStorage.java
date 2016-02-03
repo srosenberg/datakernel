@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -93,17 +94,20 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id) {
-		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(id), 0L);
+		try {
+			StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
+					path(id), 0L);
+			StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+			BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
+			StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
-		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
+			streamFileReader.streamTo(decompressor.getInput());
+			decompressor.getOutput().streamTo(deserializer.getInput());
 
-		streamFileReader.streamTo(decompressor.getInput());
-		decompressor.getOutput().streamTo(deserializer.getInput());
-
-		return deserializer.getOutput();
+			return deserializer.getOutput();
+		} catch (IOException e) {
+			return StreamProducers.closingWithError(eventloop, e);
+		}
 	}
 
 	@Override
@@ -113,16 +117,20 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id), false, true);
-
-		asyncExecutor.submit(new AsyncTask() {
-			@Override
-			public void execute(CompletionCallback callback) {
-				producer.streamTo(serializer.getInput());
-				serializer.getOutput().streamTo(compressor.getInput());
-				compressor.getOutput().streamTo(writer);
-				writer.setFlushCallback(callback);
-			}
-		}, callback);
+		final StreamFileWriter writer;
+		try {
+			writer = StreamFileWriter.create(eventloop, executorService, path(id));
+			asyncExecutor.submit(new AsyncTask() {
+				@Override
+				public void execute(CompletionCallback callback) {
+					producer.streamTo(serializer.getInput());
+					serializer.getOutput().streamTo(compressor.getInput());
+					compressor.getOutput().streamTo(writer);
+					writer.setFlushCallback(callback);
+				}
+			}, callback);
+		} catch (IOException e) {
+			callback.onException(e);
+		}
 	}
 }

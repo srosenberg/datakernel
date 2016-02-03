@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.hashfs.HashFsCommands.Offer;
@@ -84,8 +85,8 @@ final class HashFsClientProtocol extends ClientProtocol {
 		connect(address, aliveConnectCallback(callback));
 	}
 
-	public void offer(InetSocketAddress address, Set<String> forUpload,
-	                  Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+	public void offer(InetSocketAddress address, List<String> forUpload,
+	                  List<String> forDeletion, ResultCallback<List<String>> callback) {
 		connect(address, offerConnectCallback(forUpload, forDeletion, callback));
 	}
 
@@ -124,8 +125,8 @@ final class HashFsClientProtocol extends ClientProtocol {
 		};
 	}
 
-	private ConnectCallback offerConnectCallback(final Set<String> forUpload, final Set<String> forDeletion,
-	                                             final ResultCallback<Set<String>> callback) {
+	private ConnectCallback offerConnectCallback(final List<String> forUpload, final List<String> forDeletion,
+	                                             final ResultCallback<List<String>> callback) {
 		return new ForwardingConnectCallback(callback) {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {

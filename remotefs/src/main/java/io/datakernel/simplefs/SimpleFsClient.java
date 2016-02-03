@@ -19,7 +19,6 @@ package io.datakernel.simplefs;
 import io.datakernel.FsClient;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -29,9 +28,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -131,12 +128,7 @@ public final class SimpleFsClient implements FsClient {
 
 	@Override
 	public void list(final ResultCallback<List<String>> callback) {
-		protocol.list(serverAddress, new ForwardingResultCallback<Set<String>>(callback) {
-			@Override
-			public void onResult(Set<String> result) {
-				callback.onResult(new ArrayList<>(result));
-			}
-		});
+		protocol.list(serverAddress, callback);
 	}
 
 	@Override

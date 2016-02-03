@@ -30,6 +30,7 @@ import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 
 import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.hashfs.HashFsCommands.commandGSON;
@@ -88,9 +89,9 @@ final class HashFsServerProtocol extends ServerProtocol<HashFsServer> {
 		return new MessagingHandler<HashFsCommands.Offer, FsResponse>() {
 			@Override
 			public void onMessage(HashFsCommands.Offer item, final Messaging<FsResponse> messaging) {
-				server.checkOffer(item.forUpload, item.forDeletion, new ResultCallback<Set<String>>() {
+				server.checkOffer(item.forUpload, item.forDeletion, new ResultCallback<List<String>>() {
 					@Override
-					public void onResult(Set<String> result) {
+					public void onResult(List<String> result) {
 						messaging.sendMessage(new HashFsResponses.ListFiles(result));
 						messaging.shutdown();
 					}

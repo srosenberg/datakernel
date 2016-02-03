@@ -19,15 +19,18 @@ package io.datakernel.hashfs;
 import io.datakernel.FileSystem;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.protocol.FsServer;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,8 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.*;
 
 public class HashFsServer extends FsServer implements Commands, EventloopService {
 	public final static class Builder {
@@ -63,9 +65,6 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 		private ExecutorService executor;
 		private Path storage;
 		private Path tmpStorage;
-
-		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
-		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
 
 		private Builder(Eventloop eventloop, ExecutorService executor,
 		                Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
@@ -163,16 +162,6 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 			return this;
 		}
 
-		public Builder setInProgressExtension(String inProgressExtension) {
-			this.inProgressExtension = inProgressExtension;
-			return this;
-		}
-
-		public Builder setReaderBufferSize(int readerBufferSize) {
-			this.readerBufferSize = readerBufferSize;
-			return this;
-		}
-
 		public Builder setServerDeathTimeout(long serverDeathTimeout) {
 			logicBuilder.setServerDeathTimeout(serverDeathTimeout);
 			return this;
@@ -202,8 +191,7 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 			HashFsClientProtocol cp = clientProtocol == null ? clientBuilder.build() : clientProtocol;
 			HashFsServerProtocol sp = serverProtocol == null ? serverBuilder.build() : serverProtocol;
 
-			FileSystem fs = fileSystem != null ? fileSystem : FileSystem.newInstance(eventloop, executor, storage, tmpStorage,
-					readerBufferSize, inProgressExtension);
+			FileSystem fs = fileSystem != null ? fileSystem : FileSystem.newInstance(eventloop, executor, storage, tmpStorage);
 
 			Logic l = logic == null ? logicBuilder.build() : logic;
 
@@ -227,6 +215,9 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	private final FileSystem fileSystem;
 	private final Logic logic;
 	private State state;
+
+	// TODO (arashev) move to builder
+	private final int bufferSize = SimpleFsServer.DEFAULT_READER_BUFFER_SIZE;
 
 	private final long systemUpdateTimeout;
 	private final long mapUpdateTimeout;
@@ -301,23 +292,24 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 
 	// api
 	@Override
-	public void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Server received request for upload {}", fileName);
-
-		if (state != State.RUNNING) {
-			logger.trace("Refused upload {}. Server is down.", fileName);
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
-
+		checkState(state == State.RUNNING, "Server shut down!");
 		if (logic.canUpload(fileName)) {
 			logic.onUploadStart(fileName);
-			fileSystem.saveToTmp(fileName, producer, new CompletionCallback() {
+			fileSystem.saveToTmp(fileName, new ResultCallback<AsyncFile>() {
 				@Override
-				public void onComplete() {
-					logger.info("Uploaded to temporary {}", fileName);
-					logic.onUploadComplete(fileName);
-					callback.onComplete();
+				public void onResult(AsyncFile result) {
+					StreamFileWriter writer = StreamFileWriter.create(eventloop, result);
+					producer.streamTo(writer);
+					writer.setFlushCallback(new ForwardingCompletionCallback(this) {
+						@Override
+						public void onComplete() {
+							logger.info("Uploaded to temporary {}", fileName);
+							logic.onUploadComplete(fileName);
+							callback.onComplete();
+						}
+					});
 				}
 
 				@Override
@@ -339,11 +331,7 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 
 		boolean canApprove = logic.canApprove(fileName);
 
-		if (state != State.RUNNING && !canApprove) {
-			logger.trace("Refused commit {}. Server is down.", fileName);
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
+		checkState((state == State.RUNNING || canApprove), "Server shut down!");
 
 		if (canApprove) {
 			if (success) {
@@ -372,35 +360,29 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	}
 
 	@Override
-	protected StreamProducer<ByteBuf> download(String fileName, long startPosition) {
-		logger.info("Received command to download file: {}, start position: {}", fileName, startPosition);
-		Preconditions.check(state == State.RUNNING, "Server shut down!");
-		return fileSystem.get(fileName, startPosition);
-	}
-
-	public void download(final String fileName, long startPosition,
-	                     StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
+	protected void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		logger.info("Received request for file download {}", fileName);
 
-		if (state != State.RUNNING) {
-			logger.trace("Refused download {}. Server is down.", fileName);
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
+		checkState(state == State.RUNNING, "Server shut down!");
 
 		if (logic.canDownload(fileName)) {
 			logic.onDownloadStart(fileName);
-			StreamProducer<ByteBuf> producer = fileSystem.get(fileName, startPosition);
-			producer.streamTo(consumer);
-			callback.onResult(new CompletionCallback() {
+			fileSystem.get(fileName, new ResultCallback<AsyncFile>() {
 				@Override
-				public void onComplete() {
-					logger.info("Send successfully {}", fileName);
-					logic.onDownloadComplete(fileName);
+				public void onResult(AsyncFile result) {
+					StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, result, bufferSize, startPosition);
+					callback.onResult(reader);
+					reader.setPositionCallback(new ForwardingResultCallback<Long>(this) {
+						@Override
+						public void onResult(Long result) {
+							logger.info("File {} send successfully {} bytes", fileName, result);
+							logic.onDownloadComplete(fileName);
+						}
+					});
 				}
 
 				@Override
-				public void onException(Exception e) {
+				public void onException(Exception exception) {
 					logger.error("Can't send the file {}", fileName);
 					logic.onDownloadFailed(fileName);
 				}
@@ -415,11 +397,7 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	public void delete(final String fileName, final CompletionCallback callback) {
 		logger.info("Received request for file deletion {}", fileName);
 
-		if (state != State.RUNNING) {
-			logger.trace("Refused delete {}. Server is down.", fileName);
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
+		checkState(state == State.RUNNING, "Server shut down!");
 
 		if (logic.canDelete(fileName)) {
 			logic.onDeletionStart(fileName);
@@ -445,27 +423,15 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	}
 
 	@Override
-	public void list(ResultCallback<Set<String>> callback) {
+	public void list(ResultCallback<List<String>> callback) {
 		logger.info("Received request to list files");
-
-		if (state != State.RUNNING) {
-			logger.trace("Refused listing files. Server is down.");
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
-
+		checkState(state == State.RUNNING, "Server shut down!");
 		fileSystem.list(callback);
 	}
 
 	public void showAlive(ResultCallback<Set<ServerInfo>> callback) {
 		logger.trace("Received request to show alive servers");
-
-		if (state != State.RUNNING) {
-			logger.trace("Refused listing alive servers. Server is down.");
-			callback.onException(new Exception("Server is down"));
-			return;
-		}
-
+		checkState(state == State.RUNNING, "Server shut down!");
 		logic.onShowAliveRequest(eventloop.currentTimeMillis(), callback);
 	}
 
@@ -474,7 +440,7 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 		return fileSystem.fileSize(fileName);
 	}
 
-	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+	public void checkOffer(List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback) {
 		logger.info("Received offer (forUpload: {}, forDeletion: {})", forUpload.size(), forDeletion.size());
 
 		if (state != State.RUNNING) {
@@ -489,13 +455,18 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	@Override
 	public void replicate(final ServerInfo server, final String fileName) {
 		logger.info("Received command to replicate file {} to server {}", fileName, server);
-		StreamProducer<ByteBuf> producer = fileSystem.get(fileName, 0);
 		logic.onReplicationStart(fileName);
-		clientProtocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
+		fileSystem.get(fileName, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onComplete() {
-				logger.info("Successfully replicated file {} to server {}", fileName, server);
-				logic.onReplicationComplete(server, fileName);
+			public void onResult(AsyncFile result) {
+				StreamFileReader reader = StreamFileReader.readFileFully(eventloop, result, bufferSize);
+				clientProtocol.upload(server.getAddress(), fileName, reader, new ForwardingCompletionCallback(this) {
+					@Override
+					public void onComplete() {
+						logger.info("Successfully replicated file {} to server {}", fileName, server);
+						logic.onReplicationComplete(server, fileName);
+					}
+				});
 			}
 
 			@Override
@@ -523,8 +494,8 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	}
 
 	@Override
-	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion,
-	                  ResultCallback<Set<String>> callback) {
+	public void offer(ServerInfo server, List<String> forUpload, List<String> forDeletion,
+	                  ResultCallback<List<String>> callback) {
 		logger.info("Received command to offer {} files (forUpload: {}, forDeletion: {})", server, forUpload.size(), forDeletion.size());
 		clientProtocol.offer(server.getAddress(), forUpload, forDeletion, callback);
 	}
@@ -591,7 +562,7 @@ public class HashFsServer extends FsServer implements Commands, EventloopService
 	}
 
 	@Override
-	public void scan(ResultCallback<Set<String>> callback) {
+	public void scan(ResultCallback<List<String>> callback) {
 		logger.trace("Scanning local");
 		fileSystem.list(callback);
 	}

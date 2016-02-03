@@ -21,9 +21,9 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.protocol.FsCommands;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
-import java.util.Set;
+import java.util.List;
 
-import static java.util.Collections.unmodifiableSet;
+import static java.util.Collections.unmodifiableList;
 
 final class HashFsCommands extends FsCommands {
 	static Gson commandGSON = new GsonBuilder()
@@ -50,12 +50,12 @@ final class HashFsCommands extends FsCommands {
 	}
 
 	public static class Offer extends FsCommand {
-		public final Set<String> forDeletion;
-		public final Set<String> forUpload;
+		public final List<String> forDeletion;
+		public final List<String> forUpload;
 
-		public Offer(Set<String> forDeletion, Set<String> forUpload) {
-			this.forDeletion = unmodifiableSet(forDeletion);
-			this.forUpload = unmodifiableSet(forUpload);
+		public Offer(List<String> forDeletion, List<String> forUpload) {
+			this.forDeletion = unmodifiableList(forDeletion);
+			this.forUpload = unmodifiableList(forUpload);
 		}
 
 		@Override

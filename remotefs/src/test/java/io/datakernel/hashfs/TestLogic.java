@@ -152,10 +152,10 @@ public class TestLogic {
 
 		logic.update(1);
 
-		logic.onOfferRequest(new HashSet<>(Arrays.asList(a, b, c, d, e, f, g)), new HashSet<String>(), new ResultCallback<Set<String>>() {
+		logic.onOfferRequest(Arrays.asList(a, b, c, d, e, f, g), new ArrayList<String>(), new ResultCallback<List<String>>() {
 			@Override
-			public void onResult(Set<String> result) {
-				assertEquals(new HashSet<>(Arrays.asList(a, b, g)), result);
+			public void onResult(List<String> result) {
+				assertEquals(Arrays.asList(a, b, g), result);
 			}
 
 			@Override
@@ -270,8 +270,8 @@ public class TestLogic {
 		}
 
 		@Override
-		public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
-			Set<String> neededFiles = new HashSet<>();
+		public void offer(ServerInfo server, List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback) {
+			List<String> neededFiles = new ArrayList<>();
 			Set<String> currentFiles = servers2files.get(server);
 			for (String s : forUpload) {
 				if (!currentFiles.contains(s)) {
@@ -295,8 +295,8 @@ public class TestLogic {
 		}
 
 		@Override
-		public void scan(ResultCallback<Set<String>> callback) {
-			callback.onResult(new HashSet<>(Arrays.asList(a, b, c, d, e, f, g)));
+		public void scan(ResultCallback<List<String>> callback) {
+			callback.onResult(Arrays.asList(a, b, c, d, e, f, g));
 		}
 
 		@Override

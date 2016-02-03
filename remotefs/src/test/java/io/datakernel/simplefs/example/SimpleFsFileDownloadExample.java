@@ -23,6 +23,7 @@ import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -41,7 +42,7 @@ public class SimpleFsFileDownloadExample {
 	private static final int SERVER_PORT = 6732;
 	private static final Path CLIENT_STORAGE = Paths.get("./test_data");
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		final Eventloop eventloop = new Eventloop();
 
@@ -51,7 +52,7 @@ public class SimpleFsFileDownloadExample {
 		SimpleFsClient client = SimpleFsClient.newInstance(eventloop, new InetSocketAddress(SERVER_PORT));
 
 		StreamFileWriter consumer =
-				StreamFileWriter.createFile(eventloop, executor, CLIENT_STORAGE.resolve(downloadedFile));
+				StreamFileWriter.create(eventloop, executor, CLIENT_STORAGE.resolve(downloadedFile));
 		consumer.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {

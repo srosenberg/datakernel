@@ -118,9 +118,9 @@ final class LogicImpl implements Logic {
 
 	@Override
 	public void start(final CompletionCallback callback) {
-		commands.scan(new ForwardingResultCallback<Set<String>>(callback) {
+		commands.scan(new ForwardingResultCallback<List<String>>(callback) {
 			@Override
-			public void onResult(Set<String> result) {
+			public void onResult(List<String> result) {
 				for (String s : result) {
 					files.put(s, new FileInfo(myId));
 				}
@@ -292,7 +292,7 @@ final class LogicImpl implements Logic {
 	}
 
 	@Override
-	public void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+	public void onOfferRequest(List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback) {
 		for (String fileName : forDeletion) {
 			FileInfo info = files.get(fileName);
 			if (info.pendingOperationsCounter == 0) {
@@ -301,7 +301,7 @@ final class LogicImpl implements Logic {
 				commands.delete(fileName);
 			}
 		}
-		Set<String> required = new HashSet<>();
+		List<String> required = new ArrayList<>();
 		for (String fileName : forUpload) {
 			if (!files.containsKey(fileName) || files.get(fileName).state != READY) {
 				required.add(fileName);
@@ -312,8 +312,8 @@ final class LogicImpl implements Logic {
 
 	@Override
 	public void update(long timestamp) {
-		Map<ServerInfo, Set<String>> server2Offer = new HashMap<>();
-		Map<ServerInfo, Set<String>> server2Delete = new HashMap<>();
+		Map<ServerInfo, List<String>> server2Offer = new HashMap<>();
+		Map<ServerInfo, List<String>> server2Delete = new HashMap<>();
 
 		for (Iterator<Entry<String, FileInfo>> it = files.entrySet().iterator(); it.hasNext(); ) {
 
@@ -362,11 +362,11 @@ final class LogicImpl implements Logic {
 
 			// adding file to server2offerFiles map
 			for (ServerInfo server : candidates) {
-				Map<ServerInfo, Set<String>> map = (info.state == TOMBSTONE) ? server2Delete : server2Offer;
+				Map<ServerInfo, List<String>> map = (info.state == TOMBSTONE) ? server2Delete : server2Offer;
 				if (!currentReplicas.contains(server)) {
-					Set<String> set = map.get(server);
+					List<String> set = map.get(server);
 					if (set == null) {
-						set = new HashSet<>();
+						set = new ArrayList<>();
 						map.put(server, set);
 					}
 					set.add(file);
@@ -375,16 +375,16 @@ final class LogicImpl implements Logic {
 		}
 
 		// Spreading files
-		Set<ServerInfo> directions = new HashSet<>();
+		List<ServerInfo> directions = new ArrayList<>();
 		directions.addAll(server2Offer.keySet());
 		directions.addAll(server2Delete.keySet());
 		for (final ServerInfo server : directions) {
-			final Set<String> forUpload = server2Offer.get(server) == null ? new HashSet<String>() : server2Offer.get(server);
-			Set<String> forDeletion = server2Delete.get(server) == null ? new HashSet<String>() : server2Delete.get(server);
+			final List<String> forUpload = server2Offer.get(server) == null ? new ArrayList<String>() : server2Offer.get(server);
+			List<String> forDeletion = server2Delete.get(server) == null ? new ArrayList<String>() : server2Delete.get(server);
 
-			commands.offer(server, forUpload, forDeletion, new ResultCallback<Set<String>>() {
+			commands.offer(server, forUpload, forDeletion, new ResultCallback<List<String>>() {
 				@Override
-				public void onResult(Set<String> result) {
+				public void onResult(List<String> result) {
 					// assume that all of suggested files being rejected exist at remote server
 					for (String file : forUpload) {
 						if (!result.contains(file)) {

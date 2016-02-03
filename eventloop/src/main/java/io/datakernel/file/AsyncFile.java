@@ -57,8 +57,8 @@ public final class AsyncFile implements File {
 	 * @param channel   an asynchronous channel for reading, writing, and manipulating a file.
 	 * @param name      name of the file
 	 */
-	private AsyncFile(Eventloop eventloop, ExecutorService executor,
-	                  AsynchronousFileChannel channel, String name) {
+	public AsyncFile(Eventloop eventloop, ExecutorService executor,
+	                 AsynchronousFileChannel channel, String name) {
 		this.eventloop = checkNotNull(eventloop);
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);

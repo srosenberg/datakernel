@@ -17,13 +17,16 @@
 package io.datakernel.protocol;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.protocol.FsCommands.*;
 import io.datakernel.protocol.FsResponses.Acknowledge;
 import io.datakernel.protocol.FsResponses.FsResponse;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.StreamMessagingConnection;
@@ -33,7 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.channels.SocketChannel;
-import java.util.Set;
+import java.util.List;
 
 import static io.datakernel.protocol.FsCommands.*;
 import static io.datakernel.protocol.FsResponses.responseGson;
@@ -187,7 +190,7 @@ public class ServerProtocol<S extends FsServer> extends AbstractServer<ServerPro
 	protected MessagingHandler<Download, FsResponse> defineDownloadHandler() {
 		return new MessagingHandler<Download, FsResponse>() {
 			@Override
-			public void onMessage(Download item, final Messaging<FsResponse> messaging) {
+			public void onMessage(final Download item, final Messaging<FsResponse> messaging) {
 				long size = server.fileSize(item.filePath);
 				if (size < 0) {
 					logger.trace("Responding err to file download: {}. File not found", item.filePath);
@@ -196,11 +199,16 @@ public class ServerProtocol<S extends FsServer> extends AbstractServer<ServerPro
 				} else {
 					logger.trace("Responding ok to file download: {}. File size", size);
 					messaging.sendMessage(new FsResponses.Ready(size));
-					messaging.write(server.download(item.filePath, item.startPosition), new CompletionCallback() {
+					server.download(item.filePath, item.startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 						@Override
-						public void onComplete() {
-							logger.info("Send");
-							messaging.shutdownWriter();
+						public void onResult(StreamProducer<ByteBuf> result) {
+							messaging.write(result, new ForwardingCompletionCallback(this) {
+								@Override
+								public void onComplete() {
+									logger.info("File data for {} has been send", item.filePath);
+									messaging.shutdownWriter();
+								}
+							});
 						}
 
 						@Override
@@ -218,9 +226,9 @@ public class ServerProtocol<S extends FsServer> extends AbstractServer<ServerPro
 		return new MessagingHandler<ListFiles, FsResponse>() {
 			@Override
 			public void onMessage(ListFiles item, final Messaging<FsResponse> messaging) {
-				server.list(new ResultCallback<Set<String>>() {
+				server.list(new ResultCallback<List<String>>() {
 					@Override
-					public void onResult(Set<String> result) {
+					public void onResult(List<String> result) {
 						logger.trace("Sending list of files to server: {}", result.size());
 						messaging.sendMessage(new FsResponses.ListFiles(result));
 						messaging.shutdown();

@@ -19,6 +19,7 @@ package io.datakernel.hashfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
+import java.util.List;
 import java.util.Set;
 
 interface Logic {
@@ -62,7 +63,7 @@ interface Logic {
 
 	void onShowAliveResponse(long timestamp, Set<ServerInfo> result);
 
-	void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
+	void onOfferRequest(List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback);
 
 	void onReplicationStart(String fileName);
 

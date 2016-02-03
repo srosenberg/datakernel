@@ -21,26 +21,18 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamProducer;
 
-import java.util.Set;
+import java.util.List;
 
 public abstract class FsServer {
 	protected abstract void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	protected abstract void commit(String fileName, boolean success, CompletionCallback callback);
 
-	protected StreamProducer<ByteBuf> download(String fileName) {
-		return download(fileName, 0);
-	}
-
-	protected void download(String fileName, ResultCallback<StreamProducer<ByteBuf>> callback) {
-		callback.onResult(download(fileName));
-	}
-
-	protected abstract StreamProducer<ByteBuf> download(String fileName, long startPosition);
+	protected abstract void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
 
 	protected abstract void delete(String fileName, CompletionCallback callback);
 
-	protected abstract void list(ResultCallback<Set<String>> callback);
+	protected abstract void list(ResultCallback<List<String>> callback);
 
 	protected abstract long fileSize(String fileName);
 }

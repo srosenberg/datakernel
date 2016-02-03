@@ -18,10 +18,11 @@ package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
 
+import java.util.List;
 import java.util.Set;
 
 interface Commands {
-	void scan(ResultCallback<Set<String>> callback);
+	void scan(ResultCallback<List<String>> callback);
 
 	void updateServerMap(Set<ServerInfo> bootstrap);
 
@@ -29,7 +30,7 @@ interface Commands {
 
 	void replicate(ServerInfo server, String fileName);
 
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
+	void offer(ServerInfo server, List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback);
 
 	void scheduleUpdate();
 

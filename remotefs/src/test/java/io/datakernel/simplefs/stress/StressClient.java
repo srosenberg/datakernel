@@ -107,21 +107,25 @@ public class StressClient {
 
 				if (fileName == null) return;
 
-				StreamFileWriter consumer =
-						StreamFileWriter.createFile(eventloop, executor, downloads.resolve(fileName));
-				consumer.setFlushCallback(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						logger.info("Downloaded: " + fileName);
-					}
+				try {
+					StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, downloads.resolve(fileName));
+					consumer.setFlushCallback(new CompletionCallback() {
+						@Override
+						public void onComplete() {
+							logger.info("Downloaded: " + fileName);
+						}
 
-					@Override
-					public void onException(Exception e) {
-						logger.info("Failed to download: {}", e.getMessage());
-					}
-				});
+						@Override
+						public void onException(Exception e) {
+							logger.info("Failed to download: {}", e.getMessage());
+						}
+					});
 
-				client.download(fileName, consumer);
+					client.download(fileName, consumer);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+
 			}
 		});
 

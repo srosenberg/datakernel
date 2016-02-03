@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
@@ -130,15 +131,23 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 
 	@Override
 	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
-		StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(logPartition, logFile), startPosition);
-		reader.streamTo(consumer);
+		try {
+			StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
+					path(logPartition, logFile), startPosition);
+			reader.streamTo(consumer);
+		} catch (IOException e) {
+			StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+		}
 	}
 
 	@Override
 	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
-		writer.setFlushCallback(callback);
-		producer.streamTo(writer);
+		try {
+			StreamFileWriter writer = StreamFileWriter.create(eventloop, executorService, path(logPartition, logFile));
+			writer.setFlushCallback(callback);
+			producer.streamTo(writer);
+		} catch (IOException e) {
+			callback.onException(e);
+		}
 	}
 }

@@ -21,7 +21,7 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 import java.util.Collections;
-import java.util.Set;
+import java.util.List;
 
 public abstract class FsResponses {
 	public static abstract class FsResponse {
@@ -69,10 +69,10 @@ public abstract class FsResponses {
 	}
 
 	public static class ListFiles extends FsResponse {
-		public final Set<String> files;
+		public final List<String> files;
 
-		public ListFiles(Set<String> files) {
-			this.files = Collections.unmodifiableSet(files);
+		public ListFiles(List<String> files) {
+			this.files = Collections.unmodifiableList(files);
 		}
 
 		@Override

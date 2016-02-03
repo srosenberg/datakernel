@@ -16,7 +16,7 @@
 
 package io.datakernel.protocol;
 
-import io.datakernel.Util.CounterTransformer;
+import io.datakernel.CounterTransformer;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.Set;
+import java.util.List;
 
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -194,7 +194,7 @@ public class ClientProtocol {
 		connect(address, deleteConnectCallback(fileName, callback));
 	}
 
-	public void list(InetSocketAddress address, ResultCallback<Set<String>> callback) {
+	public void list(InetSocketAddress address, ResultCallback<List<String>> callback) {
 		connect(address, listFilesConnectCallback(callback));
 	}
 
@@ -284,6 +284,7 @@ public class ClientProtocol {
 								CounterTransformer counter = new CounterTransformer(eventloop, item.size - startPosition);
 								messaging.read().streamTo(counter.getInput());
 								counter.getOutput().streamTo(consumer);
+								sizeCallback.onResult(item.size);
 								messaging.shutdown();
 							}
 						})
@@ -349,7 +350,7 @@ public class ClientProtocol {
 		};
 	}
 
-	protected ConnectCallback listFilesConnectCallback(final ResultCallback<Set<String>> callback) {
+	protected ConnectCallback listFilesConnectCallback(final ResultCallback<List<String>> callback) {
 		return new ForwardingConnectCallback(callback) {
 			@Override
 			public void onConnect(SocketChannel channel) {

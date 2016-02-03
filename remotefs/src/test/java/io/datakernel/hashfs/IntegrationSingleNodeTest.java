@@ -247,13 +247,10 @@ public class IntegrationSingleNodeTest {
 		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
-		final StreamFileWriter consumerD = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("d_downloaded.txt"), true);
-		final StreamFileWriter consumerG = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("g_downloaded.txt"), true);
-		final StreamFileWriter consumerE = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("e_downloaded.txt"), true);
-		final StreamFileWriter consumerF = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("f_downloaded.txt"), true);
-
-
-
+		final StreamFileWriter consumerD = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
+		final StreamFileWriter consumerG = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
+		final StreamFileWriter consumerE = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("e_downloaded.txt"));
+		final StreamFileWriter consumerF = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("f_downloaded.txt"));
 
 		server.start(new CompletionCallback() {
 			@Override
@@ -323,7 +320,7 @@ public class IntegrationSingleNodeTest {
 		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
-		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"), true);
+		final StreamFileWriter consumerA = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
 		consumerA.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -361,7 +358,7 @@ public class IntegrationSingleNodeTest {
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertFalse(Files.exists(clientStorage.resolve("file_should_not exist.txt")));
+		assertTrue(Files.size(clientStorage.resolve("file_should_not exist.txt")) == 0);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 

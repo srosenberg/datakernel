@@ -18,14 +18,17 @@ package io.datakernel.simplefs;
 
 import io.datakernel.FileSystem;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.protocol.FsServer;
 import io.datakernel.protocol.ServerProtocol;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,10 +42,12 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
+import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
+import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class SimpleFsServer extends FsServer implements EventloopService {
 	public static final class Builder {
@@ -55,9 +60,6 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		private ExecutorService executor;
 		private Path storage;
 		private Path tmpStorage;
-
-		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
-		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
 
 		public Builder(Eventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
 			this.eventloop = eventloop;
@@ -87,17 +89,6 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 			return this;
 		}
 
-		// filesystem
-		public Builder setInProgressExtension(String inProgressExtension) {
-			this.inProgressExtension = inProgressExtension;
-			return this;
-		}
-
-		public Builder setReaderBufferSize(int readerBufferSize) {
-			this.readerBufferSize = readerBufferSize;
-			return this;
-		}
-
 		// protocol
 		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
 			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
@@ -120,8 +111,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		}
 
 		public SimpleFsServer build() {
-			FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmpStorage,
-					readerBufferSize, inProgressExtension);
+			FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmpStorage);
 			ServerProtocol<SimpleFsServer> protocol = protocolBuilder.build();
 			protocol.setListenAddresses(addresses);
 			SimpleFsServer server = new SimpleFsServer(eventloop, fs, protocol, approveWaitTime);
@@ -133,6 +123,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
 
 	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
+	public static final int DEFAULT_READER_BUFFER_SIZE = 256 * 1024;
 
 	private final Eventloop eventloop;
 	private final FileSystem fileSystem;
@@ -140,6 +131,9 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 
 	private final Set<String> filesToBeCommitted = new HashSet<>();
 	private final long approveWaitTime;
+
+	// TODO (arashev) move to builder
+	private static final int bufferSize = DEFAULT_READER_BUFFER_SIZE;
 
 	private CompletionCallback callbackOnStop;
 	private ServerStatus serverStatus;
@@ -149,7 +143,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		this.eventloop = checkNotNull(eventLoop);
 		this.fileSystem = checkNotNull(fileSystem);
 		this.protocol = checkNotNull(protocol);
-		check(approveWaitTime > 0, "Approve wait time should be positive: %s", approveWaitTime);
+		checkState(approveWaitTime > 0, "Approve wait time should be positive: %s", approveWaitTime);
 		this.approveWaitTime = approveWaitTime;
 	}
 
@@ -199,15 +193,17 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		}
 	}
 
-	// functional
+	// api
 	@Override
-	protected void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	protected void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Received command to upload file: {}", fileName);
-		check(serverStatus == RUNNING, "Server shut down!");
-		fileSystem.saveToTmp(fileName, producer, new ForwardingCompletionCallback(callback) {
+		checkState(serverStatus == RUNNING, "Server shut down!");
+		fileSystem.saveToTmp(fileName, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
-			public void onComplete() {
-				logger.trace("File {} flushed to tmp", fileName);
+			public void onResult(AsyncFile result) {
+				logger.trace("File {} opened for writing", fileName);
+				StreamFileWriter writer = create(eventloop, result);
+				producer.streamTo(writer);
 				filesToBeCommitted.add(fileName);
 				scheduleTmpFileDeletion(fileName);
 				callback.onComplete();
@@ -218,7 +214,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 	@Override
 	protected void commit(final String fileName, final boolean success, final CompletionCallback callback) {
 		logger.info("Received command to commit file: {}, {}", fileName, success);
-		check(serverStatus == RUNNING || filesToBeCommitted.contains(fileName), "Server shut down!");
+		checkState(serverStatus == RUNNING || filesToBeCommitted.contains(fileName), "Server shut down!");
 		filesToBeCommitted.remove(fileName);
 
 		CompletionCallback cb = new CompletionCallback() {
@@ -245,23 +241,29 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 	}
 
 	@Override
-	protected StreamProducer<ByteBuf> download(String fileName, long startPosition) {
+	protected void download(String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		logger.info("Received command to download file: {}, start position: {}", fileName, startPosition);
-		check(serverStatus == RUNNING, "Server shut down!");
-		return fileSystem.get(fileName, startPosition);
+		checkState(serverStatus == RUNNING, "Server shut down!");
+		fileSystem.get(fileName, new ForwardingResultCallback<AsyncFile>(callback) {
+			@Override
+			public void onResult(AsyncFile result) {
+				StreamFileReader reader = readFileFrom(eventloop, result, bufferSize, startPosition);
+				callback.onResult(reader);
+			}
+		});
 	}
 
 	@Override
 	protected void delete(String fileName, CompletionCallback callback) {
 		logger.info("Received command to delete file: {}", fileName);
-		check(serverStatus == RUNNING, "Server shut down!");
+		checkState(serverStatus == RUNNING, "Server shut down!");
 		fileSystem.delete(fileName, callback);
 	}
 
 	@Override
-	protected void list(ResultCallback<Set<String>> callback) {
+	protected void list(ResultCallback<List<String>> callback) {
 		logger.info("Received command to list files");
-		check(serverStatus == RUNNING, "Server shut down!");
+		checkState(serverStatus == RUNNING, "Server shut down!");
 		fileSystem.list(callback);
 	}
 
@@ -270,6 +272,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		return fileSystem.fileSize(fileName);
 	}
 
+	// util
 	private void scheduleTmpFileDeletion(final String fileName) {
 		eventloop.scheduleBackground(eventloop.currentTimeMillis() + approveWaitTime, new Runnable() {
 			@Override

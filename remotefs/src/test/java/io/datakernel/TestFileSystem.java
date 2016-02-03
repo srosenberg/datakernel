@@ -18,9 +18,11 @@ package io.datakernel;
 
 import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -29,17 +31,17 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
@@ -52,6 +54,8 @@ public class TestFileSystem {
 	private Path storage;
 	private Path tmp;
 	private Path client;
+
+	private static final int bufferSize = 16 * 1024 * 1024;
 
 	@Before
 	public void setup() throws IOException {
@@ -94,11 +98,26 @@ public class TestFileSystem {
 
 	@Test
 	public void testUpload() throws IOException {
-		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
+		final FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 		fs.initDirectories();
 
-		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
-		fs.saveToTmp("1/c.txt", producer, ignoreCompletionCallback());
+		AsyncFile.open(eventloop, executor, client.resolve("c.txt"), new OpenOption[]{StandardOpenOption.READ}, new ResultCallback<AsyncFile>() {
+			@Override
+			public void onResult(final AsyncFile file) {
+				fs.saveToTmp("1/c.txt", new ForwardingResultCallback<AsyncFile>(this) {
+					@Override
+					public void onResult(AsyncFile result) {
+						StreamFileReader producer = StreamFileReader.readFileFully(eventloop, file, bufferSize);
+						StreamFileWriter consumer = StreamFileWriter.create(eventloop, result);
+						producer.streamTo(consumer);
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+			}
+		});
 
 		eventloop.run();
 
@@ -116,11 +135,26 @@ public class TestFileSystem {
 
 	@Test
 	public void testUploadFailed() throws IOException {
-		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
+		final FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 		fs.initDirectories();
 
-		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
-		fs.saveToTmp("1/c.txt", producer, ignoreCompletionCallback());
+		AsyncFile.open(eventloop, executor, client.resolve("c.txt"), new OpenOption[]{StandardOpenOption.READ}, new ResultCallback<AsyncFile>() {
+			@Override
+			public void onResult(final AsyncFile file) {
+				fs.saveToTmp("1/c.txt", new ForwardingResultCallback<AsyncFile>(this) {
+					@Override
+					public void onResult(AsyncFile result) {
+						StreamFileReader producer = StreamFileReader.readFileFully(eventloop, file, bufferSize);
+						StreamFileWriter consumer = StreamFileWriter.create(eventloop, result);
+						producer.streamTo(consumer);
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+			}
+		});
 
 		eventloop.run();
 
@@ -136,13 +170,27 @@ public class TestFileSystem {
 
 	@Test
 	public void testGet() throws IOException {
-		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
+		final FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 
-		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("d.txt"));
+		AsyncFile.open(eventloop, executor, client.resolve("d.txt"), new OpenOption[]{CREATE_NEW, WRITE}, new ResultCallback<AsyncFile>() {
+			@Override
+			public void onResult(final AsyncFile file) {
+				fs.get("2/b/d.txt", new ForwardingResultCallback<AsyncFile>(this) {
+					@Override
+					public void onResult(AsyncFile result) {
+						StreamFileReader producer = StreamFileReader.readFileFully(eventloop, result, bufferSize);
+						StreamFileWriter consumer = StreamFileWriter.create(eventloop, file);
+						producer.streamTo(consumer);
+					}
+				});
+			}
 
-		fs.get("2/b/d.txt", 0).streamTo(consumer);
+			@Override
+			public void onException(Exception ignored) {
+			}
+		});
 
 		eventloop.run();
 		executor.shutdown();
@@ -152,27 +200,33 @@ public class TestFileSystem {
 
 	@Test
 	public void testGetFailed() throws Exception {
-		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
+		final FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
-		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("no_file.txt"));
 
-		consumer.setFlushCallback(new CompletionCallback() {
+		AsyncFile.open(eventloop, executor, client.resolve("to_be_deleted.txt"), new OpenOption[]{CREATE_NEW, WRITE}, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onComplete() {
-				fail("Should not get there");
+			public void onResult(final AsyncFile file) {
+				fs.get("no_file.txt", new ForwardingResultCallback<AsyncFile>(this) {
+					@Override
+					public void onResult(AsyncFile result) {
+						StreamFileReader producer = StreamFileReader.readFileFully(eventloop, result, bufferSize);
+						StreamFileWriter consumer = StreamFileWriter.create(eventloop, file);
+						producer.streamTo(consumer);
+					}
+				});
 			}
 
 			@Override
-			public void onException(Exception e) {
-				assertTrue(e.getClass() == NoSuchFileException.class);
+			public void onException(Exception ignored) {
+				AsyncFile.delete(eventloop, executor, client.resolve("to_be_deleted.txt"), ignoreCompletionCallback());
 			}
 		});
-		fs.get("2/b/no_file.txt", 0).streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();
 
+		assertFalse(Files.exists(client.resolve("to_be_deleted.txt")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
@@ -183,6 +237,7 @@ public class TestFileSystem {
 		fs.initDirectories();
 		assertTrue(Files.exists(storage.resolve("2/3/a.txt")));
 		fs.delete("2/3/a.txt", ignoreCompletionCallback());
+		eventloop.run();
 		assertFalse(Files.exists(storage.resolve("2/3/a.txt")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -211,11 +266,13 @@ public class TestFileSystem {
 		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
-		final Set<String> expected = new HashSet<>();
+		final List<String> expected = new ArrayList<>();
 		expected.addAll(Arrays.asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt"));
-		fs.list(new ResultCallback<Set<String>>() {
+		fs.list(new ResultCallback<List<String>>() {
 			@Override
-			public void onResult(Set<String> result) {
+			public void onResult(List<String> result) {
+				Collections.sort(result);
+				Collections.sort(expected);
 				assertEquals(expected, result);
 			}
 

@@ -23,6 +23,7 @@ import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,7 +45,7 @@ public class SimpleFsFileUploadExample {
 	private static final Path CLIENT_STORAGE = Paths.get("./test_data");
 	private static final String fileName = "example.txt";
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		final InetSocketAddress address = new InetSocketAddress(SERVER_PORT);
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		final Eventloop eventloop = new Eventloop();
