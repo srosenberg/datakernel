@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs.example;
 
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -68,9 +68,9 @@ public class SimpleFsFileDownloadExample {
 			}
 		});
 
-		client.download(requiredFile, new ResultCallback<StreamProducerWithCounter>() {
+		client.download(requiredFile, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
-			public void onResult(StreamProducerWithCounter result) {
+			public void onResult(StreamTransformerWithCounter result) {
 				result.getOutput().streamTo(consumer);
 			}
 

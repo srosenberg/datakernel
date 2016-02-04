@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.file;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -111,7 +112,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		}
 
 		if (length == 0L) {
-			doCleanup();
+			doCleanup(ignoreCompletionCallback());
 			sendEndOfStream();
 			return;
 		}
@@ -123,13 +124,13 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			public void onResult(Integer result) {
 				if (getProducerStatus().isClosed()) {
 					buf.recycle();
-					doCleanup();
+					doCleanup(ignoreCompletionCallback());
 					return;
 				}
 				pendingAsyncOperation = false;
 				if (result == -1) {
 					buf.recycle();
-					doCleanup();
+					doCleanup(ignoreCompletionCallback());
 					sendEndOfStream();
 
 					if (positionCallback != null) {
@@ -153,7 +154,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			@Override
 			public void onException(Exception e) {
 				buf.recycle();
-				doCleanup();
+				doCleanup(ignoreCompletionCallback());
 				closeWithError(e);
 
 				if (positionCallback != null) {
@@ -202,10 +203,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		logger.error("{}: onError", this, e);
 	}
 
-	@Override
-	protected void doCleanup() {
+	private void doCleanup(CompletionCallback callback) {
 		logger.info("Closing file at path {}", asyncFile);
-		asyncFile.close(ignoreCompletionCallback());
+		asyncFile.close(callback);
 	}
 
 	private static AsyncFile getAsyncFile(Eventloop eventloop, ExecutorService executor, Path path) throws IOException {

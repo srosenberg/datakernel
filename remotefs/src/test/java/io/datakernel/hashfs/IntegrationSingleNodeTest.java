@@ -19,7 +19,7 @@ package io.datakernel.hashfs;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.datakernel.FsClient;
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
@@ -33,7 +33,6 @@ import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -47,6 +46,7 @@ import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -237,9 +237,8 @@ public class IntegrationSingleNodeTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
-	public void testDownload() throws Exception {
+	public void testDownload() throws IOException, ExecutionException, InterruptedException {
 		String dFileContents = "Local d.txt";
 		final int startPosition = 5;
 		final ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
@@ -260,7 +259,18 @@ public class IntegrationSingleNodeTest {
 			public void onComplete() {
 				client.download("this/g.txt", streamTo(consumerG));
 				client.download("e.txt", streamTo(consumerE));
-				client.download("d.txt", startPosition, streamTo(consumerD));
+				client.download("d.txt", startPosition, new ResultCallback<StreamTransformerWithCounter>() {
+					@Override
+					public void onResult(StreamTransformerWithCounter result) {
+						result.getOutput().streamTo(consumerD);
+						result.setPositionCallback(sizeFuture);
+					}
+
+					@Override
+					public void onException(Exception e) {
+						throw new RuntimeException(e);
+					}
+				});
 				client.download("f.txt", streamTo(consumerF));
 
 				consumerD.setFlushCallback(new CompletionCallback() {
@@ -306,27 +316,12 @@ public class IntegrationSingleNodeTest {
 
 		eventloop.run();
 		executor.shutdownNow();
-		assertEquals(dFileContents.length(), sizeFuture.get().longValue());
+		assertEquals(dFileContents.length() - startPosition, sizeFuture.get().longValue());
 		assertEquals(dFileContents.substring(startPosition), new String(Files.readAllBytes(clientStorage.resolve("d_downloaded.txt"))));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("g_downloaded.txt").toFile(), serverStorage.resolve("this/g.txt").toFile()));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("e_downloaded.txt").toFile(), serverStorage.resolve("e.txt").toFile()));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("f_downloaded.txt").toFile(), serverStorage.resolve("f.txt").toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		System.out.println("Bye bye");
-	}
-
-	private ResultCallback<StreamProducerWithCounter> streamTo(final StreamFileWriter consumerG) {
-		return new ResultCallback<StreamProducerWithCounter>() {
-			@Override
-			public void onResult(StreamProducerWithCounter result) {
-				result.getOutput().streamTo(consumerG);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				throw new RuntimeException(e);
-			}
-		};
 	}
 
 	@Test
@@ -340,9 +335,9 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				client.download("file_does_not_exist", new ResultCallback<StreamProducerWithCounter>() {
+				client.download("file_does_not_exist", new ResultCallback<StreamTransformerWithCounter>() {
 					@Override
-					public void onResult(StreamProducerWithCounter result) {
+					public void onResult(StreamTransformerWithCounter result) {
 						final StreamFileWriter consumerA;
 						try {
 							consumerA = StreamFileWriter.create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
@@ -542,6 +537,20 @@ public class IntegrationSingleNodeTest {
 
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	private ResultCallback<StreamTransformerWithCounter> streamTo(final StreamFileWriter consumerG) {
+		return new ResultCallback<StreamTransformerWithCounter>() {
+			@Override
+			public void onResult(StreamTransformerWithCounter result) {
+				result.getOutput().streamTo(consumerG);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				throw new RuntimeException(e);
+			}
+		};
 	}
 
 	private FsClient getClient(Eventloop eventloop) {

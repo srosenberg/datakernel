@@ -16,7 +16,7 @@
 
 package io.datakernel.protocol;
 
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
@@ -183,7 +183,7 @@ public class ClientProtocol {
 		connect(address, uploadConnectCallback(address, fileName, producer, callback));
 	}
 
-	public void download(InetSocketAddress address, String fileName, long startPosition, ResultCallback<StreamProducerWithCounter> callback) {
+	public void download(InetSocketAddress address, String fileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback) {
 		connect(address, downloadConnectCallback(fileName, startPosition, callback));
 	}
 
@@ -258,7 +258,7 @@ public class ClientProtocol {
 	}
 
 	protected ConnectCallback downloadConnectCallback(final String fileName, final long startPosition,
-	                                                  final ResultCallback<StreamProducerWithCounter> callback) {
+	                                                  final ResultCallback<StreamTransformerWithCounter> callback) {
 		return new ForwardingConnectCallback(callback) {
 			@Override
 			public void onConnect(SocketChannel channel) {
@@ -274,7 +274,7 @@ public class ClientProtocol {
 							@Override
 							public void onMessage(Ready item, Messaging<FsCommand> messaging) {
 								logger.trace("Received acknowledge for {} bytes ready", item.size);
-								StreamProducerWithCounter counter = new StreamProducerWithCounter(eventloop, item.size - startPosition);
+								StreamTransformerWithCounter counter = new StreamTransformerWithCounter(eventloop, item.size - startPosition);
 								messaging.read().streamTo(counter.getInput());
 								callback.onResult(counter);
 								messaging.shutdown();

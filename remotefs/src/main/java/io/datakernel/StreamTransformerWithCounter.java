@@ -21,8 +21,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamStatus;
 
-public class StreamProducerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
 	private final long expectedSize;
@@ -31,10 +32,18 @@ public class StreamProducerWithCounter extends AbstractStreamTransformer_1_1<Byt
 	private ResultCallback<Long> positionCallback;
 
 	public void setPositionCallback(ResultCallback<Long> positionCallback) {
-		this.positionCallback = positionCallback;
+		if (this.getOutput().getProducerStatus().isOpen()) {
+			this.positionCallback = positionCallback;
+		} else {
+			if (this.getOutput().getProducerStatus() == StreamStatus.END_OF_STREAM) {
+				positionCallback.onResult(streamedSize);
+			} else {
+				positionCallback.onException(this.getOutput().getProducerException());
+			}
+		}
 	}
 
-	public StreamProducerWithCounter(Eventloop eventloop, long requiredSize) {
+	public StreamTransformerWithCounter(Eventloop eventloop, long requiredSize) {
 		super(eventloop);
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer();
@@ -46,11 +55,15 @@ public class StreamProducerWithCounter extends AbstractStreamTransformer_1_1<Byt
 		protected void onUpstreamEndOfStream() {
 			if (expectedSize == streamedSize) {
 				outputProducer.sendEndOfStream();
-				positionCallback.onResult(streamedSize);
+				if (positionCallback != null) {
+					positionCallback.onResult(streamedSize);
+				}
 			} else {
 				Exception e = new Exception("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
 				onError(e);
-				positionCallback.onException(e);
+				if (positionCallback != null) {
+					positionCallback.onException(e);
+				}
 			}
 		}
 

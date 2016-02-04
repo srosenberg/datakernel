@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.AsyncExecutor;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
@@ -62,9 +62,9 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
 
-		client.download(path(id), new ResultCallback<StreamProducerWithCounter>() {
+		client.download(path(id), new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
-			public void onResult(StreamProducerWithCounter result) {
+			public void onResult(StreamTransformerWithCounter result) {
 				result.getOutput().streamTo(decompressor.getInput());
 			}
 

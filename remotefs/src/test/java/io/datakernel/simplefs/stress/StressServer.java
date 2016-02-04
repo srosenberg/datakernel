@@ -30,8 +30,8 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
-	private static final Path STORAGE_PATH = Paths.get("./test/server_storage");
-	private static final Path TMP_PATH = Paths.get("./test/tmp");
+	public static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
+	public static final Path TMP_PATH = Paths.get("./test_data/tmp");
 	public static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();

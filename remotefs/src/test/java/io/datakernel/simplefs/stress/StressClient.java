@@ -17,7 +17,7 @@
 package io.datakernel.simplefs.stress;
 
 import com.google.common.base.Charsets;
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -48,6 +48,8 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+
 public class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
 	private InetSocketAddress address = new InetSocketAddress(5560);
@@ -58,7 +60,8 @@ public class StressClient {
 
 	private static Random rand = new Random();
 
-	private static final Path clientStorage = Paths.get("./test/clients_storage");
+	private static final Path clientStorage = Paths.get("./test_data/clients_storage");
+
 	private static Path downloads;
 
 	List<String> existingClientFiles = new ArrayList<>();
@@ -121,9 +124,9 @@ public class StressClient {
 							logger.info("Failed to download: {}", e.getMessage());
 						}
 					});
-					client.download(fileName, new ResultCallback<StreamProducerWithCounter>() {
+					client.download(fileName, new ResultCallback<StreamTransformerWithCounter>() {
 						@Override
-						public void onResult(StreamProducerWithCounter result) {
+						public void onResult(StreamTransformerWithCounter result) {
 							result.getOutput().streamTo(consumer);
 						}
 
@@ -238,18 +241,28 @@ public class StressClient {
 				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
-		client.upload("someName" + i, serializer.getOutput(), new CompletionCallback() {
-			@Override
-			public void onException(Exception exception) {
+		client.upload("someName" + i, serializer.getOutput(), ignoreCompletionCallback());
+		eventloop.run();
+	}
 
+	public void downloadSmallObjects(int i) {
+		final String name = "someName" + i;
+		client.download(name, new ResultCallback<StreamTransformerWithCounter>() {
+			@Override
+			public void onResult(StreamTransformerWithCounter result) {
+				try {
+					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
+					result.getOutput().streamTo(writer);
+				} catch (IOException e) {
+					this.onException(e);
+				}
 			}
 
 			@Override
-			public void onComplete() {
-
+			public void onException(Exception e) {
+				throw new RuntimeException(e);
 			}
 		});
-
 		eventloop.run();
 	}
 

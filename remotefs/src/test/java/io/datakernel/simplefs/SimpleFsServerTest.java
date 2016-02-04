@@ -17,7 +17,7 @@
 package io.datakernel.simplefs;
 
 import com.google.common.collect.Lists;
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -30,7 +30,6 @@ import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -46,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
@@ -286,18 +286,53 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testDownloadWithPositions() throws Exception {
 		String fileContent = "file1";
-		String requestedFile = "file1.txt";
-		String resultFile = "file1_downloaded.txt";
-		int startPosition = 2;
+		final String requestedFile = "file1.txt";
+		final String resultFile = "file1_downloaded.txt";
+		final int startPosition = 2;
 
-		// TODO (arashev) wtf
-		ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
-//		download(requestedFile, startPosition, sizeFuture, resultFile);
-		assertEquals(fileContent.length(), sizeFuture.get().longValue());
+		final ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
+
+		final Eventloop eventloop = new Eventloop();
+		final ExecutorService executor = Executors.newCachedThreadPool();
+		final SimpleFsServer server = createServer(eventloop, executor);
+
+		final SimpleFsClient client = createClient(eventloop);
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.download(requestedFile, startPosition, new ForwardingResultCallback<StreamTransformerWithCounter>(this) {
+					@Override
+					public void onResult(StreamTransformerWithCounter result) {
+						try {
+							StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, clientStorage.resolve(resultFile));
+							result.getOutput().streamTo(writer);
+							result.setPositionCallback(sizeFuture);
+							writer.setFlushCallback(new ForwardingCompletionCallback(this) {
+								@Override
+								public void onComplete() {
+									server.stop(ignoreCompletionCallback());
+								}
+							});
+						} catch (IOException e) {
+							onException(e);
+						}
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				server.stop(ignoreCompletionCallback());
+			}
+		});
+
+		eventloop.run();
+		executor.shutdown();
+
+		assertEquals(fileContent.length() - startPosition, sizeFuture.get().longValue());
 		assertEquals(fileContent.substring(startPosition), new String(Files.readAllBytes(clientStorage.resolve(resultFile))));
 	}
 
@@ -312,7 +347,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testDownloadNotExist() throws Exception {
 		final String requestedFile = "file_not_exist.txt";
@@ -323,46 +357,46 @@ public class SimpleFsServerTest {
 		final EventloopService server = createServer(eventloop, executor);
 		final SimpleFsClient client = createClient(eventloop);
 
-		AsyncFile.open(eventloop, executor, clientStorage.resolve(resultFile), new OpenOption[]{CREATE_NEW, WRITE}, new ResultCallback<AsyncFile>() {
+		server.start(new CompletionCallback() {
 			@Override
-			public void onResult(final AsyncFile result) {
-				server.start(new ForwardingCompletionCallback(this) {
-					@Override
-					public void onComplete() {
-						final StreamFileWriter consumer = StreamFileWriter.create(eventloop, result);
-						consumer.setFlushCallback(new CompletionCallback() {
-							@Override
-							public void onComplete() {
-								server.stop(ignoreCompletionCallback());
-							}
+			public void onComplete() {
 
-							@Override
-							public void onException(Exception ignored) {
-								server.stop(ignoreCompletionCallback());
-							}
-						});
-						client.download(requestedFile, streamTo(consumer));
+				client.download(requestedFile, new ForwardingResultCallback<StreamTransformerWithCounter>(this) {
+					@Override
+					public void onResult(StreamTransformerWithCounter result) {
+						try {
+							StreamFileWriter consumer = StreamFileWriter.create(eventloop, executor, clientStorage.resolve(requestedFile));
+							consumer.setFlushCallback(new ForwardingCompletionCallback(this) {
+								@Override
+								public void onComplete() {
+									server.stop(ignoreCompletionCallback());
+								}
+							});
+							result.getOutput().streamTo(consumer);
+						} catch (IOException e) {
+							this.onException(e);
+						}
 					}
 				});
 			}
 
 			@Override
 			public void onException(Exception ignored) {
-				AsyncFile.delete(eventloop, executor, clientStorage.resolve(resultFile), ignoreCompletionCallback());
+				server.stop(ignoreCompletionCallback());
 			}
 		});
 
 		eventloop.run();
 		executor.shutdown();
 
-		assertTrue(Files.size(clientStorage.resolve(resultFile)) == 0);
+		assertFalse(Files.exists(clientStorage.resolve(resultFile)));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	private ResultCallback<StreamProducerWithCounter> streamTo(final StreamFileWriter consumer) {
-		return new ResultCallback<StreamProducerWithCounter>() {
+	private ResultCallback<StreamTransformerWithCounter> streamTo(final StreamFileWriter consumer) {
+		return new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
-			public void onResult(StreamProducerWithCounter result) {
+			public void onResult(StreamTransformerWithCounter result) {
 				result.getOutput().streamTo(consumer);
 			}
 
@@ -603,9 +637,9 @@ public class SimpleFsServerTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				client.download(requestedFile, startPosition, new ResultCallback<StreamProducerWithCounter>() {
+				client.download(requestedFile, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
 					@Override
-					public void onResult(final StreamProducerWithCounter producer) {
+					public void onResult(final StreamTransformerWithCounter producer) {
 						AsyncFile.open(eventloop, executor, clientStorage.resolve(resultFile), new OpenOption[]{CREATE_NEW, WRITE, TRUNCATE_EXISTING},
 								new ForwardingResultCallback<AsyncFile>(this) {
 									@Override
@@ -673,7 +707,7 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 	}
 
-	private static EventloopService createServer(Eventloop eventloop, ExecutorService executor) {
+	private static SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		return SimpleFsServer.build(eventloop, executor, serverStorage, tmpStorage)
 				.setListenAddress(address)
 				.build();

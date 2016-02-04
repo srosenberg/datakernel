@@ -17,7 +17,7 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.FsClient;
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -114,7 +114,7 @@ public final class SimpleFsClient extends FsClient {
 	}
 
 	@Override
-	public void download(String fileName, long startPosition, ResultCallback<StreamProducerWithCounter> callback) {
+	public void download(String fileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback) {
 		protocol.download(serverAddress, fileName, startPosition, callback);
 	}
 

@@ -17,7 +17,7 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.FsClient;
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.Util;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -166,7 +166,7 @@ public class HashFsClient extends FsClient {
 	}
 
 	@Override
-	public void download(final String sourceFileName, final long startPosition, final ResultCallback<StreamProducerWithCounter> callback) {
+	public void download(final String sourceFileName, final long startPosition, final ResultCallback<StreamTransformerWithCounter> callback) {
 		getAliveServers(new ResultCallback<List<ServerInfo>>() {
 			@Override
 			public void onResult(List<ServerInfo> result) {
@@ -239,12 +239,12 @@ public class HashFsClient extends FsClient {
 	}
 
 	private void download(final String fileName, final long startPosition, final int currentAttempt,
-	                      final List<ServerInfo> candidates, final ResultCallback<StreamProducerWithCounter> callback) {
+	                      final List<ServerInfo> candidates, final ResultCallback<StreamTransformerWithCounter> callback) {
 
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server.getAddress(), fileName, startPosition, new ResultCallback<StreamProducerWithCounter>() {
+		protocol.download(server.getAddress(), fileName, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
-			public void onResult(StreamProducerWithCounter result) {
+			public void onResult(StreamTransformerWithCounter result) {
 				callback.onResult(result);
 			}
 

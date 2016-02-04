@@ -26,9 +26,9 @@ import java.util.List;
 public abstract class FsClient {
 	public abstract void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	public abstract void download(String sourceFileName, long startPosition, ResultCallback<StreamProducerWithCounter> callback);
+	public abstract void download(String sourceFileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback);
 
-	public void download(String sourceFileName, ResultCallback<StreamProducerWithCounter> callback) {
+	public void download(String sourceFileName, ResultCallback<StreamTransformerWithCounter> callback) {
 		download(sourceFileName, 0, callback);
 	}
 

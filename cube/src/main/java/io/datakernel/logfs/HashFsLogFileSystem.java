@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.StreamProducerWithCounter;
+import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -51,9 +51,9 @@ public final class HashFsLogFileSystem extends AbstractRemoteLogFileSystem {
 
 	@Override
 	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBuf> consumer) {
-		client.download(path(logPartition, logFile), startPosition, new ResultCallback<StreamProducerWithCounter>() {
+		client.download(path(logPartition, logFile), startPosition, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
-			public void onResult(StreamProducerWithCounter result) {
+			public void onResult(StreamTransformerWithCounter result) {
 				result.getOutput().streamTo(consumer);
 			}
 
