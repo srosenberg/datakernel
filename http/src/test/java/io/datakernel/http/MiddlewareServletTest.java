@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
@@ -43,8 +44,8 @@ public class MiddlewareServletTest {
 			}
 
 			@Override
-			public void onException(Exception exception) {
-
+			public void onException(Exception ignored) {
+				// empty
 			}
 		};
 	}
@@ -87,8 +88,18 @@ public class MiddlewareServletTest {
 		main.serveAsync(request2, callback("Executed: /a", 200));
 		main.serveAsync(request3, callback("Executed: /a/c", 200));
 		main.serveAsync(request4, callback("Executed: /a/d", 200));
-		main.serveAsync(request5, callback("", 404));
-		main.serveAsync(request6, callback("", 404));
+		try {
+			main.serveAsync(request5, AsyncCallbacks.<HttpResponse>ignoreResultCallback());
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
+		try {
+			main.serveAsync(request6, AsyncCallbacks.<HttpResponse>ignoreResultCallback());
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
@@ -127,8 +138,18 @@ public class MiddlewareServletTest {
 		main.serveAsync(request2, callback("Executed: /a", 200));
 		main.serveAsync(request3, callback("Executed: /a/c", 200));
 		main.serveAsync(request4, callback("Executed: /a/d", 200));
-		main.serveAsync(request5, callback("", 404));
-		main.serveAsync(request6, callback("", 404));
+		try {
+			main.serveAsync(request5, AsyncCallbacks.<HttpResponse>ignoreResultCallback());
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
+		try {
+			main.serveAsync(request6, AsyncCallbacks.<HttpResponse>ignoreResultCallback());
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
@@ -260,7 +281,12 @@ public class MiddlewareServletTest {
 		System.out.println("Parameter test " + DELIM);
 		main.serveAsync(HttpRequest.get("http://www.coursera.org/123/a/456/b/789"), callback("123 456 789", 200));
 		main.serveAsync(HttpRequest.get("http://www.coursera.org/555/a/777"), callback("555 777 null", 200));
-		main.serveAsync(HttpRequest.get("http://www.coursera.org"), callback("", 404));
+		try {
+			main.serveAsync(HttpRequest.get("http://www.coursera.org"), AsyncCallbacks.<HttpResponse>ignoreResultCallback());
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
 		System.out.println();
 	}
 
@@ -381,7 +407,12 @@ public class MiddlewareServletTest {
 		main.use("/a/:id/b/d", handler);
 
 		System.out.println("404 " + DELIM);
-		main.serveAsync(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
+		try {
+			main.serveAsync(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
+		} catch (HttpException e) {
+			assertEquals("Service not found", e.getMessage() == null ? "" : e.getMessage());
+			assertEquals(404, e.getCode());
+		}
 		System.out.println();
 	}
 }

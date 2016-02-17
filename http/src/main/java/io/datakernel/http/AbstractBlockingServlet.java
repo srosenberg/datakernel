@@ -43,6 +43,7 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 		this.executor = executor;
 	}
 
+	@Override
 	protected final void doServeAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		executor.execute(new Runnable() {
 			@Override

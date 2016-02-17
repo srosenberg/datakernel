@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
@@ -39,7 +39,11 @@ public final class StaticServletForResources extends StaticServlet {
 	private static final IOException ERROR = new IOException("Resource loading error");
 	private final ConcurrentHashMap<String, byte[]> cache = new ConcurrentHashMap<>();
 
-	public StaticServletForResources(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
+	public static StaticServletForResources create(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
+		return new StaticServletForResources(eventloop, executor, resourceRoot);
+	}
+
+	private StaticServletForResources(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.root = ClassLoader.getSystemResource(resourceRoot);
@@ -47,6 +51,11 @@ public final class StaticServletForResources extends StaticServlet {
 
 	private static byte[] loadResource(URL root, String name) throws IOException {
 		URL file = new URL(root, name);
+
+		if (!file.getPath().startsWith(root.getPath())) {
+			throw new HttpException(400, "Bad file path");
+		}
+
 		try (InputStream in = file.openStream()) {
 			// reading file as resource
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -60,7 +69,7 @@ public final class StaticServletForResources extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(final String name, final ForwardingResultCallback<ByteBuf> callback) {
+	protected final void doServeAsync(final String name, final ResultCallback<ByteBuf> callback) {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes == ERROR_BYTES) {

@@ -111,7 +111,7 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 	public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		boolean processed = tryServeAsync(request, callback);
 		if (!processed) {
-			callback.onResult(HttpResponse.notFound404());
+			callback.onException(new HttpException(404, "Service not found"));
 		}
 	}
 

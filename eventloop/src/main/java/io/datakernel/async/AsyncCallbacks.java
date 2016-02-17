@@ -306,7 +306,7 @@ public final class AsyncCallbacks {
 						}
 					});
 				} catch (final Exception e) {
-					logger.error("callConcurrently error", e);
+					logger.error("callConcurrently error: {}", e.getMessage());
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -356,7 +356,7 @@ public final class AsyncCallbacks {
 						}
 					});
 				} catch (final Exception e) {
-					logger.error("applyConcurrently error", e);
+					logger.error("applyConcurrently error: {}", e.getMessage());
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -405,7 +405,7 @@ public final class AsyncCallbacks {
 						}
 					});
 				} catch (final Exception e) {
-					logger.error("setConcurrently error", e);
+					logger.error("setConcurrently error: {}", e.getMessage());
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -451,7 +451,7 @@ public final class AsyncCallbacks {
 						}
 					});
 				} catch (final Exception e) {
-					logger.error("runConcurrently error", e);
+					logger.error("runConcurrently error: {}", e.getMessage());
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {

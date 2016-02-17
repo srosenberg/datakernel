@@ -16,12 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 
+import java.io.FileNotFoundException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 
 public abstract class StaticServlet implements AsyncHttpServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
@@ -48,7 +49,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		return type;
 	}
 
-	protected abstract void doServeAsync(String name, ForwardingResultCallback<ByteBuf> callback);
+	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
 
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.create(200)
@@ -65,11 +66,21 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			assert path.charAt(0) == '/';
 			path = path.substring(1); // removing initial '/'
 		}
+
 		final String finalPath = path;
-		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
+		doServeAsync(path, new ResultCallback<ByteBuf>() {
 			@Override
 			public void onResult(ByteBuf buf) {
 				callback.onResult(createHttpResponse(buf, finalPath));
+			}
+
+			@Override
+			public void onException(Exception e) {
+				if (e instanceof NoSuchFileException || e instanceof FileNotFoundException) {
+					callback.onException(new HttpException(404, "File not found: " + finalPath, e));
+				} else {
+					callback.onException(e);
+				}
 			}
 		});
 	}

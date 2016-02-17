@@ -29,15 +29,13 @@ import java.util.Arrays;
 
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
-	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private static final int HEADERS_SLOTS = 256;
@@ -170,7 +168,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p>
+	 * <p/>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message
@@ -251,11 +249,57 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		writeHttpResult(formatException(e));
 	}
 
+	// 4xx
+	private static final byte[] BAD_REQUEST_MESSAGE = encodeAscii("Bad Request");
+	private static final byte[] UNAUTHORIZED_MESSAGE = encodeAscii("Unauthorized");
+	private static final byte[] FORBIDDEN_MESSAGE = encodeAscii("Forbidden");
+	private static final byte[] NOT_FOUND_MESSAGE = encodeAscii("Not Found");
+	private static final byte[] METHOD_NOT_ALLOWED_MESSAGE = encodeAscii("Method Not Allowed");
+
+	// 5xx
+	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
+	private static final byte[] NOT_IMPLEMENTED_ERROR_MESSAGE = encodeAscii("Not Implemented");
+
+	// common
+	private static final byte[] ERROR_MESSAGE = encodeAscii("Failed to process request");
+
+	private byte[] getMessageByCode(int code) {
+		switch (code) {
+			case 400:
+				return BAD_REQUEST_MESSAGE;
+			case 401:
+				return UNAUTHORIZED_MESSAGE;
+			case 403:
+				return FORBIDDEN_MESSAGE;
+			case 404:
+				return NOT_FOUND_MESSAGE;
+			case 405:
+				return METHOD_NOT_ALLOWED_MESSAGE;
+			case 500:
+				return INTERNAL_ERROR_MESSAGE;
+			case 501:
+				return NOT_IMPLEMENTED_ERROR_MESSAGE;
+			default:
+				return ERROR_MESSAGE;
+		}
+	}
+
 	private HttpResponse formatException(Exception e) {
-		int status = 500;
+		int status;
 		ByteBuf message;
-		logger.error("Error processing http request", e);
-		message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
+
+		if (e instanceof HttpException) {
+			HttpException exception = (HttpException) e;
+			status = exception.getCode();
+			message = exception.getMessage() != null ?
+					wrapAscii(exception.getMessage()) : ByteBuf.wrap(getMessageByCode(status));
+			logger.error("Error processing http request: {}", message);
+		} else {
+			status = 500;
+			message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
+			logger.error("Error processing http request", e);
+		}
+
 		return HttpResponse.create(status).noCache().body(message);
 	}
 
