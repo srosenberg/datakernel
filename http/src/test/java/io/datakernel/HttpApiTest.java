@@ -115,9 +115,9 @@ public class HttpApiTest {
 
 			@Override
 			public void onException(Exception e) {
-				fail("Should not end here");
 				server.close();
 				client.close();
+				fail("Should not end here");
 			}
 		});
 		eventloop.run();

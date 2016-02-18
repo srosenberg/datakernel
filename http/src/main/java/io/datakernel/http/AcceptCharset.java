@@ -75,6 +75,14 @@ public final class AcceptCharset {
 	}
 
 	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) {
+		try {
+			parseInner(bytes, pos, len, list);
+		} catch (RuntimeException e) {
+			throw new HttpException(400, "Bad accept charset in position: " + pos, e);
+		}
+	}
+
+	private static void parseInner(byte[] bytes, int pos, int len, List<AcceptCharset> list) {
 		int end = pos + len;
 
 		while (pos < end) {

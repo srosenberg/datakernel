@@ -73,6 +73,14 @@ public final class HttpCookie {
 	}
 
 	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
+		try {
+			parseInner(bytes, pos, end, cookies);
+		} catch (RuntimeException e) {
+			throw new HttpException(400, "Bad cookie in position: " + pos, e);
+		}
+	}
+
+	private static void parseInner(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
 		HttpCookie cookie = new HttpCookie("", "");
 		while (pos < end) {
 			pos = skipSpaces(bytes, pos, end);
@@ -137,12 +145,15 @@ public final class HttpCookie {
 		return pos;
 	}
 
-	static void parseSimple(String string, List<HttpCookie> cookies) {
-		byte[] bytes = encodeAscii(string);
-		parseSimple(bytes, 0, bytes.length, cookies);
+	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
+		try {
+			parseSimpleInner(bytes, pos, end, cookies);
+		} catch (RuntimeException e) {
+			throw new HttpException(400, "Bad cookie in position: " + pos, e);
+		}
 	}
 
-	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
+	private static void parseSimpleInner(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
 		while (pos < end) {
 			pos = skipSpaces(bytes, pos, end);
 			int keyStart = pos;

@@ -21,23 +21,25 @@ import io.datakernel.async.ResultCallback;
 public abstract class AbstractErrorDecoratorServlet extends MiddlewareServlet {
 	@Override
 	public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		super.serveAsync(request, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callback.onResult(result);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				if (e instanceof HttpException) {
-					callback.onResult(onHttpException(request, (HttpException) e));
-				} else if (e instanceof RuntimeException) {
-					callback.onResult(onRuntimeException(request, (RuntimeException) e));
-				} else {
-					callback.onResult(onCommonException(request, e));
+		try {
+			super.serveAsync(request, new ResultCallback<HttpResponse>() {
+				@Override
+				public void onResult(HttpResponse result) {
+					callback.onResult(result);
 				}
-			}
-		});
+
+				@Override
+				public void onException(Exception e) {
+					if (e instanceof HttpException) {
+						callback.onResult(onHttpException(request, (HttpException) e));
+					} else {
+						callback.onResult(onCommonException(request, e));
+					}
+				}
+			});
+		} catch (RuntimeException e) {
+			onRuntimeException(request, e);
+		}
 	}
 
 	protected abstract HttpResponse onHttpException(HttpRequest request, HttpException e);

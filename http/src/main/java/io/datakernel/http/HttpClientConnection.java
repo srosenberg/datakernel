@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
@@ -88,7 +87,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onFirstLine(ByteBuf line) {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
-			throw new SimpleException("Invalid status line");
+			throw new HttpException(400, "Invalid status line");
 
 		int sp1;
 		if (line.peek(6) == SP) {
@@ -96,7 +95,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
 			sp1 = line.position() + 9;
 		} else
-			throw new SimpleException("Invalid status line: " + new String(line.array(), line.position(), line.remaining()));
+			throw new HttpException(400, "Invalid status line: " + new String(line.array(), line.position(), line.remaining()));
 
 		int sp2;
 		for (sp2 = sp1; sp2 < line.limit(); sp2++) {

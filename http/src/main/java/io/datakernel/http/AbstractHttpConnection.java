@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -46,11 +45,11 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
 	protected static final int UNKNOWN_LENGTH = -1;
 
-	public static final SimpleException HEADER_NAME_ABSENT = new SimpleException("Header name is absent");
-	public static final SimpleException TOO_BIG_HTTP_MESSAGE = new SimpleException("Too big HttpMessage");
-	public static final SimpleException MALFORMED_CHUNK = new SimpleException("Malformed chunk");
-	public static final SimpleException TOO_LONG_HEADER = new SimpleException("Header line exceeds max header size");
-	public static final SimpleException TOO_MANY_HEADERS = new SimpleException("Too many headers");
+	public static final HttpException HEADER_NAME_ABSENT = new HttpException(400, "Header name is absent");
+	public static final HttpException TOO_BIG_HTTP_MESSAGE = new HttpException(400, "Too big HttpMessage");
+	public static final HttpException MALFORMED_CHUNK = new HttpException(400, "Malformed chunk");
+	public static final HttpException TOO_LONG_HEADER = new HttpException(400, "Header line exceeds max header size");
+	public static final HttpException TOO_MANY_HEADERS = new HttpException(400, "Too many headers");
 
 	protected boolean keepAlive = true;
 
@@ -283,7 +282,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		}
 		try {
 			doRead();
-		} catch (SimpleException e) {
+		} catch (HttpException e) {
 			onReadException(e);
 		} catch (Exception e) {
 			onInternalException(e);
@@ -328,7 +327,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		readBody();
 	}
 
-	private static void check(boolean expression, SimpleException e) {
+	private static void check(boolean expression, HttpException e) {
 		if (!expression) {
 			throw e;
 		}

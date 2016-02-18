@@ -65,6 +65,14 @@ final class HttpDate {
 	private HttpDate() {}
 
 	static long parse(byte[] bytes, int start) {
+		try {
+			return parseInner(bytes, start);
+		} catch (RuntimeException e) {
+			throw new HttpException(400, "Bad HttpDate in position: " + start, e);
+		}
+	}
+
+	private static long parseInner(byte[] bytes, int start) {
 		int day = decodeDecimal(bytes, start + 5, 2);
 
 		int month = -1;

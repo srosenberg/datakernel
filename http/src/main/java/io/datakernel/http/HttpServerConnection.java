@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -125,7 +124,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null)
-			throw new SimpleException("Unknown HTTP method");
+			throw new HttpException(400, "Unknown HTTP method");
 
 		request = HttpRequest.create(method);
 

@@ -57,6 +57,14 @@ public final class AcceptMediaType {
 	}
 
 	static void parse(byte[] bytes, int pos, int length, List<AcceptMediaType> list) {
+		try {
+			parseInner(bytes, pos, length, list);
+		} catch (RuntimeException e) {
+			throw new HttpException(400, "Bad media type in position: " + pos, e);
+		}
+	}
+
+	private static void parseInner(byte[] bytes, int pos, int length, List<AcceptMediaType> list) {
 		int end = pos + length;
 
 		while (pos < end) {
