@@ -20,7 +20,9 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Ordering;
+import io.datakernel.aggregation_db.AggregationMetadataStorage.ConsolidationInfo;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.processor.ProcessorFactory;
 import io.datakernel.async.*;
@@ -575,8 +577,11 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate, preferHotSegmentsCoef);
+	// does not support concurrent consolidation
+	public void legacyConsolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef,
+	                              final ResultCallback<Boolean> callback) {
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate,
+				preferHotSegmentsCoef);
 
 		if (chunks.isEmpty()) {
 			callback.onResult(false);
@@ -587,6 +592,52 @@ public class Aggregation {
 			@Override
 			public void onComplete() {
 				callback.onResult(true);
+			}
+		});
+	}
+
+	// supports consolidation by multiple processes concurrently
+	public void consolidate(final int maxChunksToConsolidate, final double preferHotSegmentsCoef,
+	                        final ResultCallback<Boolean> callback) {
+		final List<AggregationChunk> chunks = new ArrayList<>();
+		metadataStorage.startConsolidation(lastRevisionId, new Function<ConsolidationInfo, List<AggregationChunk>>() {
+			@Override
+			public List<AggregationChunk> apply(ConsolidationInfo consolidationInfo) {
+				doLoadChunks(consolidationInfo.loadedChunks);
+				List<AggregationChunk> consolidatingChunks = newArrayList(transform(consolidationInfo.consolidatingChunkIds,
+						new Function<Long, AggregationChunk>() {
+							@Override
+							public AggregationChunk apply(Long id) {
+								return Aggregation.this.chunks.get(id);
+							}
+						}));
+				chunks.addAll(aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate,
+						preferHotSegmentsCoef, consolidatingChunks));
+				return chunks;
+			}
+		}, new ForwardingCompletionCallback(callback) {
+			@Override
+			public void onComplete() {
+				if (chunks.isEmpty()) {
+					callback.onResult(false);
+					return;
+				}
+
+				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
+					@Override
+					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
+						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks,
+								new ForwardingCompletionCallback(callback) {
+									@Override
+									public void onComplete() {
+										logger.info("Completed consolidation of the following chunks " +
+														"in aggregation '{}': [{}]. Created chunks: [{}]",
+												aggregationMetadata, getChunkIds(chunks), getNewChunkIds(consolidatedChunks));
+										callback.onResult(true);
+									}
+								});
+					}
+				});
 			}
 		});
 	}
@@ -603,8 +654,7 @@ public class Aggregation {
 							public void onComplete() {
 								logger.info("Completed consolidation of the following chunks " +
 												"in aggregation '{}': [{}]. Created chunks: [{}]",
-										aggregationMetadata, getChunkIds(chunks),
-										getNewChunkIds(consolidatedChunks));
+										aggregationMetadata, getChunkIds(chunks), getNewChunkIds(consolidatedChunks));
 								callback.onComplete();
 							}
 
@@ -648,23 +698,7 @@ public class Aggregation {
 		metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {
-				for (AggregationChunk newChunk : loadedChunks.newChunks) {
-					addToIndex(newChunk);
-					logger.trace("Added chunk {} to index", newChunk);
-				}
-				for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
-					AggregationChunk chunk = chunks.get(consolidatedChunkId);
-					if (chunk != null) {
-						removeFromIndex(chunk);
-						logger.trace("Removed chunk {} from index", chunk);
-					}
-				}
-				Aggregation.this.lastRevisionId = loadedChunks.lastRevisionId;
-				logger.info("Loading chunks for aggregation {} completed. " +
-						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
-						Aggregation.this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
-						loadedChunks.lastRevisionId);
-
+				doLoadChunks(loadedChunks);
 				loadChunksCallback.onComplete();
 				loadChunksCallback = null;
 			}
@@ -676,6 +710,27 @@ public class Aggregation {
 				loadChunksCallback = null;
 			}
 		});
+	}
+
+	private void doLoadChunks(LoadedChunks loadedChunks) {
+		for (AggregationChunk newChunk : loadedChunks.newChunks) {
+			addToIndex(newChunk);
+			logger.trace("Added chunk {} to index", newChunk);
+		}
+
+		for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
+			AggregationChunk chunk = chunks.get(consolidatedChunkId);
+			if (chunk != null) {
+				removeFromIndex(chunk);
+				logger.trace("Removed chunk {} from index", chunk);
+			}
+		}
+
+		Aggregation.this.lastRevisionId = loadedChunks.lastRevisionId;
+		logger.info("Loading chunks for aggregation {} completed. " +
+						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
+				Aggregation.this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
+				loadedChunks.lastRevisionId);
 	}
 
 	public List<AggregationMetadata.ConsolidationDebugInfo> getConsolidationDebugInfo() {

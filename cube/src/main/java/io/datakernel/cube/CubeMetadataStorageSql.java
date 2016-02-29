@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -54,6 +55,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
+	private static final int DEFAULT_MAX_CONSOLIDATION_DURATION_MILLIS = 30 * 60 * 1000;
 	private static final int MAX_KEYS = 40;
 	private static final Joiner JOINER = Joiner.on(' ');
 	private static final Splitter SPLITTER = Splitter.on(' ').omitEmptyStrings();
@@ -62,18 +64,22 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	private final ExecutorService executor;
 	private final Configuration jooqConfiguration;
 	private final int lockTimeoutSeconds;
+	private final int maxConsolidationDurationMillis;
 	private final String processId;
 
-	public CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration, String processId) {
-		this(eventloop, executor, jooqConfiguration, DEFAULT_LOCK_TIMEOUT_SECONDS, processId);
+	public CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
+	                              String processId) {
+		this(eventloop, executor, jooqConfiguration, DEFAULT_LOCK_TIMEOUT_SECONDS,
+				DEFAULT_MAX_CONSOLIDATION_DURATION_MILLIS, processId);
 	}
 
 	public CubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
-	                              int lockTimeoutSeconds, String processId) {
+	                              int lockTimeoutSeconds, int maxConsolidationDurationMillis, String processId) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.jooqConfiguration = jooqConfiguration;
 		this.lockTimeoutSeconds = lockTimeoutSeconds;
+		this.maxConsolidationDurationMillis = maxConsolidationDurationMillis;
 		this.processId = processId;
 	}
 
@@ -107,6 +113,40 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			}
 
 			@Override
+			public void startConsolidation(final int lastRevisionId,
+			                               final Function<ConsolidationInfo, List<AggregationChunk>> chunkPicker,
+			                               CompletionCallback callback) {
+				runConcurrently(eventloop, executor, false, new Runnable() {
+					@Override
+					public void run() {
+						executeExclusiveTransaction(new TransactionalRunnable() {
+							@Override
+							public void run(Configuration configuration) throws Exception {
+								DSLContext jooq = DSL.using(configuration);
+
+								LoadedChunks loadedChunks = doLoadChunks(jooq, aggregationId, aggregationMetadata,
+										aggregationStructure, lastRevisionId);
+								Collection<Long> consolidatingChunkIds = loadConsolidatingChunkIds(jooq, aggregationId);
+								final ConsolidationInfo consolidationInfo = new ConsolidationInfo(loadedChunks, consolidatingChunkIds);
+
+								List<AggregationChunk> pickedChunks = eventloop.submit(new Callable<List<AggregationChunk>>() {
+									@Override
+									public List<AggregationChunk> call() throws Exception {
+										return chunkPicker.apply(consolidationInfo);
+									}
+								}).get();
+
+								if (pickedChunks.isEmpty())
+									return;
+
+								doStartConsolidation(jooq, pickedChunks);
+							}
+						});
+					}
+				}, callback);
+			}
+
+			@Override
 			public void startConsolidation(final List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
 				runConcurrently(eventloop, executor, false, new Runnable() {
 					@Override
@@ -127,7 +167,9 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			}
 
 			@Override
-			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks, final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks,
+			                                   final List<AggregationChunk.NewChunk> consolidatedChunks,
+			                                   CompletionCallback callback) {
 				runConcurrently(eventloop, executor, false, new Runnable() {
 					@Override
 					public void run() {
@@ -213,8 +255,28 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		insertQuery.execute();
 	}
 
+	private Collection<Long> loadConsolidatingChunkIds(DSLContext jooq, String aggregationId) {
+		Result<Record1<Long>> consolidatingChunksRecords = jooq
+				.select(AGGREGATION_DB_CHUNK.ID)
+				.from(AGGREGATION_DB_CHUNK)
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(aggregationId))
+				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
+				.and(AGGREGATION_DB_CHUNK.CONSOLIDATION_STARTED.isNotNull())
+				.and(AGGREGATION_DB_CHUNK.CONSOLIDATION_STARTED
+						.ge(new Timestamp(eventloop.currentTimeMillis() - maxConsolidationDurationMillis)))
+				.fetch();
+
+		List<Long> consolidatingChunkIds = new ArrayList<>(consolidatingChunksRecords.size());
+		for (Record1<Long> record : consolidatingChunksRecords) {
+			consolidatingChunkIds.add(record.getValue(AGGREGATION_DB_CHUNK.ID));
+		}
+
+		return consolidatingChunkIds;
+	}
+
 	@SuppressWarnings("unchecked")
-	public LoadedChunks doLoadChunks(DSLContext jooq, String aggregationId, AggregationMetadata aggregationMetadata, AggregationStructure aggregationStructure, int lastRevisionId) {
+	public LoadedChunks doLoadChunks(DSLContext jooq, String aggregationId, AggregationMetadata aggregationMetadata,
+	                                 AggregationStructure aggregationStructure, int lastRevisionId) {
 		Record1<Integer> maxRevisionRecord = jooq
 				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
 				.from(AGGREGATION_DB_CHUNK)
@@ -325,12 +387,13 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	                                 List<AggregationChunk> chunksToConsolidate) {
 		jooq.update(AGGREGATION_DB_CHUNK)
 				.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_STARTED, currentTimestamp())
-				.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(chunksToConsolidate, new Function<AggregationChunk, Long>() {
-					@Override
-					public Long apply(AggregationChunk chunk) {
-						return chunk.getChunkId();
-					}
-				}))))
+				.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(chunksToConsolidate,
+						new Function<AggregationChunk, Long>() {
+							@Override
+							public Long apply(AggregationChunk chunk) {
+								return chunk.getChunkId();
+							}
+						}))))
 				.execute();
 	}
 

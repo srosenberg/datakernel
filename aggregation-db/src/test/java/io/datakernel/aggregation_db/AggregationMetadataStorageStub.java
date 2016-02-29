@@ -21,6 +21,7 @@ import com.google.common.collect.Collections2;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -42,6 +43,13 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	@Override
 	public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks = newChunks;
+		callback.onComplete();
+	}
+
+	@Override
+	public void startConsolidation(int lastRevisionId, Function<ConsolidationInfo, List<AggregationChunk>> chunkPicker, CompletionCallback callback) {
+		ConsolidationInfo consolidationInfo = new ConsolidationInfo(new LoadedChunks(0, new ArrayList<Long>(), new ArrayList<AggregationChunk>()), new ArrayList<Long>());
+		chunkPicker.apply(consolidationInfo);
 		callback.onComplete();
 	}
 

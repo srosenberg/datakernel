@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
@@ -39,6 +40,18 @@ public interface AggregationMetadataStorage {
 	 * @param callback            callback which is called once saving is complete
 	 */
 	void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
+
+	final class ConsolidationInfo {
+		public final LoadedChunks loadedChunks;
+		public final Collection<Long> consolidatingChunkIds;
+
+		public ConsolidationInfo(LoadedChunks loadedChunks, Collection<Long> consolidatingChunkIds) {
+			this.loadedChunks = loadedChunks;
+			this.consolidatingChunkIds = consolidatingChunkIds;
+		}
+	}
+
+	void startConsolidation(int lastRevisionId, Function<ConsolidationInfo, List<AggregationChunk>> chunkPicker, CompletionCallback callback);
 
 	void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
 

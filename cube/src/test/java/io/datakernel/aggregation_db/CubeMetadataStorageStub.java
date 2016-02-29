@@ -22,10 +22,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.CubeMetadataStorage;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
@@ -48,6 +45,13 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 			@Override
 			public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 				doSaveChunk(aggregationId, newChunks, callback);
+			}
+
+			@Override
+			public void startConsolidation(int lastRevisionId, Function<ConsolidationInfo, List<AggregationChunk>> chunkPicker, CompletionCallback callback) {
+				ConsolidationInfo consolidationInfo = new ConsolidationInfo(new LoadedChunks(0, new ArrayList<Long>(), new ArrayList<AggregationChunk>()), new ArrayList<Long>());
+				chunkPicker.apply(consolidationInfo);
+				callback.onComplete();
 			}
 
 			@Override
