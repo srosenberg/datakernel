@@ -22,11 +22,14 @@ import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLEngine;
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
+import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -69,11 +72,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 *
 	 * @param eventloop     eventloop which will handle its tasks
 	 * @param socketChannel channel for this connection
+	 * @param engine        ssl engine that would server this connection
 	 * @param servlet       servlet for handling requests
 	 * @param pool          pool in which will be stored this connection
 	 */
-	public HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, pool, headerChars, maxHttpMessageSize);
+	HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, engine, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = getRemoteSocketAddress().getAddress();
 	}
@@ -169,7 +173,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p>
+	 * <p/>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message
@@ -185,6 +189,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				public void onResult(final HttpResponse httpResponse) {
 					assert eventloop.inEventloopThread();
 					if (isRegistered()) {
+						try {
+							if (shouldGzip) {
+								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
+								httpResponse.setBody(toGzip(httpResponse.getBody()));
+							}
+						} catch (ParseException e) {
+							writeException(new HttpServletError(500));
+						}
 						writeHttpResult(httpResponse);
 					} else {
 						// connection is closed, but bufs are not recycled, let's recycle them now

@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.InetAddress;
 import java.util.*;
 
+import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
@@ -152,6 +153,14 @@ public final class HttpRequest extends HttpMessage {
 	public HttpRequest remoteAddress(InetAddress inetAddress) {
 		assert !recycled;
 		this.remoteAddress = inetAddress;
+		return this;
+	}
+
+	private boolean gzip = false;
+
+	public HttpRequest compress() {
+		setHeader(CONTENT_ENCODING, "gzip");
+		gzip = true;
 		return this;
 	}
 
@@ -312,6 +321,15 @@ public final class HttpRequest extends HttpMessage {
 	ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
+
+			if (gzip) {
+				try {
+					body = toGzip(body);
+				} catch (ParseException ignored) {
+
+				}
+			}
+
 			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
@@ -326,6 +344,7 @@ public final class HttpRequest extends HttpMessage {
 		buf.put(HTTP_1_1);
 
 		writeHeaders(buf);
+
 		writeBody(buf);
 
 		buf.flip();

@@ -30,6 +30,8 @@ import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
@@ -75,6 +77,9 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private boolean running;
 
+	// SSL
+	private SSLContext sslContext;
+
 	private int inetAddressIdx = 0;
 
 	// JMX
@@ -116,6 +121,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+	}
+
+	public AsyncHttpClient enableSsl(SSLContext sslContext) {
+		this.sslContext = sslContext;
+		return this;
 	}
 
 	public AsyncHttpClient setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
@@ -176,7 +186,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private HttpClientConnection createConnection(SocketChannel socketChannel) {
-		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, this, headerChars, maxHttpMessageSize);
+		SSLEngine engine = null;
+		if (sslContext != null) {
+			engine = sslContext.createSSLEngine();
+			engine.setUseClientMode(true);
+		}
+		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, engine, this, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())
 			scheduleCheck();
 		return connection;

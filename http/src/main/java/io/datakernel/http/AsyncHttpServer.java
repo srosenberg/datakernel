@@ -25,6 +25,8 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 import io.datakernel.jmx.MBeanFormat;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +52,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
+	// SSL
+	private SSLContext sslContext;
+
 	//JMX
 	private final EventStats expiredConnections;
 
@@ -72,6 +77,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 		// JMX
 		this.expiredConnections = new EventStats(getSmoothingWindow());
+	}
+
+	public AsyncHttpServer enableSsl(SSLContext sslContext) {
+		this.sslContext = sslContext;
+		return this;
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -124,7 +134,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
 
-		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, servlet, connectionsList, headerChars, maxHttpMessageSize);
+		SSLEngine engine = null;
+		if (sslContext != null) {
+			engine = sslContext.createSSLEngine();
+			engine.setUseClientMode(false);
+		}
+		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, engine, servlet, connectionsList, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();
 		return connection;

@@ -22,6 +22,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
+import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
@@ -45,15 +46,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private final AsyncHttpClient httpClient;
 	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
-	/**
-	 * Creates a new of  HttpClientConnection
-	 *
-	 * @param eventloop     eventloop which will handle its I/O operations
-	 * @param socketChannel channel for this connection
-	 * @param httpClient    client which will handle this connection
-	 */
-	public HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+	HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, engine, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
 	}
 

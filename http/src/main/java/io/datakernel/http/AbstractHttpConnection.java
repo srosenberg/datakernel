@@ -23,8 +23,10 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
 
+import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
 
+import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
@@ -60,6 +62,10 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 	protected byte reading;
 
+	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
+	private boolean isGzipped = false;
+	protected boolean shouldGzip = false;
+
 	private boolean isChunked = false;
 	private int chunkSize = 0;
 
@@ -81,7 +87,19 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 * @param connectionsList pool in which will stored this connection
 	 */
 	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel);
+		this(eventloop, socketChannel, null, connectionsList, headerChars, maxHttpMessageSize);
+	}
+
+	/**
+	 * Creates a new instance of AbstractHttpConnection
+	 *
+	 * @param eventloop       eventloop which will handle its I/O operations
+	 * @param socketChannel   socket for this connection
+	 * @param engine          ssl engine that would serve this connection
+	 * @param connectionsList pool in which will stored this connection
+	 */
+	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, engine);
 		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;
@@ -192,7 +210,27 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.position(), value.remaining());
 		} else if (header == TRANSFER_ENCODING) {
 			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.position(), value.remaining());
+		} else if (header == CONTENT_ENCODING) {
+			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.position(), value.remaining());
+		} else if (header == ACCEPT_ENCODING) {
+			shouldGzip = contains(value, CONTENT_ENCODING_GZIP);
 		}
+	}
+
+	private boolean contains(ByteBuf value, byte[] bytes) {
+		int pos = value.position();
+		while (pos < value.limit()) {
+			if (value.array()[pos] == bytes[0] && value.remaining() >= bytes.length) {
+				if (equalsLowerCaseAscii(bytes, value.array(), pos, bytes.length)) {
+					return true;
+				} else {
+					pos += bytes.length;
+				}
+			} else {
+				pos++;
+			}
+		}
+		return false;
 	}
 
 	private void readBody() throws ParseException {
@@ -210,7 +248,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			if (actualBytes == bytesToRead) {
 //				if (!readQueue.isEmpty())
 //					throw new IllegalStateException("Extra bytes outside of HTTP message");
-				onHttpMessage(bodyQueue.takeRemaining());
+				onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 			}
 		} else {
 			assert reading == CHUNK || reading == CHUNK_LENGTH;
@@ -258,7 +296,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 						check(c1 == CR && c2 == LF && c3 == CR && c4 == LF, MALFORMED_CHUNK);
 //						if (!readQueue.isEmpty())
 //							throw new IllegalStateException("Extra bytes outside of chunk");
-						onHttpMessage(bodyQueue.takeRemaining());
+						onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 						return;
 					}
 				}
