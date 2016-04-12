@@ -21,10 +21,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.*;
+import io.datakernel.stream.processor.StreamTransformer;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,8 +65,8 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			private final DateTimeFormatter datetimeFormat;
 			private final long fileSwitchPeriod;
 			private final LogFileSystem fileSystem;
-			private boolean createFile;
-			private boolean newFile;
+			private boolean creatingFile;
+			private boolean switchedPeriodWhileCreating;
 
 			private int activeWriters = 0;
 
@@ -90,7 +88,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 					outputProducer.sendEndOfStream();
 				}
 
-				if (activeWriters == 0 && !createFile) {
+				if (activeWriters == 0 && !creatingFile) {
 					zeroActiveWriters();
 				}
 			}
@@ -106,8 +104,8 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 				long newPeriod = timestamp / fileSwitchPeriod;
 				outputProducer.send(buf);
 
-				if (newPeriod != currentPeriod && createFile) newFile = true;
-				if (newPeriod != currentPeriod && !createFile) {
+				if (newPeriod != currentPeriod && creatingFile) switchedPeriodWhileCreating = true;
+				if (newPeriod != currentPeriod && !creatingFile) {
 					currentPeriod = newPeriod;
 					String chunkName = datetimeFormat.print(timestamp);
 					if (currentLogFile == null || !chunkName.equals(currentLogFile.getName())) {
@@ -117,11 +115,11 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			}
 
 			private void createWriteStream(final String newChunkName) {
-				createFile = true;
+				creatingFile = true;
 				fileSystem.makeUniqueLogFile(logPartition, newChunkName, new ResultCallback<LogFile>() {
 					@Override
 					public void onResult(LogFile result) {
-						createFile = false;
+						creatingFile = false;
 						++activeWriters;
 
 						if (outputProducer.getDownstream() != null) {
@@ -129,34 +127,32 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 						}
 
 						currentLogFile = result;
-						ConsumerErrorIgnoring consumerErrorIgnoring = new ConsumerErrorIgnoring(eventloop);
-						fileSystem.write(logPartition, currentLogFile, consumerErrorIgnoring.getOutput(), createCloseCompletionCallback());
-						outputProducer.streamTo(consumerErrorIgnoring.getInput());
+						StreamTransformer<ByteBuf, ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+						fileSystem.write(logPartition, currentLogFile, forwarder.getOutput(), createCloseCompletionCallback());
+						outputProducer.streamTo(forwarder.getInput());
 
 						if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-							consumerErrorIgnoring.getInput().onProducerEndOfStream();
+							forwarder.getInput().onProducerEndOfStream();
 						}
 						if (getConsumerStatus() == StreamStatus.CLOSED_WITH_ERROR) {
-							consumerErrorIgnoring.getInput().onProducerError(getConsumerException());
+							forwarder.getInput().onProducerError(getConsumerException());
 						}
-						if (newFile) {
-							newFile = false;
+						if (switchedPeriodWhileCreating) {
+							switchedPeriodWhileCreating = false;
 							checkPeriod();
 						}
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						createFile = false;
-						logger.error("{}: creating new unique log file with name {} and stream id {} failed.",
-								LogStreamConsumer_ByteBuffer.this, newChunkName, logPartition);
+						creatingFile = false;
+						logger.error("{}: creating new unique log file with name '{}' and log partition '{}' failed.",
+								LogStreamConsumer_ByteBuffer.this, newChunkName, logPartition, exception);
 
-						eventloop.schedule(1000L, new Runnable() {
-							@Override
-							public void run() {
-								createWriteStream(newChunkName);
-							}
-						});
+						closeWithError(exception);
+						if (activeWriters == 0) {
+							zeroActiveWriters();
+						}
 					}
 				});
 			}
@@ -221,48 +217,5 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 				inputConsumer.resume();
 			}
 		}
-	}
-
-	private class ConsumerErrorIgnoring extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
-		private InputConsumer upstreamConsumer;
-		private OutputProducer downstreamProducer;
-
-		protected ConsumerErrorIgnoring(Eventloop eventloop) {
-			super(eventloop);
-			upstreamConsumer = new InputConsumer();
-			downstreamProducer = new OutputProducer();
-		}
-
-		private class InputConsumer extends AbstractInputConsumer {
-
-			@Override
-			protected void onUpstreamEndOfStream() {
-				downstreamProducer.sendEndOfStream();
-			}
-
-			@Override
-			public StreamDataReceiver<ByteBuf> getDataReceiver() {
-				return downstreamProducer.getDownstreamDataReceiver();
-			}
-		}
-
-		private class OutputProducer extends AbstractOutputProducer {
-
-			@Override
-			protected void onDownstreamSuspended() {
-				upstreamConsumer.suspend();
-			}
-
-			@Override
-			protected void onDownstreamResumed() {
-				upstreamConsumer.resume();
-			}
-
-			@Override
-			protected void onError(Exception e) {
-				// do nothing
-			}
-		}
-
 	}
 }
