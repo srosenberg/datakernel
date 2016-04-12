@@ -16,13 +16,15 @@
 
 package io.datakernel.https;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.util.ByteBufStrings;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 
@@ -30,6 +32,11 @@ import static io.datakernel.http.MediaTypes.*;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 
 public class TestHttpsClient {
+	static {
+		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+		root.setLevel(Level.TRACE);
+	}
+
 	public static void main(String[] args) throws Exception {
 		/*
 			This property could be used to trace handshake process
@@ -71,7 +78,6 @@ public class TestHttpsClient {
 						AcceptMediaType.of(XHTML_APP),
 						AcceptMediaType.of(XML_APP, 90),
 						AcceptMediaType.of(WEBP),
-						AcceptMediaType.of(ANY, 80))
-				.body(ByteBufStrings.wrapAscii("Hello, Alice!"));
+						AcceptMediaType.of(ANY, 80));
 	}
 }

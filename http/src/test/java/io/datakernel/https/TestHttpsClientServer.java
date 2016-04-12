@@ -86,5 +86,6 @@ public class TestHttpsClientServer {
 		eventloop.run();
 
 		assertEquals("Hello, I am Bob!", callback.get());
+//		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

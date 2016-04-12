@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.DatakernelSslEngine;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
@@ -99,7 +100,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 * @param connectionsList pool in which will stored this connection
 	 */
 	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, engine);
+		super(eventloop, socketChannel, engine == null ? null : new DatakernelSslEngine(engine));
 		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;
