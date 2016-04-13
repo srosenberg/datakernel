@@ -112,8 +112,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		if (filter != null) {
 			try {
 				filter.read(buf);
-			} catch (Exception e) {
-				filter.close();
+			} catch (IOException e) {
 				onReadException(e);
 			}
 		} else {
@@ -151,7 +150,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 			ByteBuffer byteBuffer = buf.toByteBuffer();
 			int remainingOld = buf.remaining();
 			try {
-				channelWrite(byteBuffer);
+				channel.write(byteBuffer);
 				buf.setByteBuffer(byteBuffer);
 			} catch (IOException e) {
 				onWriteException(e);
@@ -175,7 +174,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (filter == null) {
+			if (filter == null || filter.isDataToPeerWrapped()) {
 				onWriteFlushed();
 				writeInterest(false);
 			}
@@ -188,8 +187,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		if (filter != null) {
 			try {
 				filter.write(buf);
-			} catch (Exception e) {
-				filter.close();
+			} catch (IOException e) {
 				onWriteException(e);
 			}
 		} else {
@@ -204,10 +202,6 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		} else {
 			writeQueue.add(buf);
 		}
-	}
-
-	protected int channelWrite(ByteBuffer byteBuffer) throws IOException {
-		return channel.write(byteBuffer);
 	}
 
 	/**

@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.util.ByteBufStrings;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -357,5 +358,10 @@ public final class HttpRequest extends HttpMessage {
 		if (url == null)
 			return host;
 		return host + url.getPathAndQuery();
+	}
+
+	// TODO remove
+	public String debugRequest() {
+		return ByteBufStrings.decodeAscii(this.write());
 	}
 }

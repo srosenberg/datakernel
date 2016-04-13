@@ -18,14 +18,14 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 
+import java.io.IOException;
+
 interface TcpFilter {
 	void setConnection(TcpSocketConnection conn);
 
-	void write(ByteBuf buf) throws Exception;
+	void write(ByteBuf buf) throws IOException;
 
-	void read(ByteBuf buf) throws Exception;
+	void read(ByteBuf buf) throws IOException;
 
-	void onEndOfStream() throws Exception;
-
-	void close();
+	boolean isDataToPeerWrapped();
 }

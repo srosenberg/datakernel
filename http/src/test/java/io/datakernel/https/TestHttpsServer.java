@@ -43,8 +43,8 @@ public class TestHttpsServer {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				System.out.println(request);
-				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, Bob!")));
+				System.out.println(request.debugRequest() + request.debugRequest().length());
+				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, Bob!\r\n")));
 			}
 		});
 

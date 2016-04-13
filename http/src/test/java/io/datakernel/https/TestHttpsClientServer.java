@@ -16,13 +16,19 @@
 
 package io.datakernel.https;
 
-import io.datakernel.async.ParseException;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.SslUtils;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
 
@@ -34,27 +40,32 @@ import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static junit.framework.TestCase.assertEquals;
 
 public class TestHttpsClientServer {
-
 	private static final int PORT = 5568;
 
+	static {
+		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+		root.setLevel(Level.TRACE);
+	}
+
+	@Ignore
 	@Test
 	public void test() throws Exception {
 		Eventloop eventloop = new Eventloop();
 
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
-			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, I am Bob!")));
-			}
-		});
-
-		server.enableSsl(createSslContext("TLSv1.2",
-				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
-				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-				new SecureRandom()));
-
-		server.setListenPort(PORT);
-		server.listen();
+//		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+//			@Override
+//			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+//				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, I am Bob!")));
+//			}
+//		});
+//
+//		server.enableSsl(createSslContext("TLSv1.2",
+//				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
+//				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
+//				new SecureRandom()));
+//
+//		server.setListenPort(PORT);
+//		server.listen();
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
@@ -68,18 +79,18 @@ public class TestHttpsClientServer {
 
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
-		client.execute(request, 500, new ResultCallback<HttpResponse>() {
+		client.execute(request, 50000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(decodeAscii(result.getBody()));
-				server.close();
+//				server.close();
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.onException(e);
-				server.close();
+//				server.close();
 				client.close();
 			}
 		});
