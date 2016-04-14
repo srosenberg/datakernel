@@ -145,7 +145,7 @@ public abstract class SocketConnection {
 	/**
 	 * Closes current channel.  It can be called only from this connection's eventloop's thread.
 	 */
-	public final void close() {
+	public void close() {
 		assert eventloop.inEventloopThread();
 		if (key == null) return;
 		closeChannel();

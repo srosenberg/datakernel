@@ -23,9 +23,17 @@ import java.io.IOException;
 interface TcpFilter {
 	void setConnection(TcpSocketConnection conn);
 
-	void write(ByteBuf buf) throws IOException;
+	void writeToChannel(ByteBuf buf);
 
-	void read(ByteBuf buf) throws IOException;
+	void onRead(ByteBuf buf);
 
-	boolean isDataToPeerWrapped();
+	void onWriteException(IOException e);
+
+	void onReadException(IOException e);
+
+	void onReadEndOfStream();
+
+	void onWriteFlushed();
+
+	void close();
 }

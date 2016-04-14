@@ -51,7 +51,9 @@ public class TestHttpsClient {
 
 		client.enableSsl(SSLContext.getDefault());
 
-		client.execute(get("https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html"), 5000, new ResultCallback<HttpResponse>() {
+//		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
+		String url = "https://github.com";
+		client.execute(get(url), 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				System.out.println(decodeUTF8(result.detachBody()));

@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.SslUtils.createSslContext;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
@@ -97,6 +98,6 @@ public class TestHttpsClientServer {
 		eventloop.run();
 
 		assertEquals("Hello, I am Bob!", callback.get());
-//		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

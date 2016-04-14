@@ -82,7 +82,11 @@ public abstract class TcpSocketConnection extends SocketConnection {
 			buf.setByteBuffer(byteBuffer);
 		} catch (IOException e) {
 			buf.recycle();
-			onReadException(e);
+			if (filter != null) {
+				filter.onReadException(e);
+			} else {
+				onReadException(e);
+			}
 			return;
 		}
 
@@ -93,7 +97,11 @@ public abstract class TcpSocketConnection extends SocketConnection {
 
 		if (numRead == -1) {
 			buf.recycle();
-			onReadEndOfStream();
+			if (filter != null) {
+				filter.onReadEndOfStream();
+			} else {
+				onReadEndOfStream();
+			}
 			if (isRegistered()) {
 				readInterest(false); // prevent spinning if connection is still open
 			}
@@ -105,16 +113,9 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		buf.flip();
-		onReadFromChannel(buf);
-	}
 
-	private void onReadFromChannel(ByteBuf buf) {
 		if (filter != null) {
-			try {
-				filter.read(buf);
-			} catch (IOException e) {
-				onReadException(e);
-			}
+			filter.onRead(buf);
 		} else {
 			onRead(buf);
 		}
@@ -130,6 +131,23 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 * These ByteBufs are in readQueue at the moment of working this function.
 	 */
 	protected abstract void onRead();
+
+	protected void write(ByteBuf buf) {
+		if (filter != null) {
+			filter.writeToChannel(buf);
+		} else {
+			writeToChannel(buf);
+		}
+	}
+
+	void writeToChannel(ByteBuf buf) {
+		if (writeQueue.isEmpty()) {
+			writeQueue.add(buf);
+			doWrite();
+		} else {
+			writeQueue.add(buf);
+		}
+	}
 
 	/**
 	 * This method is called if writeInterest is on and it is possible to write to the channel.
@@ -174,34 +192,28 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (filter == null || filter.isDataToPeerWrapped()) {
+			if (filter != null) {
+				filter.onWriteFlushed();
+			} else {
 				onWriteFlushed();
-				writeInterest(false);
 			}
+			writeInterest(false);
 		} else {
 			writeInterest(true);
 		}
 	}
 
-	protected void write(ByteBuf buf) {
+	@Override
+	public void close() {
 		if (filter != null) {
-			try {
-				filter.write(buf);
-			} catch (IOException e) {
-				onWriteException(e);
-			}
+			filter.close();
 		} else {
-			writeToChannel(buf);
+			doClose();
 		}
 	}
 
-	void writeToChannel(ByteBuf buf) {
-		if (writeQueue.isEmpty()) {
-			writeQueue.add(buf);
-			doWrite();
-		} else {
-			writeQueue.add(buf);
-		}
+	void doClose() {
+		super.close();
 	}
 
 	/**
