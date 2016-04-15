@@ -19,10 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.TcpFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLEngine;
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
@@ -72,12 +72,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 *
 	 * @param eventloop     eventloop which will handle its tasks
 	 * @param socketChannel channel for this connection
-	 * @param engine        ssl engine that would server this connection
+	 * @param filter        filter that would preprocess this connection messages
 	 * @param servlet       servlet for handling requests
 	 * @param pool          pool in which will be stored this connection
 	 */
-	HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, engine, pool, headerChars, maxHttpMessageSize);
+	HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, TcpFilter filter, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, filter, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = getRemoteSocketAddress().getAddress();
 	}

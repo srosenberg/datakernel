@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 
 import java.io.IOException;
 
-interface TcpFilter {
+public interface TcpFilter {
 	void setConnection(TcpSocketConnection conn);
 
 	void writeToChannel(ByteBuf buf);

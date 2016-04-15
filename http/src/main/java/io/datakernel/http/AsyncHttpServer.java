@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.DatakernelSslEngine;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.EventStats;
@@ -28,6 +29,8 @@ import io.datakernel.jmx.MBeanFormat;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,6 +57,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	// SSL
 	private SSLContext sslContext;
+	private ExecutorService executor;
 
 	//JMX
 	private final EventStats expiredConnections;
@@ -79,8 +83,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		this.expiredConnections = new EventStats(getSmoothingWindow());
 	}
 
-	public AsyncHttpServer enableSsl(SSLContext sslContext) {
+	public AsyncHttpServer enableSsl(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = sslContext;
+		this.executor = executor;
 		return this;
 	}
 
@@ -134,11 +139,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
 
-		SSLEngine engine = null;
+		DatakernelSslEngine engine = null;
 		if (sslContext != null) {
-			engine = sslContext.createSSLEngine();
-			engine.setUseClientMode(false);
+			SSLEngine ssl = sslContext.createSSLEngine();
+			ssl.setUseClientMode(true);
+			engine = new DatakernelSslEngine(ssl, executor);
 		}
+
 		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, engine, servlet, connectionsList, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();

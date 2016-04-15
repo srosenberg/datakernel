@@ -26,7 +26,6 @@ import javax.net.ssl.SSLException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.allocate;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -34,30 +33,34 @@ import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.*;
 
 /*
- * One must ensure strict sequential order of handshake messages!
- * Unexpected sequence order can lead to critical or even fatal results
- */
+* One must ensure strict sequential order of handshake messages!
+* Unexpected sequence order can lead to critical or even fatal results
+* */
 public final class DatakernelSslEngine implements TcpFilter {
 	private static final Logger logger = LoggerFactory.getLogger(DatakernelSslEngine.class);
 
 	private final SSLEngine engine;
-	// TODO(arashev) pass from outside
-	private ExecutorService executor = Executors.newCachedThreadPool();
+	private final ExecutorService executor;
 	private TcpSocketConnection conn;
 
-	// 32 * 1024 -- recommended buffer size(it has been stated that any message would not exceed the range)
-	private ByteBuffer app2engine = ByteBuffer.allocate(32 * 1024); //  keeps raw app data while handshaking
-	private ByteBuffer engine2net = ByteBuffer.allocate(16 * 1024); //  keeps encoded data that is to be send to peer
-	private ByteBuffer net2engine = ByteBuffer.allocate(32 * 1024); //  keeps encoded data received from peer
-	private ByteBuffer engine2app = ByteBuffer.allocate(16 * 1024); //  keeps decoded data that is to be passed to app
+	/*
+	*   reusable queue analogue used to keep state
+	*   32 * 1024 -- buffer size that depends on the byteBufs sizes being send to the engine
+	*   bufs that that are being used by the engine are expected not to exceed 16kb size
+	*/
+	private ByteBuffer app2engine = ByteBuffer.allocate(32 * 1024); //  used to store raw app data
+	private ByteBuffer engine2net = ByteBuffer.allocate(16 * 1024); //  filled by SSLEngine with encoded data that is to be send to a remote peer
+	private ByteBuffer net2engine = ByteBuffer.allocate(32 * 1024); //  encoded data received from peer that is to be passed to SSLEngine
+	private ByteBuffer engine2app = ByteBuffer.allocate(16 * 1024); //  decoded data that is to be passed to app
 
+	//   used to denote whether the engine finished with data transfer
 	private boolean isLastPieceSend;
 
-	public DatakernelSslEngine(SSLEngine engine) {
+	public DatakernelSslEngine(SSLEngine engine, ExecutorService executor) {
 		this.engine = engine;
+		this.executor = executor;
 	}
 
-	// api
 	@Override
 	public void setConnection(TcpSocketConnection conn) {
 		this.conn = conn;
@@ -65,8 +68,19 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 	@Override
 	public void writeToChannel(ByteBuf buf) {
+		logger.trace("on write {} bytes of app data", buf.remaining());
+		app2engine = toBuffer(buf, app2engine);
+
+		/*
+		*   prevent from concurrent modification of state engine as delegated task would be executed in the separate thread
+		*   possible bug? when the delegated task changes state of the engine?
+		* */
+		if (engine.getHandshakeStatus() == NEED_TASK) {
+			return;
+		}
+
 		try {
-			doWrite(buf);
+			doWrite();
 		} catch (SSLException e) {
 			onWriteException(e);
 		}
@@ -74,8 +88,15 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 	@Override
 	public void onRead(ByteBuf buf) {
+		logger.trace("on read {} bytes from channel: {}", buf.remaining(), engine.getHandshakeStatus());
+		net2engine = toBuffer(buf, net2engine);
+
+		if (engine.getHandshakeStatus() == NEED_TASK) {
+			return;
+		}
+
 		try {
-			doRead(buf);
+			doRead();
 		} catch (SSLException e) {
 			onReadException(e);
 		}
@@ -93,8 +114,12 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 	@Override
 	public void onReadEndOfStream() {
-		logger.trace("on read end of stream");
-		conn.doClose();
+		try {
+			engine.closeInbound();
+		} catch (SSLException e) {
+			logger.warn("trying to close connection without receiving a proper close notification message");
+		}
+		closeConnection();
 	}
 
 	@Override
@@ -125,63 +150,8 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
-	/* inner
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	* */
-
-	private void doRead(ByteBuf buf) throws SSLException {
-		logger.trace("on read {} bytes from channel: {}", buf.remaining(), engine.getHandshakeStatus());
-
-		net2engine = toBuffer(buf, net2engine);
+	//==================================================================================================================
+	private void doRead() throws SSLException {
 		SSLEngineResult result = unwrap();
 
 		if (result.getStatus() == BUFFER_UNDERFLOW) {
@@ -206,14 +176,10 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
-	private void doWrite(ByteBuf buf) throws SSLException {
-		logger.trace("on write {} bytes of app data", buf.remaining());
-
-		app2engine = toBuffer(buf, app2engine);
+	private void doWrite() throws SSLException {
 		SSLEngineResult result = wrap();
 
 		if (result.getStatus() == CLOSED) {
-			// TODO: (arashev) check examples how to handle
 			logger.warn("closed status while trying to write app data");
 			throw new SSLException("closed status while trying to write app data");
 		}
@@ -263,7 +229,6 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 		// if client side, finished handshake --> need to send app data
 		if (status == NOT_HANDSHAKING && app2engine.limit() != app2engine.capacity()) {
-			logger.trace("writing to net from handshake procedure");
 			writeToNet();
 			return;
 		}
@@ -285,22 +250,18 @@ public final class DatakernelSslEngine implements TcpFilter {
 			Runnable task;
 			while ((task = engine.getDelegatedTask()) != null) {
 				final Runnable finalTask = task;
-				logger.trace("task submitted");
-				task.run();
-				logger.trace("task executed, new engine status {}", engine.getHandshakeStatus());
-				doHandShake();
-//				executor.execute(new Runnable() {
-//					@Override
-//					public void run() {
-//						finalTask.run();
-//						logger.trace("task executed");
-//						try {
-//							doHandShake();
-//						} catch (SSLException e) {
-//							e.printStackTrace();
-//						}
-//					}
-//				});
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						finalTask.run();
+						logger.trace("task executed");
+						try {
+							doHandShake();
+						} catch (SSLException e) {
+							onReadException(e);
+						}
+					}
+				});
 			}
 		}
 	}
@@ -365,17 +326,13 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 	private SSLEngineResult wrap() throws SSLException {
 		SSLEngineResult result = engine.wrap(app2engine, engine2net);
-		if (logger.isTraceEnabled()) {
-			logger.trace("wrap {} bytes ({} bytes left): {}, new engine status: {}",
-					engine2net.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
-		}
+		logger.trace("wrap {} bytes ({} bytes left): {}, new engine status: {}",
+				engine2net.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		while (result.getStatus() == BUFFER_OVERFLOW) {
 			engine2net = enlargeNetBuffer(engine2net);
 			result = engine.wrap(app2engine, engine2net);
-			if (logger.isTraceEnabled()) {
-				logger.trace("wrap {} bytes ({} bytes left): {}, new engine status: {}",
-						engine2net.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
-			}
+			logger.trace("wrap {} bytes ({} bytes left): {}, new engine status: {}",
+					engine2net.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		}
 
 		return result;
@@ -383,74 +340,29 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 	private SSLEngineResult unwrap() throws SSLException {
 		SSLEngineResult result = engine.unwrap(net2engine, engine2app);
-		if (logger.isTraceEnabled()) {
-			logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
-					net2engine.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
-		}
+		logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
+				net2engine.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		while (result.getStatus() == BUFFER_OVERFLOW) {
 			engine2app = enlargeAppBuffer(engine2app);
 			result = engine.unwrap(net2engine, engine2app);
-			if (logger.isTraceEnabled()) {
-				logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
-						net2engine.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
-			}
+			logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
+					net2engine.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		}
 		return result;
 	}
 
-	/*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	*
-	* */
+	private void closeConnection() {
+		engine.closeOutbound();
+		try {
+			doHandShake();
+		} catch (SSLException e) {
+			onReadException(e);
+		} finally {
+			conn.doClose();
+		}
+	}
 
+	//==================================================================================================================
 	private ByteBuf toByteBuf(ByteBuffer buffer) {
 		ByteBuf buf = allocate(buffer.remaining());
 		buf.put(buffer.array(), buffer.arrayOffset(), buffer.limit());

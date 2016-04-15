@@ -19,12 +19,11 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.DatakernelSslEngine;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.TcpFilter;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
 
-import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
 
 import static io.datakernel.http.GzipProcessor.fromGzip;
@@ -96,11 +95,11 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 *
 	 * @param eventloop       eventloop which will handle its I/O operations
 	 * @param socketChannel   socket for this connection
-	 * @param engine          ssl engine that would serve this connection
+	 * @param filter          filter that would preprocess messages of this connection
 	 * @param connectionsList pool in which will stored this connection
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, engine == null ? null : new DatakernelSslEngine(engine));
+	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, TcpFilter filter, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, filter);
 		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;

@@ -21,8 +21,8 @@ import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.TcpFilter;
 
-import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
@@ -46,8 +46,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private final AsyncHttpClient httpClient;
 	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
-	HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, SSLEngine engine, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, engine, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+	HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, TcpFilter filter, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, filter, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
 	}
 

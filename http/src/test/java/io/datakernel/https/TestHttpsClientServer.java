@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
+import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
@@ -74,7 +75,7 @@ public class TestHttpsClientServer {
 		client.enableSsl(createSslContext("TLSv1.2",
 				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
 				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-				new SecureRandom()));
+				new SecureRandom()), Executors.newCachedThreadPool());
 
 		HttpRequest request = HttpRequest.post("https://127.0.0.1:" + PORT).body(wrapAscii("Hello, I am Alice!"));
 

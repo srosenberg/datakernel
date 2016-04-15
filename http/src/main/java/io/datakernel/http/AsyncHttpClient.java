@@ -20,6 +20,7 @@ import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.DnsException;
 import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.eventloop.DatakernelSslEngine;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.ExposedLinkedList.Node;
@@ -42,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -79,6 +81,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	// SSL
 	private SSLContext sslContext;
+	private ExecutorService executor;
 
 	private int inetAddressIdx = 0;
 
@@ -123,8 +126,9 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this.headerChars = chars;
 	}
 
-	public AsyncHttpClient enableSsl(SSLContext sslContext) {
+	public AsyncHttpClient enableSsl(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = sslContext;
+		this.executor = executor;
 		return this;
 	}
 
@@ -186,10 +190,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private HttpClientConnection createConnection(SocketChannel socketChannel) {
-		SSLEngine engine = null;
+		DatakernelSslEngine engine = null;
 		if (sslContext != null) {
-			engine = sslContext.createSSLEngine();
-			engine.setUseClientMode(true);
+			SSLEngine ssl = sslContext.createSSLEngine();
+			ssl.setUseClientMode(true);
+			engine = new DatakernelSslEngine(ssl, executor);
 		}
 		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, engine, this, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())

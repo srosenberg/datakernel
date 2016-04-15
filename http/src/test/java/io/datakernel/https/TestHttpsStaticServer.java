@@ -46,7 +46,7 @@ public class TestHttpsStaticServer {
 		server.enableSsl(SslUtils.createSslContext("TLSv1",
 				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
 				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-				new SecureRandom()));
+				new SecureRandom()), Executors.newCachedThreadPool());
 
 		server.setListenPort(PORT);
 		server.listen();
