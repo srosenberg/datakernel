@@ -81,7 +81,7 @@ public class TestHttpsClientServer {
 
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
-		client.execute(request, 50000, new ResultCallback<HttpResponse>() {
+		client.execute(request, 500000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(decodeAscii(result.getBody()));
@@ -98,7 +98,7 @@ public class TestHttpsClientServer {
 		});
 		eventloop.run();
 
-		assertEquals("Hello, I am Bob!", callback.get());
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals("Hello, I am Bob!", callback.get());
 	}
 }

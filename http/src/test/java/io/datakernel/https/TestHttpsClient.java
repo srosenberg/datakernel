@@ -27,7 +27,7 @@ import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
-
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.http.MediaTypes.*;
@@ -51,11 +51,12 @@ public class TestHttpsClient {
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop, dns);
 
-		client.enableSsl(SSLContext.getDefault(), Executors.newCachedThreadPool());
+		ExecutorService executor = Executors.newCachedThreadPool();
+		client.enableSsl(SSLContext.getDefault(), executor);
 
-		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
-//		String url = "https://github.com";
-		client.execute(get(url), 1000, new ResultCallback<HttpResponse>() {
+//		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
+		String url = "https://github.com";
+		client.execute(get(url), 5000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				System.out.println(decodeUTF8(result.detachBody()));
@@ -69,6 +70,7 @@ public class TestHttpsClient {
 		});
 
 		eventloop.run();
+		executor.shutdown();
 	}
 
 	private static HttpRequest get(String url) {
