@@ -142,7 +142,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		DatakernelSslEngine engine = null;
 		if (sslContext != null) {
 			SSLEngine ssl = sslContext.createSSLEngine();
-			ssl.setUseClientMode(true);
+			ssl.setUseClientMode(false);
 			engine = new DatakernelSslEngine(ssl, executor);
 		}
 

@@ -190,7 +190,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					assert eventloop.inEventloopThread();
 					if (isRegistered()) {
 						try {
-							if (shouldGzip) {
+							if (shouldGzip && httpResponse.getBody() != null) {
 								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
 								httpResponse.setBody(toGzip(httpResponse.getBody()));
 							}
