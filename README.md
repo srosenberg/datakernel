@@ -6,19 +6,23 @@ The essential components of DataKernel forms the basis of our ad-serving infrast
 
 ## Foundation components
 
-* [Eventloop](http://datakernel.io/docs/eventloop/) - Efficient non-blocking network and file I/O, for building Node.js-like client/server applications with high performance requirements.
+* [Eventloop](http://datakernel.io/docs/modules/eventloop.html) Efficient non-blocking network and file I/O, for building Node.js-like client/server applications with high performance requirements.
 
 ## Core components
 
-* [HTTP](http://datakernel.io/docs/http/) - High-performance asynchronous HTTP client and server. [Benchmark](http://datakernel.io/docs/http/#benchmark)
-* [Async Streams](http://datakernel.io/docs/streams/) - Composable asynchronous/reactive streams with powerful data processing capabilities. [Benchmark](http://datakernel.io/docs/streams/#benchmark)
-* [Serializer](http://datakernel.io/docs/serializers/) - Extremely fast and space-efficient serializers, crafted using bytecode engineering. [Benchmark](http://datakernel.io/docs/serializers/#benchmark)
-* [Codegen](http://datakernel.io/docs/codegen/) - Expression-based fluent API on top of ObjectWeb ASM for runtime generation of POJOs, mappers and reducers, etc.
+* [HTTP](http://datakernel.io/docs/modules/http.html) High-performance asynchronous HTTP client and server. [Benchmark](http://datakernel.io/docs/modules/http.html/#benchmark)
+* [Async Streams](http://datakernel.io/docs/modules/streams.html) Composable asynchronous/reactive streams with powerful data processing capabilities. [Benchmark](http://datakernel.io/docs/modules/streams.html#benchmark)
+* [Serializer](http://datakernel.io/docs/modules/serializer.html) Extremely fast and space-efficient serializers, crafted using bytecode engineering. [Benchmark](http://datakernel.io/docs/modules/serializer.html#benchmark)
+* [Codegen](http://datakernel.io/docs/modules/codegen.html) Expression-based fluent API on top of ObjectWeb ASM for runtime generation of POJOs, mappers and reducers, etc.
 
 ## Cluster components
 
-* [RPC](http://datakernel.io/docs/rpc/) - High-performance and fault-tolerant remote procedure call module for building distributed applications. [Benchmark](http://datakernel.io/docs/rpc/#benchmark)
-* [Cube](http://datakernel.io/docs/cube/) - Specialized OLAP database for multidimensional data analytics.
-* [Datagraph](http://datakernel.io/docs/datagraph/) - Distributed stream-based batch processing engine for Big Data applications.
-* [SimpleFS](http://datakernel.io/docs/simplefs/) - Simple, yet very efficient, single-node file server. [Benchmark](http://datakernel.io/docs/streams/#simplefs)
-* [HashFS](http://datakernel.io/docs/hashfs/) - Distributed fault-tolerant low-overhead file server with automatic replication and resharding.
+* [RPC](http://datakernel.io/docs/modules/rpc.html) High-performance and fault-tolerant remote procedure call module for building distributed applications. [Benchmark](http://datakernel.io/docs/modules/rpc.html#benchmark)
+* [AggregationDB](http://datakernel.io/docs/modules/aggregation-db.html) Unique database with the possibility to define custom aggregate functions.
+* [OLAP Cube](http://datakernel.io/docs/modules/cube.html) Specialized OLAP database for multidimensional data analytics.
+* [RemoteFS](http://datakernel.io/docs/modules/remotefs.html) Basis for building efficient, scalable remote file servers.
+
+## Integration components
+
+* [Boot](http://datakernel.io/docs/modules/boot.html) An intelligent way of booting complex applications and services according to their dependencies.
+* [UIKernel](http://datakernel.io/docs/modules/uikernel.html) Integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
