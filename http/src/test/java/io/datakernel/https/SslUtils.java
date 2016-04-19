@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.https;
 
 import javax.net.ssl.*;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyManagementException;
@@ -24,8 +25,8 @@ import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
-public class SslUtils {
-	public static TrustManager[] createTrustManagers(String path, String pass) throws Exception {
+class SslUtils {
+	static TrustManager[] createTrustManagers(File path, String pass) throws Exception {
 		KeyStore trustStore = KeyStore.getInstance("JKS");
 
 		try (InputStream trustStoreIS = new FileInputStream(path)) {
@@ -35,8 +36,8 @@ public class SslUtils {
 		trustFactory.init(trustStore);
 		return trustFactory.getTrustManagers();
 	}
-// TODO
-	public static KeyManager[] createKeyManagers(String path, String storePass, String keyPass) throws Exception {
+
+	static KeyManager[] createKeyManagers(File path, String storePass, String keyPass) throws Exception {
 		KeyStore store = KeyStore.getInstance("JKS");
 		try (InputStream is = new FileInputStream(path)) {
 			store.load(is, storePass.toCharArray());
@@ -46,8 +47,8 @@ public class SslUtils {
 		return kmf.getKeyManagers();
 	}
 
-	public static SSLContext createSslContext(String algorithm, KeyManager[] keyManagers, TrustManager[] trustManagers,
-	                                          SecureRandom secureRandom) throws NoSuchAlgorithmException, KeyManagementException {
+	static SSLContext createSslContext(String algorithm, KeyManager[] keyManagers, TrustManager[] trustManagers,
+	                                   SecureRandom secureRandom) throws NoSuchAlgorithmException, KeyManagementException {
 		SSLContext instance = SSLContext.getInstance(algorithm);
 		instance.init(keyManagers, trustManagers, secureRandom);
 		return instance;

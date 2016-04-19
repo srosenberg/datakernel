@@ -20,44 +20,50 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncHttpServlet;
+import io.datakernel.http.HttpRequest;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.TrustManager;
+import java.io.File;
 import java.security.SecureRandom;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.http.HttpResponse.create;
+import static io.datakernel.https.SslUtils.*;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class TestHttpsServer {
-	public static final int PORT = 5568;
-
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
+		//System.setProperty("javax.net.debug", "all");
 	}
 
 	public static void main(String[] args) throws Exception {
-//		System.setProperty("javax.net.debug", "all");
-
 		Eventloop eventloop = new Eventloop();
+		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				System.out.println(request.debugRequest() + request.debugRequest().length());
-				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, Bob!\r\n")));
+				callback.onResult(create().body(wrapAscii("Hello, I am Bob!")));
 			}
-		});
+		};
 
-		server.enableSsl(SslUtils.createSslContext("TLSv1",
-				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
-				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-				new SecureRandom()), Executors.newCachedThreadPool());
+		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
+		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
-		server.setListenPort(PORT);
+		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
+				.enableSsl(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor)
+				.setListenPort(5568);
+
+		System.out.println("https://127.0.0.1:" + 5590);
+
 		server.listen();
-
-		System.out.println("https://127.0.0.1:" + PORT);
 		eventloop.run();
 	}
 }

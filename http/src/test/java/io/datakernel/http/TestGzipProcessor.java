@@ -27,9 +27,11 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
+import static io.datakernel.http.HttpResponse.create;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -37,7 +39,7 @@ import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static junit.framework.TestCase.assertEquals;
 
 public class TestGzipProcessor {
-	private static final int PORT = 5569;
+	private static final int PORT = 5595;
 	private static final int TIMEOUT = 500;
 	private static final String TEST_PHRASE = "I grant! I've never seen a goddess go. My mistress, when she walks, treads on the ground";
 
@@ -46,20 +48,21 @@ public class TestGzipProcessor {
 		ByteBuf actual = fromGzip(toGzip(wrapAscii(TEST_PHRASE)));
 		assertEquals(TEST_PHRASE, decodeAscii(actual));
 		actual.recycle();
-//		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = new Eventloop();
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		AsyncHttpServlet servlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(HttpResponse.create().body(request.getBody()));
+				callback.onResult(create().body(request.getBody()));
 			}
-		});
-		server.setListenPort(PORT);
-		server.listen();
+		};
+
+		final AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
+				.setListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
@@ -69,8 +72,9 @@ public class TestGzipProcessor {
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
 				.header(ACCEPT_ENCODING, "gzip")
 				.body(wrapAscii(TEST_PHRASE))
-				.compress();
+				.compressWithGzip();
 
+		server.listen();
 		client.execute(request, TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
@@ -89,6 +93,6 @@ public class TestGzipProcessor {
 
 		eventloop.run();
 		assertEquals(TEST_PHRASE, callback.get());
-//		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

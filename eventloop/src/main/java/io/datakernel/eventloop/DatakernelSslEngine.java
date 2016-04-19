@@ -27,7 +27,6 @@ import javax.net.ssl.SSLException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.datakernel.bytebuf.ByteBufPool.allocate;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -46,8 +45,8 @@ public final class DatakernelSslEngine implements TcpFilter {
 	private TcpSocketConnection conn;
 
 	/*
-	*   reusable queue analogue used to keep state
-	*   32 * 1024 -- buffer size that depends on the byteBufs sizes being send to the engine
+	*   reusable buffers used to keep state
+	*   32 * 1024 -- buffer size, depends on the byteBufs sizes being send to the engine
 	*   bufs that that are being used by the engine are expected not to exceed 16kb size
 	*/
 	private ByteBuffer app2engine = ByteBuffer.allocate(32 * 1024); //  used to store raw app data
@@ -71,7 +70,6 @@ public final class DatakernelSslEngine implements TcpFilter {
 	@Override
 	public void writeToChannel(ByteBuf buf) {
 		logger.trace("on write {} bytes of app data", buf.remaining());
-		// bug? concurrent app2engine modification(in executor after completion of a delegated task(small possibility, still exists))
 		app2engine = toBuffer(buf, app2engine);
 		try {
 			doWrite();
@@ -80,30 +78,23 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
+	//   need this queue to keep data that is being read from channel while executing delegated task
 	private ByteBufQueue readQueue = new ByteBufQueue();
-	private AtomicBoolean isProcessing = new AtomicBoolean(false);
+	private boolean executingConcurrently = false;
 
 	@Override
 	public void onRead(ByteBuf buf) {
 		logger.trace("on read {} bytes from channel: {}", buf.remaining(), engine.getHandshakeStatus());
-		/*
-		*   should prevent from concurrent modification of state engine as delegated task would be executed in the separate thread
-		*   !!! RACE
-		*   when the delegated task changes state of the engine?
-		*   what if the buffer is being read at the moment?
-		*   !!!bug concurrent net2engine modification
-		* */
-		if (isProcessing.get()) {
+		if (executingConcurrently || !readQueue.isEmpty()) {
+			logger.trace("put {} bytes in a queue", buf.remaining());
 			readQueue.add(buf);
-			return;
-		}
-
-		net2engine = toBuffer(buf, net2engine);
-
-		try {
-			doRead();
-		} catch (SSLException e) {
-			onReadException(e);
+		} else {
+			net2engine = toBuffer(buf, net2engine);
+			try {
+				doRead();
+			} catch (SSLException e) {
+				onReadException(e);
+			}
 		}
 	}
 
@@ -128,9 +119,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
-	/*
-	*   Is being called on the last piece of app data send
-	* */
+	//   is being called on the empty queue, should fire onWriteFlushed on the last piece of app data send
 	@Override
 	public void onWriteFlushed() {
 		logger.trace("on empty write queue, send user data: {}", isLastPieceSend);
@@ -143,13 +132,10 @@ public final class DatakernelSslEngine implements TcpFilter {
 	@Override
 	public void close() {
 		logger.trace("closing ssl engine");
-		engine.closeOutbound();
-		try {
-			doHandShake();
-			conn.doClose();
-		} catch (SSLException e) {
-			logger.warn("exception while trying to close: {}", e.getMessage());
+		while (!readQueue.isEmpty()) {
+			readQueue.take().recycle();
 		}
+		closeConnection();
 	}
 
 	private void doWrite() throws SSLException {
@@ -175,8 +161,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 		// shows that we need more bytes to proceed -> preparing buffer and exiting
 		if (result.getStatus() == BUFFER_UNDERFLOW) {
-			net2engine = handleUnderflow(net2engine);
-			net2engine.compact();
+			net2engine = processUnderflow(net2engine);
 			return;
 		}
 
@@ -210,7 +195,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 				result = wrap();
 				if (result.getStatus() == OK) {
 					sendPieceToNet(engine2net);
-				} else if (result.getStatus() == CLOSED) {
+				} else if (result.getStatus() == CLOSED) { // seems like we've closed the engine
 					sendPieceToNet(engine2net);
 					net2engine.clear();
 				} else {
@@ -220,10 +205,9 @@ public final class DatakernelSslEngine implements TcpFilter {
 				if (canReadFrom(net2engine)) {
 					result = unwrap();
 					if (result.getStatus() == OK && result.getHandshakeStatus() == FINISHED) {
-						logger.trace("finished unwrap");
+						logger.trace("unwrapped net data");
 					} else if (result.getStatus() == BUFFER_UNDERFLOW) {
-						net2engine = handleUnderflow(net2engine);
-						net2engine.compact();
+						net2engine = processUnderflow(net2engine);
 						return;
 					} else if (result.getStatus() == CLOSED) {
 						// unpack close message while handshaking
@@ -252,7 +236,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 		// need task
 		if (status == NEED_TASK) {
-			isProcessing.set(true);
+			executingConcurrently = true;
 			logger.trace("need task");
 			Runnable task;
 			while ((task = engine.getDelegatedTask()) != null) {
@@ -264,12 +248,13 @@ public final class DatakernelSslEngine implements TcpFilter {
 						logger.trace("task executed");
 						try {
 							doHandShake();
-							if (readQueue.isEmpty()) {
-								isProcessing.set(false);
-							} else {
+							executingConcurrently = false;
+							if (!readQueue.isEmpty()) {
+								executingConcurrently = true;
 								net2engine = toBuffer(readQueue.takeRemaining(), net2engine);
 								readQueue.clear();
 								doRead();
+								executingConcurrently = false;
 							}
 						} catch (SSLException e) {
 							onReadException(e);
@@ -308,8 +293,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 			SSLEngineResult result = unwrap();
 
 			if (result.getStatus() == BUFFER_UNDERFLOW) {
-				net2engine = handleUnderflow(net2engine);
-				net2engine.compact();
+				net2engine = processUnderflow(net2engine);
 				return;
 			}
 
@@ -379,7 +363,6 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
-	//==================================================================================================================
 	private ByteBuf toBuf(ByteBuffer buffer) {
 		ByteBuf buf = allocate(buffer.remaining());
 		buf.put(buffer.array(), buffer.arrayOffset(), buffer.limit());
@@ -397,15 +380,15 @@ public final class DatakernelSslEngine implements TcpFilter {
 		return buffer;
 	}
 
-	private ByteBuffer handleUnderflow(ByteBuffer buffer) {
-		if (buffer.position() < buffer.limit()) {
-			return buffer;
-		} else {
+	private ByteBuffer processUnderflow(ByteBuffer buffer) {
+		if (buffer.position() >= buffer.limit()) {
 			ByteBuffer replaceBuffer = enlargeNetBuffer(buffer);
 			buffer.flip();
 			replaceBuffer.put(buffer);
 			return replaceBuffer;
 		}
+		buffer.compact();
+		return buffer;
 	}
 
 	private ByteBuffer enlargeNetBuffer(ByteBuffer buffer) {

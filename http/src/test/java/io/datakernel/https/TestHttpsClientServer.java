@@ -18,85 +18,84 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.SslUtils;
-import org.junit.Ignore;
+import io.datakernel.http.*;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.TrustManager;
+import java.io.File;
 import java.security.SecureRandom;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.http.HttpRequest.post;
+import static io.datakernel.http.HttpResponse.create;
 import static io.datakernel.http.HttpUtils.inetAddress;
-import static io.datakernel.http.SslUtils.createSslContext;
+import static io.datakernel.https.SslUtils.*;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
 public class TestHttpsClientServer {
-	private static final int PORT = 5568;
-
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
+		//System.setProperty("javax.net.debug", "all");
 	}
 
-	@Ignore
 	@Test
-	public void test() throws Exception {
+	public void testClientServerInteraction() throws Exception {
 		Eventloop eventloop = new Eventloop();
+		ExecutorService executor = newCachedThreadPool();
 
-//		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
-//			@Override
-//			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-//				callback.onResult(HttpResponse.create().body(wrapAscii("Hello, I am Bob!")));
-//			}
-//		});
-//
-//		server.enableSsl(createSslContext("TLSv1.2",
-//				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
-//				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-//				new SecureRandom()));
-//
-//		server.setListenPort(PORT);
-//		server.listen();
+		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
+				callback.onResult(create().body(wrapAscii("Hello, I am Bob!")));
+			}
+		};
+
+		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
+		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
+
+		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
+				.enableSsl(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor)
+				.setListenPort(5590);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
+				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				.enableSsl(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
-		client.enableSsl(createSslContext("TLSv1.2",
-				SslUtils.createKeyManagers("./src/test/resources/keystore.jks", "testtest", "testtest"),
-				SslUtils.createTrustManagers("./src/test/resources/truststore.jks", "testtest"),
-				new SecureRandom()), Executors.newCachedThreadPool());
-
-		HttpRequest request = HttpRequest.post("https://127.0.0.1:" + PORT).body(wrapAscii("Hello, I am Alice!"));
-
+		HttpRequest request = post("https://127.0.0.1:" + 5590).body(wrapAscii("Hello, I am Alice!"));
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
-		client.execute(request, 500000, new ResultCallback<HttpResponse>() {
+		server.listen();
+
+		client.execute(request, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(decodeAscii(result.getBody()));
-//				server.close();
+				server.close();
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.onException(e);
-//				server.close();
+				server.close();
 				client.close();
 			}
 		});
 		eventloop.run();
+		executor.shutdown();
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertEquals("Hello, I am Bob!", callback.get());

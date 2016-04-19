@@ -19,67 +19,78 @@ package io.datakernel.https;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.dns.DnsClient;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
-import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.http.AcceptMediaType;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import org.junit.Ignore;
+import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
+import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
+import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import static java.util.concurrent.Executors.newCachedThreadPool;
+import static junit.framework.TestCase.assertEquals;
 
 public class TestHttpsClient {
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
+		//System.setProperty("javax.net.debug", "all");
 	}
 
-	public static void main(String[] args) throws Exception {
-		/*
-			This property could be used to trace handshake process
-			System.setProperty("javax.net.debug", "all");
-		 */
-
+	@Ignore
+	@Test
+	public void testClient() throws NoSuchAlgorithmException, ExecutionException, InterruptedException {
 		Eventloop eventloop = new Eventloop();
-		DnsClient dns = new NativeDnsResolver(eventloop, DatagramSocketSettings.defaultDatagramSocketSettings(),
-				500, HttpUtils.inetAddress("8.8.8.8"));
+		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncHttpClient client = new AsyncHttpClient(eventloop, dns);
+		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
+				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				.enableSsl(SSLContext.getDefault(), executor);
 
-		ExecutorService executor = Executors.newCachedThreadPool();
-		client.enableSsl(SSLContext.getDefault(), executor);
+		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
 
-//		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
-		String url = "https://github.com";
+		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
 		client.execute(get(url), 5000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				System.out.println(decodeUTF8(result.detachBody()));
+				callback.onResult(result.getCode());
 				client.close();
 			}
 
 			@Override
-			public void onException(Exception ignore) {
+			public void onException(Exception e) {
+				callback.onException(e);
 				client.close();
 			}
 		});
 
 		eventloop.run();
 		executor.shutdown();
+
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+		assertEquals(200, (int) callback.get());
 	}
 
-	private static HttpRequest get(String url) {
+	private HttpRequest get(String url) {
 		return HttpRequest.get(url)
-				.header(HttpHeaders.CONNECTION, "keep-alive")
-				.header(HttpHeaders.CACHE_CONTROL, "max-age=0")
-				.header(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate, sdch")
-				.header(HttpHeaders.ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-				.header(HttpHeaders.USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
+				.header(CONNECTION, "keep-alive")
+				.header(CACHE_CONTROL, "max-age=0")
+				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
+				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
+				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
 				.accept(AcceptMediaType.of(HTML),
 						AcceptMediaType.of(XHTML_APP),
 						AcceptMediaType.of(XML_APP, 90),

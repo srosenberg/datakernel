@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -159,7 +158,7 @@ public final class HttpRequest extends HttpMessage {
 
 	private boolean gzip = false;
 
-	public HttpRequest compress() {
+	public HttpRequest compressWithGzip() {
 		setHeader(CONTENT_ENCODING, "gzip");
 		gzip = true;
 		return this;
@@ -322,15 +321,13 @@ public final class HttpRequest extends HttpMessage {
 	ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-
 			if (gzip) {
 				try {
 					body = toGzip(body);
 				} catch (ParseException ignored) {
-
+					// impossible to acquire exception here
 				}
 			}
-
 			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
@@ -358,10 +355,5 @@ public final class HttpRequest extends HttpMessage {
 		if (url == null)
 			return host;
 		return host + url.getPathAndQuery();
-	}
-
-	// TODO remove
-	public String debugRequest() {
-		return ByteBufStrings.decodeAscii(this.write());
 	}
 }
