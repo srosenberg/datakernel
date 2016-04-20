@@ -251,4 +251,12 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	protected String getDebugName() {
 		return super.getDebugName() + "(" + remoteSocketAddress + ")";
 	}
+
+	void suspendReading() {
+		readInterest(false);
+	}
+
+	void resumeReading() {
+		readInterest(true);
+	}
 }

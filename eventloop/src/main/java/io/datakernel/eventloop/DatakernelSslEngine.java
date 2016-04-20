@@ -17,7 +17,6 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,23 +77,14 @@ public final class DatakernelSslEngine implements TcpFilter {
 		}
 	}
 
-	//   need this queue to keep data that is being read from channel while executing delegated task
-	private ByteBufQueue readQueue = new ByteBufQueue();
-	private boolean executingConcurrently = false;
-
 	@Override
 	public void onRead(ByteBuf buf) {
 		logger.trace("on read {} bytes from channel: {}", buf.remaining(), engine.getHandshakeStatus());
-		if (executingConcurrently || !readQueue.isEmpty()) {
-			logger.trace("put {} bytes in a queue", buf.remaining());
-			readQueue.add(buf);
-		} else {
-			net2engine = toBuffer(buf, net2engine);
-			try {
-				doRead();
-			} catch (SSLException e) {
-				onReadException(e);
-			}
+		net2engine = toBuffer(buf, net2engine);
+		try {
+			doRead();
+		} catch (SSLException e) {
+			onReadException(e);
 		}
 	}
 
@@ -132,9 +122,6 @@ public final class DatakernelSslEngine implements TcpFilter {
 	@Override
 	public void close() {
 		logger.trace("closing ssl engine");
-		while (!readQueue.isEmpty()) {
-			readQueue.take().recycle();
-		}
 		closeConnection();
 	}
 
@@ -230,14 +217,15 @@ public final class DatakernelSslEngine implements TcpFilter {
 
 		// if server side, finished handshake and still got unread bytes in net2engine buffer
 		if (status == NOT_HANDSHAKING && canReadFrom(net2engine)) {
-			writeToNet();
+			unwrap();
+			writeToApp();
 			return;
 		}
 
 		// need task
 		if (status == NEED_TASK) {
-			executingConcurrently = true;
 			logger.trace("need task");
+			conn.suspendReading();
 			Runnable task;
 			while ((task = engine.getDelegatedTask()) != null) {
 				final Runnable finalTask = task;
@@ -248,14 +236,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 						logger.trace("task executed");
 						try {
 							doHandShake();
-							executingConcurrently = false;
-							if (!readQueue.isEmpty()) {
-								executingConcurrently = true;
-								net2engine = toBuffer(readQueue.takeRemaining(), net2engine);
-								readQueue.clear();
-								doRead();
-								executingConcurrently = false;
-							}
+							conn.resumeReading();
 						} catch (SSLException e) {
 							onReadException(e);
 						}
@@ -329,7 +310,7 @@ public final class DatakernelSslEngine implements TcpFilter {
 	private SSLEngineResult wrap() throws SSLException {
 		SSLEngineResult result = engine.wrap(app2engine, engine2net);
 		logger.trace("wrap {} bytes ({} bytes left): {}, new engine status: {}",
-				app2engine.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
+				engine2net.position(), app2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		while (result.getStatus() == BUFFER_OVERFLOW) {
 			engine2net = enlargeNetBuffer(engine2net);
 			result = engine.wrap(app2engine, engine2net);
@@ -342,12 +323,12 @@ public final class DatakernelSslEngine implements TcpFilter {
 	private SSLEngineResult unwrap() throws SSLException {
 		SSLEngineResult result = engine.unwrap(net2engine, engine2app);
 		logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
-				net2engine.position(), engine2app.position(), result.getStatus(), result.getHandshakeStatus());
+				engine2app.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		while (result.getStatus() == BUFFER_OVERFLOW) {
 			engine2app = enlargeAppBuffer(engine2app);
 			result = engine.unwrap(net2engine, engine2app);
 			logger.trace("unwrap {} bytes ({} bytes left): {}, new engine status: {}",
-					net2engine.position(), engine2app.position(), result.getStatus(), result.getHandshakeStatus());
+					engine2app.position(), net2engine.remaining(), result.getStatus(), result.getHandshakeStatus());
 		}
 		return result;
 	}
