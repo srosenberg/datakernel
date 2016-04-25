@@ -75,11 +75,20 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private boolean running;
 
+	private int maxConnectionsPerIp = 28232; // default for ubuntu 14.04 x64
+
 	// JMX
 	private final ValueStats timeCheckExpired = new ValueStats();
 	private final ValueStats expiredConnections = new ValueStats();
 
 	private final EventStats totalRequests = new EventStats();
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// monitoring rejected connections
+	private final Map<InetAddress, EventStats> address2rejected = new HashMap<>();
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	private final ExceptionStats dnsErrors = new ExceptionStats();
 
 	private CountStats pendingSocketConnect = new CountStats();
@@ -130,6 +139,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	public AsyncHttpClient setMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
+		return this;
+	}
+
+	public AsyncHttpClient setMaxConnectionsPerIp(int maxConnectionsPerIp) {
+		this.maxConnectionsPerIp = maxConnectionsPerIp;
 		return this;
 	}
 
@@ -307,47 +321,59 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		}
 
 		logger.trace("eventloop.connect Calling {}", request);
-		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				logger.trace("eventloop.connect.onConnect Calling {}", request);
-				removePendingSocketConnect(address);
-				HttpClientConnection connection = createConnection(socketChannel);
-				connection.register();
-				if (timeoutTime <= eventloop.currentTimeMillis()) {
-					// timeout for this request, reuse for other requests
-					addToIpPool(connection);
-					callback.onException(TIMEOUT_EXCEPTION);
-					return;
-				}
-				sendRequest(connection, request, timeoutTime, callback);
-			}
 
-			@Override
-			public void onException(Exception exception) {
-				logger.trace("eventloop.connect.onException Calling {}", request);
-				removePendingSocketConnect(address);
-				if (exception instanceof BindException) {
-					if (bindExceptionBlockTimeout != 0) {
-						bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
+		if (isAllowedConnection(address)) {
+			eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
+				@Override
+				public void onConnect(SocketChannel socketChannel) {
+					logger.trace("eventloop.connect.onConnect Calling {}", request);
+					removePendingSocketConnect(address);
+					HttpClientConnection connection = createConnection(socketChannel);
+					connection.register();
+					if (timeoutTime <= eventloop.currentTimeMillis()) {
+						// timeout for this request, reuse for other requests
+						addToIpPool(connection);
+						callback.onException(TIMEOUT_EXCEPTION);
+						return;
 					}
+					sendRequest(connection, request, timeoutTime, callback);
 				}
 
-				if (logger.isWarnEnabled()) {
-					logger.warn("Connect error to {} : {}", address, exception.getMessage());
-				}
-				callback.onException(exception);
-			}
+				@Override
+				public void onException(Exception exception) {
+					logger.trace("eventloop.connect.onException Calling {}", request);
+					removePendingSocketConnect(address);
+					if (exception instanceof BindException) {
+						if (bindExceptionBlockTimeout != 0) {
+							bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
+						}
+					}
 
-			@Override
-			public String toString() {
-				return address.toString();
-			}
-		});
-		addPendingSocketConnect(address);
+					if (logger.isWarnEnabled()) {
+						logger.warn("Connect error to {} : {}", address, exception.getMessage());
+					}
+					callback.onException(exception);
+				}
+
+				@Override
+				public String toString() {
+					return address.toString();
+				}
+			});
+			addPendingSocketConnect(address);
+		} else {
+			callback.onException(new SimpleException("Maximum connections per ip {" + address + "} reached"));
+		}
 	}
 
-	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
+	private boolean isAllowedConnection(InetSocketAddress address) {
+		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
+		Integer val = addressPendingConnects.get(address);
+		Integer pendingConnections = (val != null ? val : 0) + (list != null ? list.size() : 0);
+		return pendingConnections < maxConnectionsPerIp;
+	}
+
+	private void sendRequest(HttpClientConnection connection, HttpRequest request, long timeoutTime, ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
 		logger.trace("sendRequest Calling {}", request);
 		connection.request(request, timeoutTime, callback);
