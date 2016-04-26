@@ -49,7 +49,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
+@SuppressWarnings("ThrowableInstanceNeverThrown, unused")
 public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
@@ -57,15 +57,15 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
+	private static final IOException MAX_CONNECTIONS_EXCEPTION = new IOException("Maximum connections reached");
 
 	private final Eventloop eventloop;
 	private final DnsClient dnsClient;
 	private final SocketSettings socketSettings;
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
-	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> ipConnectionLists = new HashMap<>();
-	private final HashMap<InetSocketAddress, Integer> addressPendingConnects = new HashMap<>();
-	private final Map<InetAddress, Long> bindExceptionBlockedHosts = new HashMap<>();
+	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> cachedIpConnectionLists = new HashMap<>();
+	private final Map<InetSocketAddress, Long> bindExceptionBlockedHosts = new HashMap<>();
 	private final char[] headerChars;
 
 	private AsyncCancellable scheduleExpiredConnectionCheck;
@@ -75,25 +75,110 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private boolean running;
 
-	private int maxConnectionsPerIp = 28232; // default for ubuntu 14.04 x64
+	private static class AddressConnectsMonitor {
+		static class AddressConnects {
+			private int pending;
+			private int active;
+			private int cached;
+
+			int total() {
+				return pending + active + cached;
+			}
+
+			void addPending() {
+				pending++;
+			}
+
+			void removePending() {
+				pending--;
+			}
+
+			void pending2active() {
+				pending--;
+				active++;
+			}
+
+			void active2cached() {
+				active--;
+				cached++;
+			}
+
+			void cached2active() {
+				cached--;
+				active++;
+			}
+
+			void removeCached() {
+				cached--;
+			}
+
+			@Override
+			public String toString() {
+				return "active: " + active
+						+ ", cached: " + cached
+						+ ", pending: " + pending
+						+ ", total: " + total();
+			}
+		}
+
+		private int maxConnectionsPerIp = Integer.MAX_VALUE;
+
+		private HashMap<InetSocketAddress, AddressConnects> addressConnects = new HashMap<>();
+
+		void addPending(InetSocketAddress address) {
+			AddressConnects connects = addressConnects.get(address);
+			if (connects == null) {
+				connects = new AddressConnects();
+				addressConnects.put(address, connects);
+			}
+			connects.addPending();
+		}
+
+		void removePending(InetSocketAddress address) {
+			AddressConnects connects = addressConnects.get(address);
+			connects.removePending();
+			if (connects.total() == 0) {
+				addressConnects.remove(address);
+			}
+		}
+
+		void pending2active(InetSocketAddress address) {
+			addressConnects.get(address).pending2active();
+		}
+
+		void active2cached(InetSocketAddress address) {
+			addressConnects.get(address).active2cached();
+		}
+
+		void cached2active(InetSocketAddress address) {
+			addressConnects.get(address).cached2active();
+		}
+
+		void removeCached(InetSocketAddress address) {
+			AddressConnects connects = this.addressConnects.get(address);
+			connects.removeCached();
+			if (connects.total() == 0)
+				addressConnects.remove(address);
+		}
+
+		boolean isConnectionAllowed(InetSocketAddress address) {
+			AddressConnects connects = addressConnects.get(address);
+			return connects == null || connects.total() < maxConnectionsPerIp;
+		}
+	}
+
+	private AddressConnectsMonitor addressConnectsMonitor = new AddressConnectsMonitor();
 
 	// JMX
 	private final ValueStats timeCheckExpired = new ValueStats();
 	private final ValueStats expiredConnections = new ValueStats();
 
 	private final EventStats totalRequests = new EventStats();
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// monitoring rejected connections
-	private final Map<InetAddress, EventStats> address2rejected = new HashMap<>();
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	private final ExceptionStats dnsErrors = new ExceptionStats();
 
 	private CountStats pendingSocketConnect = new CountStats();
 
-	private boolean monitoring;
+	private boolean jmxMonitoring;
 
 	private int inetAddressIdx = 0;
 
@@ -143,7 +228,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public AsyncHttpClient setMaxConnectionsPerIp(int maxConnectionsPerIp) {
-		this.maxConnectionsPerIp = maxConnectionsPerIp;
+		this.addressConnectsMonitor.maxConnectionsPerIp = maxConnectionsPerIp;
 		return this;
 	}
 
@@ -164,7 +249,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private int checkExpiredConnections() {
 		scheduleExpiredConnectionCheck = null;
-		Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
+		Stopwatch stopwatch = (jmxMonitoring) ? Stopwatch.createStarted() : null;
 		int count = 0;
 		try {
 			final long now = eventloop.currentTimeMillis();
@@ -197,7 +282,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	private HttpClientConnection getFreeConnection(InetSocketAddress address) {
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
+		ExposedLinkedList<HttpClientConnection> list = cachedIpConnectionLists.get(address);
 		if (list == null)
 			return null;
 		for (; ; ) {
@@ -226,10 +311,13 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			connection.close();
 			return;
 		}
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
+
+		addressConnectsMonitor.active2cached(address);
+
+		ExposedLinkedList<HttpClientConnection> list = cachedIpConnectionLists.get(address);
 		if (list == null) {
 			list = new ExposedLinkedList<>();
-			ipConnectionLists.put(address, list);
+			cachedIpConnectionLists.put(address, list);
 		}
 		connection.ipConnectionListNode = list.addLastValue(connection);
 	}
@@ -243,12 +331,13 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		if (connection.ipConnectionListNode == null)
 			return;
 		InetSocketAddress address = connection.getRemoteSocketAddress();
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
+		ExposedLinkedList<HttpClientConnection> list = cachedIpConnectionLists.get(address);
 		if (list != null) {
 			list.removeNode(connection.ipConnectionListNode);
 			connection.ipConnectionListNode = null;
 			if (list.isEmpty()) {
-				ipConnectionLists.remove(address);
+				cachedIpConnectionLists.remove(address);
+				addressConnectsMonitor.removeCached(address);
 			}
 		}
 	}
@@ -264,7 +353,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
 
-		logger.trace("Calling {}", request);
 		totalRequests.recordEvent();
 		getUrlAsync(request, timeout, callback);
 	}
@@ -273,13 +361,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		dnsClient.resolve4(request.getUrl().getHost(), new ResultCallback<InetAddress[]>() {
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
-				logger.trace("dnsClient.resolve4.onResult Calling {}", request);
 				getUrlForHostAsync(request, timeout, inetAddresses, callback);
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				logger.trace("dnsClient.resolve4.onException Calling {}", request);
 				if (exception.getClass() == DnsException.class || exception.getClass() == TimeoutException.class) {
 					if (logger.isWarnEnabled()) {
 						logger.warn("DNS exception for '{}': {}", request, exception.getMessage());
@@ -301,33 +387,35 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private void getUrlForHostAsync(final HttpRequest request, int timeout, final InetAddress[] inetAddresses, final ResultCallback<HttpResponse> callback) {
 		String host = request.getUrl().getHost();
-		final InetAddress inetAddress = getNextInetAddress(inetAddresses);
+		InetAddress inetAddress = getNextInetAddress(inetAddresses);
 		if (!isValidHost(host, inetAddress, blockLocalAddresses)) {
 			callback.onException(new IOException("Invalid IP address " + inetAddress + " for host " + host));
 			return;
 		}
-		if (isBindExceptionBlocked(inetAddress)) {
+		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
+
+		if (isBindExceptionBlocked(address)) {
 			callback.onException(BIND_EXCEPTION);
 			return;
 		}
 
 		final long timeoutTime = eventloop.currentTimeMillis() + timeout;
-		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
 		HttpClientConnection connection = getFreeConnection(address);
 		if (connection != null) {
+			addressConnectsMonitor.cached2active(address);
 			sendRequest(connection, request, timeoutTime, callback);
 			return;
 		}
 
-		logger.trace("eventloop.connect Calling {}", request);
-
-		if (isAllowedConnection(address)) {
+		if (addressConnectsMonitor.isConnectionAllowed(address)) {
+			pendingSocketConnect.increment();
+			addressConnectsMonitor.addPending(address);
 			eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
 				@Override
 				public void onConnect(SocketChannel socketChannel) {
-					logger.trace("eventloop.connect.onConnect Calling {}", request);
-					removePendingSocketConnect(address);
+					pendingSocketConnect.decrement();
+					addressConnectsMonitor.pending2active(address);
 					HttpClientConnection connection = createConnection(socketChannel);
 					connection.register();
 					if (timeoutTime <= eventloop.currentTimeMillis()) {
@@ -341,11 +429,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 				@Override
 				public void onException(Exception exception) {
-					logger.trace("eventloop.connect.onException Calling {}", request);
-					removePendingSocketConnect(address);
+					pendingSocketConnect.decrement();
+					addressConnectsMonitor.removePending(address);
 					if (exception instanceof BindException) {
 						if (bindExceptionBlockTimeout != 0) {
-							bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
+							bindExceptionBlockedHosts.put(address, eventloop.currentTimeMillis());
 						}
 					}
 
@@ -360,47 +448,14 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 					return address.toString();
 				}
 			});
-			addPendingSocketConnect(address);
 		} else {
-			callback.onException(new SimpleException("Maximum connections per ip {" + address + "} reached"));
+			callback.onException(MAX_CONNECTIONS_EXCEPTION);
 		}
-	}
-
-	private boolean isAllowedConnection(InetSocketAddress address) {
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
-		Integer val = addressPendingConnects.get(address);
-		Integer pendingConnections = (val != null ? val : 0) + (list != null ? list.size() : 0);
-		return pendingConnections < maxConnectionsPerIp;
 	}
 
 	private void sendRequest(HttpClientConnection connection, HttpRequest request, long timeoutTime, ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
-		logger.trace("sendRequest Calling {}", request);
 		connection.request(request, timeoutTime, callback);
-	}
-
-	private void addPendingSocketConnect(InetSocketAddress address) {
-		// jmx
-		pendingSocketConnect.increment();
-
-		Integer counter = addressPendingConnects.get(address);
-		if (counter == null) {
-			counter = 0;
-		}
-		addressPendingConnects.put(address, ++counter);
-	}
-
-	private void removePendingSocketConnect(InetSocketAddress address) {
-		// jmx
-		pendingSocketConnect.decrement();
-
-		Integer counter = addressPendingConnects.get(address);
-		if (counter != null) {
-			if (--counter > 0)
-				addressPendingConnects.put(address, counter);
-			else
-				addressPendingConnects.remove(address);
-		}
 	}
 
 	private static boolean isValidHost(String host, InetAddress inetAddress, boolean blockLocalAddresses) {
@@ -420,7 +475,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return true;
 	}
 
-	private boolean isBindExceptionBlocked(InetAddress inetAddress) {
+	private boolean isBindExceptionBlocked(InetSocketAddress inetAddress) {
 		if (bindExceptionBlockTimeout == 0L)
 			return false;
 		Long bindExceptionTimestamp = bindExceptionBlockedHosts.get(inetAddress);
@@ -496,12 +551,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	@JmxOperation
 	public void startMonitoring() {
-		monitoring = true;
+		jmxMonitoring = true;
 	}
 
 	@JmxOperation
 	public void stopMonitoring() {
-		monitoring = false;
+		jmxMonitoring = false;
 	}
 
 	@JmxAttribute
@@ -521,11 +576,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	@JmxAttribute
 	public List<String> getAddressConnections() {
-		if (ipConnectionLists.isEmpty())
+		if (cachedIpConnectionLists.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("SocketAddress,ConnectionsCount");
-		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : ipConnectionLists.entrySet()) {
+		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : cachedIpConnectionLists.entrySet()) {
 			InetSocketAddress address = entry.getKey();
 			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
 			result.add(address + "," + connections.size());
@@ -568,15 +623,27 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	@JmxAttribute
-	public List<String> getAddressPendingConnects() {
-		if (addressPendingConnects.isEmpty())
+	public List<String> getAddressConnects() {
+		if (addressConnectsMonitor.addressConnects.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("Address, Connects");
-		for (Entry<InetSocketAddress, Integer> entry : addressPendingConnects.entrySet()) {
+		for (Entry<InetSocketAddress, AddressConnectsMonitor.AddressConnects> entry : addressConnectsMonitor.addressConnects.entrySet()) {
 			result.add(entry.getKey() + ", " + entry.getValue());
 		}
 		return result;
+	}
+
+	@JmxOperation
+	public String getAddressConnects(@JmxParameter("host") String host, @JmxParameter("port") int port) {
+		try {
+			if (port == 0) port = 80;
+			InetSocketAddress address = new InetSocketAddress(host, port);
+			AddressConnectsMonitor.AddressConnects addressConnects = addressConnectsMonitor.addressConnects.get(address);
+			return addressConnects == null ? null : addressConnects.toString();
+		} catch (Exception e) {
+			return e.getMessage();
+		}
 	}
 
 	@JmxAttribute
@@ -585,7 +652,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("Address,DateTime");
-		for (Entry<InetAddress, Long> entry : bindExceptionBlockedHosts.entrySet()) {
+		for (Entry<InetSocketAddress, Long> entry : bindExceptionBlockedHosts.entrySet()) {
 			result.add(entry.getKey() + "," + MBeanFormat.formatDateTime(entry.getValue()));
 		}
 		return result;
