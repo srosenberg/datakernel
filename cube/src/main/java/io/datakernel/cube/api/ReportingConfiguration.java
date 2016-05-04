@@ -16,8 +16,9 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import io.datakernel.codegen.Expression;
+import io.datakernel.cube.AggregationKeyRelationships;
 
 import java.util.List;
 import java.util.Map;
@@ -30,8 +31,8 @@ public final class ReportingConfiguration {
 	private Map<String, Class<?>> attributeTypes = newHashMap();
 	private Map<String, AttributeResolver> attributeResolvers = newHashMap();
 	private Map<AttributeResolver, List<String>> resolverKeys = newHashMap();
-
-	private Map<String, String> attributeDimensions = newHashMap();
+	private Map<String, List<String>> aggregationRequiredPrefixes = newHashMap();
+	private AggregationKeyRelationships childParentRelationships;
 
 	public ReportingConfiguration addComputedMeasure(String name, ReportingDSLExpression expression) {
 		this.computedMeasures.put(name, expression);
@@ -40,6 +41,11 @@ public final class ReportingConfiguration {
 
 	public ReportingConfiguration setComputedMeasures(Map<String, ReportingDSLExpression> computedMeasures) {
 		this.computedMeasures = newHashMap(computedMeasures);
+		return this;
+	}
+
+	public ReportingConfiguration addAggregationPrefixForKey(String aggregationId, List<String> key) {
+		aggregationRequiredPrefixes.put(aggregationId, key);
 		return this;
 	}
 
@@ -53,7 +59,12 @@ public final class ReportingConfiguration {
 	public ReportingConfiguration addResolvedAttributeForDimension(String name, String dimension, Class<?> type, AttributeResolver resolver) {
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
-		this.attributeDimensions.put(name, dimension);
+		this.resolverKeys.put(resolver, buildChain(dimension));
+		return this;
+	}
+
+	public ReportingConfiguration setChildParentRelationships(Map<String, String> childParentRelationships) {
+		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
 		return this;
 	}
 
@@ -74,11 +85,7 @@ public final class ReportingConfiguration {
 	}
 
 	public Map<String, AttributeResolver> getResolvers() {
-		return ImmutableMap.copyOf(attributeResolvers);
-	}
-
-	public Map<String, String> getAttributeDimensions() {
-		return attributeDimensions;
+		return attributeResolvers;
 	}
 
 	public void setKeyForAttribute(String name, List<String> key) {
@@ -103,5 +110,25 @@ public final class ReportingConfiguration {
 
 	public Set<String> getComputedMeasureDependencies(String computedMeasure) {
 		return computedMeasures.get(computedMeasure).getMeasureDependencies();
+	}
+
+	public List<String> getRequiredPrefixForAggregation(String aggregationId) {
+		return aggregationRequiredPrefixes.get(aggregationId);
+	}
+
+	public List<String> buildChain(Set<String> usedDimensions, String dimension) {
+		return childParentRelationships.buildChain(usedDimensions, dimension);
+	}
+
+	public Set<List<String>> buildChains(Set<String> usedDimensions, Iterable<String> availableDimensions) {
+		return childParentRelationships.buildChains(usedDimensions, availableDimensions);
+	}
+
+	public Set<List<String>> buildLongestChains(Set<List<String>> allChains) {
+		return childParentRelationships.buildLongestChains(allChains);
+	}
+
+	public List<String> buildChain(String dimension) {
+		return buildChain(Sets.<String>newHashSet(), dimension);
 	}
 }

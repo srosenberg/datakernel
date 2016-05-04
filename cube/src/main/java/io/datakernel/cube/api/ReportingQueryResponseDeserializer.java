@@ -61,7 +61,7 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 		List<String> measures = ctx.deserialize(jsonMetadata.get(MEASURES_FIELD), listOfStrings);
 		List<String> attributes = ctx.deserialize(jsonMetadata.get(ATTRIBUTES_FIELD), listOfStrings);
 		Map<String, Object> filterAttributes = ctx.deserialize(jsonMetadata.get(FILTER_ATTRIBUTES_FIELD), map);
-		Set<DrillDown> drillDowns = deserializeDrillDowns(jsonMetadata.get(DRILLDOWNS_FIELD),
+		Set<DrillDown> drillDowns = deserializeDrillDowns(jsonMetadata.get(DRILL_DOWNS_FIELD),
 				listOfStrings, ctx);
 		List<String> sortedBy = ctx.deserialize(jsonMetadata.get(SORTED_BY_FIELD), listOfStrings);
 

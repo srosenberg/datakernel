@@ -91,7 +91,6 @@ public final class Cube implements EventloopJmxMBean {
 	// state
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
 	private Map<String, AggregationMetadata> aggregationMetadatas = new LinkedHashMap<>();
-	private AggregationKeyRelationships childParentRelationships;
 	private int lastRevisionId;
 	private long lastReloadTimestamp;
 
@@ -125,10 +124,6 @@ public final class Cube implements EventloopJmxMBean {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
-	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
-		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
-	}
-
 	public Map<String, Aggregation> getAggregations() {
 		return aggregations;
 	}
@@ -143,14 +138,6 @@ public final class Cube implements EventloopJmxMBean {
 
 	public void setReportingConfiguration(ReportingConfiguration reportingConfiguration) {
 		this.reportingConfiguration = reportingConfiguration;
-		initResolverKeys();
-	}
-
-	public void initResolverKeys() {
-		for (Map.Entry<String, String> attributeDimension : reportingConfiguration.getAttributeDimensions().entrySet()) {
-			List<String> key = buildDrillDownChain(attributeDimension.getValue());
-			reportingConfiguration.setKeyForAttribute(attributeDimension.getKey(), key);
-		}
 	}
 
 	public Map<String, AttributeResolver> getResolvers() {
@@ -501,11 +488,11 @@ public final class Cube implements EventloopJmxMBean {
 
 	public static class DrillDownsAndChains {
 		public Set<DrillDown> drillDowns;
-		public Set<List<String>> chains;
+		public Set<List<String>> filterChains;
 
-		public DrillDownsAndChains(Set<DrillDown> drillDowns, Set<List<String>> chains) {
+		public DrillDownsAndChains(Set<DrillDown> drillDowns, Set<List<String>> filterChains) {
 			this.drillDowns = drillDowns;
-			this.chains = chains;
+			this.filterChains = filterChains;
 		}
 	}
 
@@ -516,9 +503,12 @@ public final class Cube implements EventloopJmxMBean {
 
 		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
 
-		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
+		Set<String> eqPredicateDimensions = getEqualsPredicateDimensions(predicates.asCollection());
+		List<String> queryDimensions = newArrayList(concat(dimensions, eqPredicateDimensions));
 
-		for (Aggregation aggregation : aggregations.values()) {
+		for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
+			String aggregationId = entry.getKey();
+			Aggregation aggregation = entry.getValue();
 			Set<String> aggregationMeasures = newHashSet();
 			aggregationMeasures.addAll(aggregation.getFields());
 
@@ -526,27 +516,41 @@ public final class Cube implements EventloopJmxMBean {
 					aggregation.hasPredicates() && !aggregation.applyQueryPredicates(query, structure).isMatches())
 				continue;
 
+			Set<String> requiredPrefixDimensions = nullToEmpty(reportingConfiguration.getRequiredPrefixForAggregation(aggregationId));
+
+			if (!all(requiredPrefixDimensions, in(queryDimensions)))
+				continue;
+
 			Set<String> availableMeasures = newHashSet();
 			Sets.intersection(aggregationMeasures, measures).copyInto(availableMeasures);
 
 			Iterable<String> filteredDimensions = filter(aggregation.getKeys(), not(in(queryDimensions)));
-			Set<List<String>> filteredChains = childParentRelationships.buildDrillDownChains(newHashSet(queryDimensions), filteredDimensions);
-			Set<List<String>> allChains = childParentRelationships.buildDrillDownChains(Sets.<String>newHashSet(), aggregation.getKeys());
+			Set<List<String>> filteredChains = reportingConfiguration.buildChains(newHashSet(queryDimensions), filteredDimensions);
 
 			for (List<String> drillDownChain : filteredChains) {
 				drillDowns.add(new DrillDown(drillDownChain, availableMeasures));
 			}
 
+			if (!all(requiredPrefixDimensions, in(eqPredicateDimensions)))
+				continue;
+
+			Set<List<String>> allChains = reportingConfiguration.buildChains(Sets.<String>newHashSet(), aggregation.getKeys());
 			chains.addAll(allChains);
 		}
 
-		Set<List<String>> longestChains = childParentRelationships.buildLongestChains(chains);
+		Set<List<String>> filterChains = reportingConfiguration.buildLongestChains(chains);
 
-		return new DrillDownsAndChains(drillDowns, longestChains);
+		return new DrillDownsAndChains(drillDowns, filterChains);
 	}
 
-	private List<String> getQueryDimensions(Iterable<String> dimensions,
-	                                        Iterable<AggregationQuery.Predicate> predicates) {
+	private static Set<String> nullToEmpty(List<String> l) {
+		if (l == null)
+			return Collections.emptySet();
+
+		return newHashSet(l);
+	}
+
+	private Set<String> getEqualsPredicateDimensions(Iterable<AggregationQuery.Predicate> predicates) {
 		Set<String> eqPredicateDimensions = newHashSet();
 
 		for (AggregationQuery.Predicate predicate : predicates) {
@@ -555,15 +559,11 @@ public final class Cube implements EventloopJmxMBean {
 			}
 		}
 
-		return newArrayList(concat(dimensions, eqPredicateDimensions));
+		return eqPredicateDimensions;
 	}
 
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
-		return childParentRelationships.buildDrillDownChain(usedDimensions, dimension);
-	}
-
-	public List<String> buildDrillDownChain(String dimension) {
-		return buildDrillDownChain(Sets.<String>newHashSet(), dimension);
+		return reportingConfiguration.buildChain(usedDimensions, dimension);
 	}
 
 	public Set<String> getAvailableMeasures(Set<String> dimensions, AggregationQuery.Predicates predicates,
@@ -572,7 +572,7 @@ public final class Cube implements EventloopJmxMBean {
 
 		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
 
-		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
+		List<String> queryDimensions = newArrayList(concat(dimensions, getEqualsPredicateDimensions(predicates.asCollection())));
 
 		for (Aggregation aggregation : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();

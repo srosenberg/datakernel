@@ -23,6 +23,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
@@ -97,7 +98,7 @@ public class CubeMeasureRemovalTest {
 		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
 		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
+		cube.setReportingConfiguration(new ReportingConfiguration().setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS));
 		return cube;
 	}
 
@@ -115,7 +116,7 @@ public class CubeMeasureRemovalTest {
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
 		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"),
 				asList("impressions", "clicks", "conversions", "revenue")));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
+		cube.setReportingConfiguration(new ReportingConfiguration().setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS));
 		return cube;
 	}
 

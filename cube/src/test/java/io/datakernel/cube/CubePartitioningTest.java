@@ -23,6 +23,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
@@ -88,10 +89,10 @@ public class CubePartitioningTest {
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), asList("date"),
 				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
-		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
+		cube.setReportingConfiguration(new ReportingConfiguration().setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")
 				.put("banner", "campaign")
-				.build());
+				.build()));
 		return cube;
 	}
 

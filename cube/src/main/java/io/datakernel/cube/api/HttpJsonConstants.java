@@ -32,8 +32,8 @@ public final class HttpJsonConstants {
 	public static final String MEASURES_FIELD = "measures";
 	public static final String ATTRIBUTES_FIELD = "attributes";
 	public static final String FILTER_ATTRIBUTES_FIELD = "filterAttributes";
-	public static final String DRILLDOWNS_FIELD = "drillDowns";
-	public static final String CHAINS_FIELD = "chains";
+	public static final String DRILL_DOWNS_FIELD = "drillDowns";
+	public static final String FILTER_CHAINS_FIELD = "filters";
 	public static final String RECORDS_FIELD = "records";
 	public static final String TOTALS_FIELD = "totals";
 	public static final String METADATA_FIELD = "metadata";

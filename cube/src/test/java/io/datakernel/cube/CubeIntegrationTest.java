@@ -26,6 +26,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
@@ -91,10 +92,10 @@ public class CubeIntegrationTest {
 		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
 		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
-		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
+		cube.setReportingConfiguration(new ReportingConfiguration().setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")
 				.put("banner", "campaign")
-				.build());
+				.build()));
 		return cube;
 	}
 

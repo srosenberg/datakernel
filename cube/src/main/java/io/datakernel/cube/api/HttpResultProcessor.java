@@ -45,7 +45,7 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 	@Override
 	public HttpResponse apply(QueryResult result) {
 		String response = constructResult(result.getRecords(), result.getRecordClass(), result.getTotals(),
-				result.getCount(), result.getDrillDowns(), result.getChains(), result.getDimensions(),
+				result.getCount(), result.getDrillDowns(), result.getFilterChains(), result.getDimensions(),
 				result.getAttributes(), result.getMeasures(), result.getSortedBy(),
 				result.getFilterAttributesPlaceholder(), result.getFilterAttributes(), result.getFields(),
 				result.getMetadataFields());
@@ -93,11 +93,11 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 		if (nullOrContains(metadataFields, FILTER_ATTRIBUTES_FIELD))
 			jsonMetadata.add(FILTER_ATTRIBUTES_FIELD, getFilterAttributesJson(filterAttributes, filterAttributesPlaceholder));
 
-		if (nullOrContains(metadataFields, DRILLDOWNS_FIELD))
-			jsonMetadata.add(DRILLDOWNS_FIELD, getDrillDownsJson(drillDowns));
+		if (nullOrContains(metadataFields, DRILL_DOWNS_FIELD))
+			jsonMetadata.add(DRILL_DOWNS_FIELD, getDrillDownsJson(drillDowns));
 
-		if (nullOrContains(metadataFields, CHAINS_FIELD))
-			jsonMetadata.add(CHAINS_FIELD, getJsonArrayFromSetOfStrings(chains));
+		if (nullOrContains(metadataFields, FILTER_CHAINS_FIELD))
+			jsonMetadata.add(FILTER_CHAINS_FIELD, getJsonArrayFromSetOfStrings(chains));
 
 		if (nullOrContains(metadataFields, SORTED_BY_FIELD))
 			jsonMetadata.add(SORTED_BY_FIELD, getJsonArrayFromList(sortedBy));

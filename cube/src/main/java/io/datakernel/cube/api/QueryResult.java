@@ -30,7 +30,7 @@ public final class QueryResult {
 	private final int count;
 
 	private final Set<DrillDown> drillDowns;
-	private final Set<List<String>> chains;
+	private final Set<List<String>> filterChains;
 	private final List<String> dimensions;
 	private final List<String> attributes;
 	private final List<String> measures;
@@ -43,7 +43,7 @@ public final class QueryResult {
 	private final Set<String> metadataFields;
 
 	public QueryResult(List records, Class recordClass, TotalsPlaceholder totals, int count, Set<DrillDown> drillDowns,
-	                   Set<List<String>> chains, List<String> dimensions, List<String> attributes,
+	                   Set<List<String>> filterChains, List<String> dimensions, List<String> attributes,
 	                   List<String> measures, List<String> sortedBy, Object filterAttributesPlaceholder,
 	                   List<String> filterAttributes, Set<String> fields, Set<String> metadataFields) {
 		this.records = records;
@@ -51,7 +51,7 @@ public final class QueryResult {
 		this.totals = totals;
 		this.count = count;
 		this.drillDowns = drillDowns;
-		this.chains = chains;
+		this.filterChains = filterChains;
 		this.dimensions = dimensions;
 		this.attributes = attributes;
 		this.measures = measures;
@@ -82,8 +82,8 @@ public final class QueryResult {
 		return drillDowns;
 	}
 
-	public Set<List<String>> getChains() {
-		return chains;
+	public Set<List<String>> getFilterChains() {
+		return filterChains;
 	}
 
 	public List<String> getDimensions() {
@@ -126,7 +126,7 @@ public final class QueryResult {
 				.add("totals", totals)
 				.add("count", count)
 				.add("drillDowns", drillDowns)
-				.add("chains", chains)
+				.add("filterChains", filterChains)
 				.add("dimensions", dimensions)
 				.add("attributes", attributes)
 				.add("measures", measures)

@@ -156,13 +156,13 @@ public class ReportingTest {
 		measures.remove("revenue");
 		cube.addAggregation("detailed", new AggregationMetadata(newArrayList(DIMENSIONS.keySet()),
 				newArrayList(measures)));
-		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;
 	}
 
 	private static ReportingConfiguration getReportingConfiguration() {
 		return new ReportingConfiguration()
 				.addResolvedAttributeForKey("advertiserName", singletonList("advertiser"), String.class, new AdvertiserResolver())
+				.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS)
 				.setComputedMeasures(COMPUTED_MEASURES);
 	}
 

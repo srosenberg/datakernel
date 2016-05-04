@@ -38,7 +38,7 @@ public class AggregationKeyRelationships {
 		}
 	}
 
-	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
+	public List<String> buildChain(Set<String> usedDimensions, String dimension) {
 		LinkedList<String> drillDown = new LinkedList<>();
 		drillDown.add(dimension);
 		String child = dimension;
@@ -50,10 +50,10 @@ public class AggregationKeyRelationships {
 		return drillDown;
 	}
 
-	public Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Iterable<String> availableDimensions) {
+	public Set<List<String>> buildChains(Set<String> usedDimensions, Iterable<String> availableDimensions) {
 		Set<List<String>> drillDowns = newHashSet();
 		for (String dimension : availableDimensions) {
-			List<String> drillDown = buildDrillDownChain(usedDimensions, dimension);
+			List<String> drillDown = buildChain(usedDimensions, dimension);
 			drillDowns.add(drillDown);
 		}
 		return drillDowns;
@@ -63,7 +63,8 @@ public class AggregationKeyRelationships {
 		List<List<String>> chainsList = newArrayList(allChains);
 		Set<List<String>> longestChains = newHashSet();
 
-		outer: for (int i = 0; i < chainsList.size(); ++i) {
+		outer:
+		for (int i = 0; i < chainsList.size(); ++i) {
 			List<String> chain1 = chainsList.get(i);
 
 			for (int j = 0; j < chainsList.size(); ++j) {
@@ -74,8 +75,7 @@ public class AggregationKeyRelationships {
 					continue outer;
 			}
 
-			if (chain1.size() > 1)
-				longestChains.add(chain1);
+			longestChains.add(chain1);
 		}
 
 		return longestChains;
