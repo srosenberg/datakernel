@@ -43,12 +43,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.async.AsyncCallbacks.notCancellable;
 
 /**
- * It is internal class for asynchronous programming. Eventloop represents infinite loop with only one
- * blocking operation selector.select() which selects a set of keys whose corresponding channels are
- * ready for I/O operations. With this keys and queues with tasks, which was added to Eventloop
- * from the outside, it begins asynchronous executing from one thread it in method run() which is overridden
- * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
- * not selected keys and its queues with tasks are empty.
+ * Eventloop is core component of DataKernel Frameworks. It provides basic API for asyncrhonous I/O (based on NIO),
+ * and task execution.
+ * <p>
+ * Eventloop runs in single thread. If there is need to post task to Eventloop from another thread, it can be done
+ * using {@code execute()} or {@code submit()} methods.
+ * </p>
+ * <p>
+ * Eventloop is started by calling {@code run()} method and it will work while there is at least one task or
+ * selected key
+ * </p>
  */
 public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
@@ -131,14 +135,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private boolean monitoring;
 
 	/**
-	 * Creates a new instance of Eventloop with default instance of ByteBufPool
+	 * Creates a new instance of Eventloop with default {@link CurrentTimeProvider}
 	 */
 	public Eventloop() {
 		this(CurrentTimeProviderSystem.instance());
 	}
 
 	/**
-	 * Creates a new instance of Eventloop with given ByteBufPool and timeProvider
+	 * Creates a new instance of Eventloop with specified {@link CurrentTimeProvider}
 	 *
 	 * @param timeProvider provider for retrieving time on each cycle of event loop. Useful for unit testing.
 	 */
@@ -179,20 +183,28 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return selector;
 	}
 
+	/**
+	 * Returns true if method was called from the same thread that Eventloop .
+	 *
+	 * @return
+	 */
 	public boolean inEventloopThread() {
 		return eventloopThread == null || eventloopThread == Thread.currentThread();
 	}
 
 	/**
-	 * Sets the flag keep alive, if it is true it means that working of this Eventloop will be
-	 * continued even in case when all tasks have been executed and it doesn't have selected keys.
+	 * If keepAlive property is true, Eventloop continue running
+	 * regardless of absence of tasks and selected keys.
 	 *
-	 * @param keepAlive flag for setting
+	 * @param keepAlive keepAlive flag
 	 */
 	public void keepAlive(boolean keepAlive) {
 		this.keepAlive = keepAlive;
 	}
 
+	/**
+	 * Breaks eventloop execution on next iteration
+	 */
 	public void breakEventloop() {
 		this.breakEventloop = true;
 	}
@@ -215,7 +227,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Overridden method from Runnable that executes tasks while this eventloop is alive.
+	 * Starts Eventloop
 	 */
 	@Override
 	public void run() {
@@ -730,7 +742,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Posts a new task to the beginning of localTasks.
+	 * Posts a new task to the beginning of task queue
 	 * This method is recommended, since task will be executed as soon as possible without invalidating CPU cache.
 	 *
 	 * @param runnable runnable of this task
@@ -741,7 +753,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Posts a new task to the end localTasks.
+	 * Posts a new task to the end of task queue.
 	 *
 	 * @param runnable runnable of this task
 	 */
@@ -751,7 +763,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Posts a new task from other threads.
+	 * Posts a new task in a thread-safe manner
 	 * This is the preferred method of communicating with eventloop from another threads.
 	 *
 	 * @param runnable runnable of this task
@@ -765,11 +777,11 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	/**
-	 * Schedules new task. Returns {@link ScheduledRunnable} with this runnable.
+	 * Schedules new task
 	 *
-	 * @param timestamp timestamp after which task will be ran
+	 * @param timestamp timestamp after which task will be executed
 	 * @param runnable  runnable of this task
-	 * @return scheduledRunnable, which could used for cancelling the task
+	 * @return scheduledRunnable, which could be used for cancelling the task
 	 */
 	@Override
 	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
@@ -934,6 +946,22 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return future;
 	}
 
+	/**
+	 * Executes Runnable task in {@code executor} and notifies whether it was finished successfully or with error.
+	 *
+	 * <p>All tasks that are executed inside Eventloop should be fast and non-blocking. In case when such task needs
+	 * some blocking or time-consuming operation it should dispatch it to executor using this method.
+	 * </p>
+	 *
+	 * <p>When task is finished, appropriate {@code callback} method will be called in Eventloop thread</p>
+	 *
+	 * <p>This method can be called only from Eventloop thread.</p>
+	 *
+	 * @param executor executor that will execute task
+	 * @param runnable task
+	 * @param callback callback
+	 * @return {@link AsyncCancellable} which can be used to cancel the task
+	 */
 	public AsyncCancellable runConcurrently(ExecutorService executor,
 	                                        final Runnable runnable, final CompletionCallback callback) {
 		assert inEventloopThread();
@@ -1007,6 +1035,22 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 	}
 
+	/**
+	 * Executes Callable task in {@code executor} and notifies about result or error.
+	 *
+	 * <p>All tasks that are executed inside Eventloop should be fast and non-blocking. In case when such task needs
+	 * some blocking or time-consuming operation it should dispatch it to executor using this method.
+	 * </p>
+	 *
+	 * <p>When task is finished, appropriate {@code callback} method will be called in Eventloop thread</p>
+	 *
+	 * <p>This method can be called only from Eventloop thread.</p>
+	 *
+	 * @param executor executor that will execute task
+	 * @param callable task
+	 * @param callback
+	 * @return {@link AsyncCancellable} which can be used to cancel the task
+	 */
 	public <T> AsyncCancellable callConcurrently(ExecutorService executor,
 	                                             final Callable<T> callable, final ResultCallback<T> callback) {
 		assert inEventloopThread();

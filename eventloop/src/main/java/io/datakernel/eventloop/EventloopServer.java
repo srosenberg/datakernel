@@ -20,7 +20,6 @@ import java.io.IOException;
 
 /**
  * Represents non-blocking server which listens new connection and accepts it asynchronous.
- * It is {@link AcceptCallback} for handling accepting to this server.
  */
 public interface EventloopServer extends AcceptCallback {
 	Eventloop getEventloop();

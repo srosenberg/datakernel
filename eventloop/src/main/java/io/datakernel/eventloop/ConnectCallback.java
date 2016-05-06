@@ -21,16 +21,9 @@ import io.datakernel.async.ExceptionCallback;
 import java.nio.channels.SocketChannel;
 
 /**
- * This callback will be called for creating socket connection. It is implementation
- * of {@link ExceptionCallback} for handling exception during of a creating connection.
+ * Callback that is used used for "connect" event notification
  */
 public interface ConnectCallback extends ExceptionCallback {
 
-	/**
-	 * Method which creates socket connection with socketChannel and registers this connection to
-	 * {@link Eventloop}.
-	 *
-	 * @param socketChannel socketChannel for creating new connection.
-	 */
 	void onConnect(SocketChannel socketChannel);
 }

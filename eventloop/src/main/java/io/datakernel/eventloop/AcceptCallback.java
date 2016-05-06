@@ -19,13 +19,9 @@ package io.datakernel.eventloop;
 import java.nio.channels.SocketChannel;
 
 /**
- * Notification for new incoming {@link SocketConnection}.
+ * Callback that is used used for "accept" event notification
  */
 public interface AcceptCallback {
-	/**
-	 * Processes newly accepted connection socketChannel: usually a new SocketConnection instance is created registered it in eventloop
-	 *
-	 * @param socketChannel socketChannel from new connection
-	 */
+
 	void onAccept(SocketChannel socketChannel);
 }

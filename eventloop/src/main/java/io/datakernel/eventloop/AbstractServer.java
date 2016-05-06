@@ -41,9 +41,9 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
- * It is implementation of {@link EventloopServer}. It is non-blocking server which works in eventloop.
- * The server runs on the one thread, and all events are fired on that thread. This server can listen few
- * addresses in one time and you can register multiple connections for responding to incoming data.
+ * This class provides a skeleton implementation for eventloop-based servers.
+ *
+ * <p>In order to create eventloop-based server extend this class and override {@code createConnection} method</p>
  *
  * @param <S> type of AbstractNioServer which extends from it
  */

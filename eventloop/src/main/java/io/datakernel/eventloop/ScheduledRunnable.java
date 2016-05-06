@@ -19,20 +19,11 @@ package io.datakernel.eventloop;
 import io.datakernel.async.AsyncCancellable;
 
 public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
-	/**
-	 * The time after which this runnable will be executed
-	 */
 	private final long timestamp;
 	private Runnable runnable;
 	private boolean cancelled;
 	private boolean complete;
 
-	/**
-	 * Initializes a new instance of ScheduledRunnable
-	 *
-	 * @param timestamp time after which this runnable will be executed
-	 * @param runnable  runnable for executing
-	 */
 	public ScheduledRunnable(long timestamp, Runnable runnable) {
 		this.timestamp = timestamp;
 		this.runnable = runnable;
@@ -51,14 +42,6 @@ public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCa
 		return (int) (timestamp ^ (timestamp >>> 32));
 	}
 
-	/**
-	 * Compares timestamps of two ScheduledRunnables
-	 *
-	 * @param o ScheduledRunnable for comparing
-	 * @return a negative integer, zero, or a positive integer as this
-	 * timestamp is less than, equal to, or greater than the timestamp of
-	 * ScheduledRunnable from argument.
-	 */
 	@Override
 	public int compareTo(ScheduledRunnable o) {
 		return Long.compare(timestamp, o.timestamp);

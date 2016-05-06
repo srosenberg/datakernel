@@ -20,9 +20,8 @@ import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
 /**
- * It is the {@link AbstractServer} which only handles accepting to it. It contains collection of
- * other {@link EventloopServer}, and when takes place new accept to it, it forwards request to other server
- * from collection with round-robin algorithm.
+ * PrimaryServer is used for load-balancing.
+ * It just forwards "accept" events to worker servers using round-robin algorithm
  */
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	private EventloopServer[] workerServers;
@@ -33,20 +32,14 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		super(primaryEventloop);
 	}
 
-	/**
-	 * Creates a new PrimaryNioServer with specify Eventloop
-	 *
-	 * @param primaryEventloop the Eventloop which will execute IO tasks of this server
-	 * @return new PrimaryNioServer
-	 */
 	public static PrimaryServer create(Eventloop primaryEventloop) {
 		return new PrimaryServer(primaryEventloop);
 	}
 
 	/**
-	 * Adds the list of NioServers which will handle accepting to this server
+	 * Set worker servers
 	 *
-	 * @param workerServers list of workers NioServers
+	 * @param workerServers list of worker servers
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
@@ -79,8 +72,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	}
 
 	/**
-	 * On accepting this server forwards a received socketChannel, and calls onAccept() of the specify worker server.
-	 * Method uses round-robin algorithm to select to which server task will be forwarded
+	 * Forwards "accept" events to worker servers using round-robin algorithm
 	 *
 	 * @param socketChannel the incoming socketChannel.
 	 */

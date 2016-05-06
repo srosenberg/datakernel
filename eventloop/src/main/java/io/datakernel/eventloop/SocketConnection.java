@@ -132,13 +132,13 @@ public abstract class SocketConnection {
 	}
 
 	/**
-	 * It called after completing registering this connection.
+	 * Is called after completing registering this connection.
 	 */
 	public void onRegistered() {
 	}
 
 	/**
-	 * It called after closing this connection.
+	 * Is called after closing this connection.
 	 */
 	public abstract void onClosed();
 
@@ -169,7 +169,7 @@ public abstract class SocketConnection {
 	}
 
 	/**
-	 * It called before beginning of reading.
+	 * Is called before beginning of reading.
 	 */
 	public abstract void onReadReady();
 
@@ -177,7 +177,7 @@ public abstract class SocketConnection {
 	}
 
 	/**
-	 * It called before beginning of writing.
+	 * Is called before beginning of writing.
 	 */
 	public abstract void onWriteReady();
 
