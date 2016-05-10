@@ -37,6 +37,9 @@ import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class TestHttpsServer {
+
+	public static final int PORT = 5590;
+
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
@@ -59,9 +62,9 @@ public class TestHttpsServer {
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
 				.enableSsl(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor)
-				.setListenPort(5568);
+				.setListenPort(PORT);
 
-		System.out.println("https://127.0.0.1:" + 5590);
+		System.out.println("https://127.0.0.1:" + PORT);
 
 		server.listen();
 		eventloop.run();

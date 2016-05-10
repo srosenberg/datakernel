@@ -27,6 +27,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 
+// TODO: (arashev) remove onEndOfStream***  -->
+
 /**
  * Represent the TCP connection, which is {@link SocketConnection}. It is created with socketChannel
  * and in which sides can exchange {@link ByteBuf}.

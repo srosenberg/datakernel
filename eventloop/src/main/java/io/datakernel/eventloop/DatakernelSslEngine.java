@@ -32,6 +32,8 @@ import static javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.*;
 
+// TODO: (arashev) переделать на очереди**
+
 /*
 * One must ensure strict sequential order of handshake messages!
 * Unexpected sequence order can lead to critical or even fatal results
@@ -48,6 +50,8 @@ public final class DatakernelSslEngine implements TcpFilter {
 	*   32 * 1024 -- buffer size, depends on the byteBufs sizes being send to the engine
 	*   bufs that that are being used by the engine are expected not to exceed 16kb size
 	*/
+
+	// TODO: (arashev) supply with bytebufpool
 	private ByteBuffer app2engine = ByteBuffer.allocate(32 * 1024); //  used to store raw app data
 	private ByteBuffer engine2net = ByteBuffer.allocate(16 * 1024); //  filled by SSLEngine with encoded data that is to be send to a remote peer
 	private ByteBuffer net2engine = ByteBuffer.allocate(32 * 1024); //  encoded data received from peer that is to be passed to SSLEngine
@@ -105,7 +109,8 @@ public final class DatakernelSslEngine implements TcpFilter {
 			engine.closeInbound();
 		} catch (SSLException e) {
 			logger.warn("trying to close connection without receiving a proper close notification message");
-			closeConnection();
+		} finally {
+			conn.doClose();
 		}
 	}
 

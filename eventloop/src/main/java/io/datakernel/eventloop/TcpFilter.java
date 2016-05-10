@@ -21,6 +21,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.io.IOException;
 
 public interface TcpFilter {
+	// TODO: (arashev) add check write queue isEmpty
+
 	void setConnection(TcpSocketConnection conn);
 
 	void writeToChannel(ByteBuf buf);
