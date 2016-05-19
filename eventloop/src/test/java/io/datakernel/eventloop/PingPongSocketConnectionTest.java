@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2015 SoftIndex LLC.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
@@ -24,101 +8,122 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static org.junit.Assert.*;
+import static io.datakernel.util.ByteBufStrings.wrapAscii;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
-	public static final int PORT = 9921;
-	public static final String PING = "PING";
-	public static final String PONG = "PONG";
-	public static final int ITERATIONS = 3;
-
-	static class PingPongConnection extends TcpSocketConnection {
-		private int countdown;
-		private final byte[] request;
-		private final byte[] response;
-		private final boolean client;
-
-		private PingPongConnection(Eventloop eventloop, SocketChannel socketChannel, String request, String response, int countdown, boolean client) {
-			super(eventloop, socketChannel);
-			this.countdown = countdown;
-			this.request = encodeAscii(request);
-			this.response = encodeAscii(response);
-			this.client = client;
-		}
-
-		public static PingPongConnection clientConnection(Eventloop eventloop, SocketChannel socketChannel, String ping, String pong, int countdown) {
-			return new PingPongConnection(eventloop, socketChannel, pong, ping, countdown, true);
-		}
-
-		public static PingPongConnection serverConnection(Eventloop eventloop, SocketChannel socketChannel, String ping, String pong) {
-			return new PingPongConnection(eventloop, socketChannel, ping, pong, 0, false);
-		}
-
-		@Override
-		public void onRegistered() {
-			if (client) {
-				write(ByteBuf.wrap(response));
-			}
-		}
-
-		@Override
-		protected void onRead() {
-			int readBytes = readQueue.remainingBytes();
-			if (readBytes < request.length) {
-				return;
-			}
-			assertEquals(request.length, readBytes);
-
-			ByteBuf requestBuf = ByteBuf.allocate(readBytes);
-			readQueue.drainTo(requestBuf);
-			requestBuf.flip();
-			System.out.println("Received from " + (client ? "server" : "client") + ": " + decodeAscii(requestBuf));
-			assertTrue(requestBuf.equalsTo(request));
-
-			if (client && --countdown == 0) {
-				close();
-				return;
-			}
-
-			write(ByteBuf.wrap(response));
-		}
-	}
-
-	static class TestServer extends AbstractServer {
-		public TestServer(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		@Override
-		protected SocketConnection createConnection(SocketChannel socketChannel) {
-			return PingPongConnection.serverConnection(eventloop, socketChannel, PING, PONG);
-		}
-	}
+	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
+	private final int ITERATIONS = 3;
+	private final String RESPONSE_MSG = "PONG";
+	private final String REQUEST_MSG = "PING";
 
 	@Test
-	public void testPingPong() throws IOException {
+	public void test() throws IOException {
 		final Eventloop eventloop = new Eventloop();
-		TestServer server = new TestServer(eventloop);
-		server.acceptOnce().setListenPort(PORT);
 
-		server.listen();
+		final AbstractServer ppServer = new AbstractServer(eventloop) {
+			@Override
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl serverTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+				serverTcpSocket.setEventHandler(createServerSideEventHandler(serverTcpSocket));
+				return serverTcpSocket;
+			}
+		};
+		ppServer.setListenAddress(ADDRESS);
+		ppServer.listen();
 
-		eventloop.connect(new InetSocketAddress("localhost", PORT), new SocketSettings(), new ConnectCallback() {
-					@Override
-					public void onConnect(SocketChannel socketChannel) {
-						PingPongConnection pingPongConnection = PingPongConnection.clientConnection(eventloop, socketChannel, PING, PONG, ITERATIONS);
-						pingPongConnection.register();
-					}
+		eventloop.connect(ADDRESS, new SocketSettings(), new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl clientTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+				clientTcpSocket.setEventHandler(createClientSideEventHandler(clientTcpSocket, ppServer));
+				clientTcpSocket.register();
+			}
 
-					@Override
-					public void onException(Exception exception) {
-						fail("Exception: " + exception);
-					}
-				}
-		);
+			@Override
+			public void onException(Exception e) {
+				fail("Exception: " + e);
+			}
+		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	private EventHandler createClientSideEventHandler(final AsyncTcpSocketImpl clientTcpSocket, final AbstractServer server) {
+		return new EventHandler() {
+			int counter = 0;
+
+			@Override
+			public void onRegistered() {
+				clientTcpSocket.write(wrapAscii(REQUEST_MSG));
+			}
+
+			@Override
+			public void onRead(ByteBuf buf) {
+				assertEquals(RESPONSE_MSG, decodeAscii(buf));
+				if (++counter == ITERATIONS) {
+					clientTcpSocket.close();
+					server.close();
+				} else {
+					clientTcpSocket.write(wrapAscii(REQUEST_MSG));
+				}
+				buf.recycle();
+			}
+
+			@Override
+			public void onReadEndOfStream() {
+			}
+
+			@Override
+			public void onWrite() {
+				clientTcpSocket.read();
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+				e.printStackTrace();
+			}
+		};
+	}
+
+	private EventHandler createServerSideEventHandler(final AsyncTcpSocketImpl serverTcpSocket) {
+		return new EventHandler() {
+			int counter = 0;
+
+			@Override
+			public void onRegistered() {
+				serverTcpSocket.read();
+			}
+
+			@Override
+			public void onReadEndOfStream() {
+				serverTcpSocket.close();
+				assertEquals(ITERATIONS, counter);
+			}
+
+			@Override
+			public void onRead(ByteBuf buf) {
+				assertEquals(REQUEST_MSG, decodeAscii(buf));
+				buf.recycle();
+				counter++;
+				serverTcpSocket.write(wrapAscii(RESPONSE_MSG));
+
+			}
+
+			@Override
+			public void onWrite() {
+				serverTcpSocket.read();
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+				e.printStackTrace();
+			}
+		};
 	}
 }

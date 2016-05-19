@@ -553,8 +553,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onRead(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onReadReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onReadReady();
 	}
 
 	/**
@@ -564,8 +564,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onWrite(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onWriteReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onWriteReady();
 	}
 
 	private static void closeQuietly(AutoCloseable closeable) {

@@ -18,15 +18,17 @@ package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
+import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -67,15 +69,25 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * Creates a new instance of HttpServerConnection
 	 *
-	 * @param eventloop     eventloop which will handle its tasks
-	 * @param socketChannel channel for this connection
-	 * @param servlet       servlet for handling requests
-	 * @param pool          pool in which will be stored this connection
+	 * @param eventloop eventloop which will handle its tasks
+	 * @param servlet   servlet for handling requests
+	 * @param pool      pool in which will be stored this connection
 	 */
-	public HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, pool, headerChars, maxHttpMessageSize);
+	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
-		this.remoteAddress = getRemoteSocketAddress().getAddress();
+		this.remoteAddress = remoteAddress;
+	}
+
+	@Override
+	public void onRegistered() {
+		super.onRegistered();
+		asyncTcpSocket.read();
+	}
+
+	@Override
+	public void onClosedWithError(Exception e) {
+		onClosed();
 	}
 
 	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
@@ -121,7 +133,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
-		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
 		HttpMethod method = getHttpMethod(line);
@@ -163,13 +174,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 		ByteBuf buf = httpResponse.write();
 		httpResponse.recycleBufs();
-		write(buf);
+		asyncTcpSocket.write(buf);
 	}
 
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p>
+	 * <p/>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message
@@ -185,6 +196,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				public void onResult(final HttpResponse httpResponse) {
 					assert eventloop.inEventloopThread();
 					if (isRegistered()) {
+						try {
+							if (shouldGzip && httpResponse.getBody() != null) {
+								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
+								httpResponse.setBody(toGzip(httpResponse.getBody()));
+							}
+						} catch (ParseException e) {
+							writeException(new HttpServletError(500));
+						}
 						writeHttpResult(httpResponse);
 					} else {
 						// connection is closed, but bufs are not recycled, let's recycle them now
@@ -212,7 +231,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void reset() {
 		reading = FIRSTLINE;
-		readInterest(true);
 		keepAlive = false;
 		if (request != null) {
 			request.recycleBufs();
@@ -221,28 +239,16 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		super.reset();
 	}
 
-	private Runnable readRunnable;
-
-	private void postRead() {
-		if (readRunnable == null) {
-			readRunnable = new Runnable() {
-				@Override
-				public void run() {
-					onRead();
-				}
-			};
-		}
-		eventloop.post(readRunnable);
-	}
-
 	@Override
-	protected void onWriteFlushed() {
+	public void onWrite() {
 		assert isRegistered();
+		if (reading != NOTHING) return;
 		if (keepAlive) {
 			reset();
+			asyncTcpSocket.read();
 			if (readQueue.hasRemaining()) {
 				// HTTP Pipelining: since readQueue is already read, onRead() may not be called
-				postRead();
+				onRead(null);
 			}
 		} else {
 			close();
@@ -269,7 +275,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	public void onClosed() {
+	protected void onClosed() {
 		super.onClosed();
 		if (reading != NOTHING) {
 			// request is not being processed by asynchronous servlet at the moment

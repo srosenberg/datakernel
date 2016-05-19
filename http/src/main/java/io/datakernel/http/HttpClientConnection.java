@@ -16,13 +16,15 @@
 
 package io.datakernel.http;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 
-import java.nio.channels.SocketChannel;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.http.HttpHeaders.CONNECTION;
@@ -45,32 +47,18 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private final AsyncHttpClient httpClient;
 	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
-	/**
-	 * Creates a new of  HttpClientConnection
-	 *
-	 * @param eventloop     eventloop which will handle its I/O operations
-	 * @param socketChannel channel for this connection
-	 * @param httpClient    client which will handle this connection
-	 */
-	public HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+	private final InetSocketAddress remoteSocketAddress;
+
+	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteSocketAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+		this.remoteSocketAddress = remoteSocketAddress;
 		this.httpClient = httpClient;
 	}
 
 	@Override
-	protected void onReadException(Exception e) {
-		onException(e);
-		super.onReadException(e);
-	}
-
-	@Override
-	protected void onWriteException(Exception e) {
-		onException(e);
-		super.onWriteException(e);
-	}
-
-	private void onException(Exception e) {
+	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
+		onClosed();
 		if (this.callback != null) {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
@@ -163,7 +151,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
-				onException(CLOSED_CONNECTION);
+				closeWithError(CLOSED_CONNECTION);
 			}
 		}
 		close();
@@ -174,7 +162,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void reset() {
-		reading = NOTHING;
+		reading = END_OF_STREAM;
 		if (response != null) {
 			response.recycleBufs();
 			response = null;
@@ -190,8 +178,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpRequest.write();
-		write(buf);
+		asyncTcpSocket.write(httpRequest.write());
 	}
 
 	/**
@@ -215,20 +202,18 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			@Override
 			public void run() {
 				if (isRegistered()) {
-					close();
-					onException(TIMEOUT_EXCEPTION);
+					closeWithError(TIMEOUT_EXCEPTION);
 				}
 			}
 		});
 	}
 
 	@Override
-	protected void onWriteFlushed() {
+	public void onWrite() {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
-
 		reading = FIRSTLINE;
-		readInterest(true);
+		asyncTcpSocket.read();
 	}
 
 	/**
@@ -236,7 +221,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * Http response.
 	 */
 	@Override
-	public void onClosed() {
+	protected void onClosed() {
 		super.onClosed();
 		bodyQueue.clear();
 		if (connectionsListNode != null) {
@@ -248,4 +233,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		httpClient.removeFromIpPool(this);
 	}
 
+	@Nullable
+	public InetSocketAddress getRemoteSocketAddress() {
+		return remoteSocketAddress;
+	}
 }

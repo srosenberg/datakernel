@@ -158,8 +158,7 @@ public final class ByteBufQueue {
 	 * Returns the first ByteBuf from this queue
 	 */
 	public ByteBuf peekBuf() {
-		assert hasRemaining();
-		return bufs[first];
+		return hasRemaining() ? bufs[first] : null;
 	}
 
 	/**
@@ -379,5 +378,10 @@ public final class ByteBufQueue {
 			bufs[i].recycle();
 		}
 		first = last = 0;
+	}
+
+	@Override
+	public String toString() {
+		return "bufs:" + remainingBufs() + " bytes:" + remainingBytes();
 	}
 }

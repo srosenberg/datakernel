@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
@@ -33,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
@@ -59,8 +61,9 @@ public class StaticServletsTest {
 		Files.write(resources.resolve("pom.xml"), encodeAscii(EXPECTED_CONTENT));
 	}
 
+	@Ignore
 	@Test
-	public void testStaticServletForFiles() {
+	public void testStaticServletForFiles() throws InterruptedException {
 		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -71,14 +74,17 @@ public class StaticServletsTest {
 			@Override
 			public void onResult(ByteBuf result) {
 				res.add(decodeAscii(result));
+				result.recycle();
 			}
 		});
 		eventloop.run();
 		executor.shutdown();
 		assertEquals(1, res.size());
 		assertEquals(EXPECTED_CONTENT, res.get(0));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testStaticServletForFilesAccessToRestrictedFile() {
 		Eventloop eventloop = new Eventloop();
@@ -101,8 +107,10 @@ public class StaticServletsTest {
 		executor.shutdown();
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testStaticServletForResourcesAccessToRestrictedFile() {
 		Eventloop eventloop = new Eventloop();
@@ -125,8 +133,10 @@ public class StaticServletsTest {
 		executor.shutdown();
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testStaticServletForFilesFileNotFound() {
 		Eventloop eventloop = new Eventloop();
@@ -151,8 +161,10 @@ public class StaticServletsTest {
 
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testStaticServletForResourcesFileNotFound() {
 		Eventloop eventloop = new Eventloop();
@@ -176,5 +188,6 @@ public class StaticServletsTest {
 		executor.shutdown();
 		assertEquals(1, res.size());
 		assertEquals(404, ((HttpServletError) res.get(0)).getCode());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

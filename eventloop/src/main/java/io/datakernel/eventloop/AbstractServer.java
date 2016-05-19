@@ -243,7 +243,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
 		prepareSocket(socketChannel);
-		SocketConnection connection = createConnection(socketChannel);
+		NioChannelEventHandler connection = createConnection(socketChannel);
 		connection.register();
 		if (acceptOnce) {
 			close();
@@ -279,7 +279,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
+	protected abstract NioChannelEventHandler createConnection(SocketChannel socketChannel);
 
 	// jmx
 	@JmxAttribute

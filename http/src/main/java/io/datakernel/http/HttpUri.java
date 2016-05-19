@@ -29,6 +29,7 @@ public final class HttpUri {
 
 	private static final String SCHEMA_DELIM = "://";
 	private static final String HTTP = "http";
+	private static final String HTTPS = "https";
 	private static final char IPV6_OPENING_BRACKET = '[';
 	private static final String IPV6_CLOSING_SECTION_WITH_PORT = "]:";
 
@@ -77,7 +78,7 @@ public final class HttpUri {
 			pathAndQuery = uri.isEmpty() ? "/" : uri;
 		} else {
 			String schema = uri.substring(0, index);
-			if (!schema.equals(HTTP))
+			if (!(schema.equals(HTTP) || schema.equals(HTTPS)))
 				throw new IllegalArgumentException("Unsupported schema: " + schema);
 			index += SCHEMA_DELIM.length();
 			int slash = uri.indexOf('/', index);
@@ -91,7 +92,7 @@ public final class HttpUri {
 					port = parseInt(hostPort.substring(closingSection + 2));
 				} else {
 					host = hostPort;
-					port = 80;
+					port = schema.equals(HTTPS) ? 443 : 80;
 				}
 			} else {
 				// parse IPv4
@@ -101,7 +102,7 @@ public final class HttpUri {
 					port = parseInt(hostPort.substring(colon + 1));
 				} else {
 					host = hostPort;
-					port = 80;
+					port = schema.equals(HTTPS) ? 443 : 80;
 				}
 			}
 

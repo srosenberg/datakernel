@@ -17,13 +17,14 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.Stopwatch;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
@@ -44,6 +45,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
+
+	// SSL
+	private SSLContext sslContext;
+	private ExecutorService executor;
 
 	//JMX
 	private final ValueStats timeCheckExpired;
@@ -71,6 +76,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		// JMX
 		this.timeCheckExpired = new ValueStats();
 		this.expiredConnections = new ValueStats();
+	}
+
+	public AsyncHttpServer enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.sslContext = sslContext;
+		this.executor = executor;
+		return this;
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -105,7 +116,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				AbstractHttpConnection connection = node.getValue();
 				node = node.getNext();
 
-				assert connection.getEventloop().inEventloopThread();
+				assert eventloop.inEventloopThread();
 				long idleTime = now - connection.getActivityTime();
 				if (idleTime > MAX_IDLE_CONNECTION_TIME) {
 					connection.close(); // self removing from this pool
@@ -127,13 +138,25 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	 * @return new connection
 	 */
 	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
+	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
 
-		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, servlet, connectionsList, headerChars, maxHttpMessageSize);
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+
+		AsyncSslSocket asyncSslSocket = null;
+		if (sslContext != null) {
+			SSLEngine ssl = sslContext.createSSLEngine();
+			ssl.setUseClientMode(false);
+			asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
+		}
+
+		new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(),
+				asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
+				servlet, connectionsList, headerChars, maxHttpMessageSize);
+
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();
-		return connection;
+		return asyncTcpSocket;
 	}
 
 	/**
@@ -153,7 +176,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
 
-			assert connection.getEventloop().inEventloopThread();
+			assert eventloop.inEventloopThread();
 			connection.close();
 		}
 	}

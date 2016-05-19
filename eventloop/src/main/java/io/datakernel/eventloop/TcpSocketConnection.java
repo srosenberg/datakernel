@@ -45,6 +45,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 */
 	public TcpSocketConnection(Eventloop eventloop, SocketChannel socketChannel) {
 		super(eventloop);
+
 		this.channel = socketChannel;
 		try {
 			this.remoteSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
@@ -93,6 +94,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		buf.flip();
+
 		onRead(buf);
 	}
 
@@ -107,6 +109,27 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 */
 	protected abstract void onRead();
 
+	protected void write(ByteBuf buf) {
+		writeToChannel(buf);
+	}
+
+	void writeToChannel(ByteBuf buf) {
+		if (writeQueue.isEmpty()) {
+			writeQueue.add(buf);
+			doWrite();
+		} else {
+			writeQueue.add(buf);
+		}
+	}
+
+	/**
+	 * This method is called if writeInterest is on and it is possible to write to the channel.
+	 */
+	@Override
+	public void onWriteReady() {
+		doWrite();
+	}
+
 	/**
 	 * Peeks ByteBuf from writeQueue, and sends its bytes to address.
 	 */
@@ -118,7 +141,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 			ByteBuffer byteBuffer = buf.toByteBuffer();
 			int remainingOld = buf.remaining();
 			try {
-				channelWrite(byteBuffer);
+				channel.write(byteBuffer);
 				buf.setByteBuffer(byteBuffer);
 			} catch (IOException e) {
 				onWriteException(e);
@@ -149,25 +172,9 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 	}
 
-	protected void write(ByteBuf buf) {
-		if (writeQueue.isEmpty()) {
-			writeQueue.add(buf);
-			doWrite();
-		} else {
-			writeQueue.add(buf);
-		}
-	}
-
-	protected int channelWrite(ByteBuffer byteBuffer) throws IOException {
-		return channel.write(byteBuffer);
-	}
-
-	/**
-	 * This method is called if writeInterest is on and it is possible to write to the channel.
-	 */
 	@Override
-	public void onWriteReady() {
-		doWrite();
+	public void close() {
+		super.close();
 	}
 
 	/**
@@ -203,6 +210,14 @@ public abstract class TcpSocketConnection extends SocketConnection {
 
 	@Override
 	protected String getDebugName() {
-		return super.getDebugName() + "(" + remoteSocketAddress + ")";
+		return getClass().getSimpleName() + "(" + remoteSocketAddress + ")";
+	}
+
+	void suspendReading() {
+		readInterest(false);
+	}
+
+	void resumeReading() {
+		readInterest(true);
 	}
 }
