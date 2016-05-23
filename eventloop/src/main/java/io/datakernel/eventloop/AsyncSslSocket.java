@@ -26,7 +26,12 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
+
+import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
+import static javax.net.ssl.SSLEngineResult.Status.BUFFER_OVERFLOW;
+import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 
 public final class AsyncSslSocket implements AsyncTcpSocket {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncSslSocket.class);
@@ -35,14 +40,23 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private final SSLEngine engine;
 	private final ExecutorService executor;
 	private final AsyncTcpSocket upstream;
-	private final AsyncTcpSocket.EventHandler upstreamEventHandler = new AsyncTcpSocket.EventHandler() {
+	private AsyncTcpSocket.EventHandler downstreamEventHandler;
+
+	private final ArrayDeque<ByteBuf> net2engine = new ArrayDeque<>(); // raw net data
+	private final ByteBufQueue app2engine = new ByteBufQueue(); //  used to store raw app data before pushing it to handshake
+
+	private boolean open = true;
+	private boolean readInterest = false;
+	private boolean writeInterest = false;
+	private boolean syncPosted = false;
+	private final EventHandler upstreamEventHandler = new EventHandler() {
 		@Override
 		public void onRegistered() {
 			open = true;
 			downstreamEventHandler.onRegistered();
 			try {
-				engine.beginHandshake();
-				doSync();
+				AsyncSslSocket.this.engine.beginHandshake();
+				doProcessMsg();
 			} catch (SSLException e) {
 				handleSSLException(e, true);
 			}
@@ -50,19 +64,26 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 
 		@Override
 		public void onRead(ByteBuf buf) {
-			if (!isOpen()) return;
-			sync();
+			if (isOpen()) {
+				net2engine.add(buf);
+				processMsg();
+			}
 		}
 
 		@Override
 		public void onReadEndOfStream() {
-
+			try {
+				AsyncSslSocket.this.engine.closeInbound();
+			} catch (SSLException ignored) {
+				logger.warn("inbound closed without receiving proper close notification message");
+			}
+			downstreamEventHandler.onReadEndOfStream();
 		}
 
 		@Override
 		public void onWrite() {
 			if (!isOpen()) return;
-			if (engine2netQueue.isEmpty() && app2engineQueue.isEmpty() && writeInterest) {
+			if (AsyncSslSocket.this.engine.getHandshakeStatus() != NOT_HANDSHAKING) {
 				writeInterest = false;
 				downstreamEventHandler.onWrite();
 			}
@@ -75,25 +96,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			downstreamEventHandler.onClosedWithError(e);
 		}
 	};
-	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
-	private final ByteBufQueue net2engineQueue; //  encoded data received from peer that is to be passed to SSLEngine
-	private final ByteBufQueue engine2netQueue; //  filled by SSLEngine with encoded data that is to be send to a remote peer
-	private final ByteBufQueue engine2appQueue = new ByteBufQueue(); //  decoded data that is to be passed to app
-	private final ByteBufQueue app2engineQueue = new ByteBufQueue(); //  used to store raw app data
-
-	private boolean open = true;
-	private boolean readInterest = false;
-	private boolean writeInterest = false;
-	private boolean syncPosted = false;
-
+	// creators & builder methods
 	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, ExecutorService executor) {
 		this.eventloop = eventloop;
 		this.engine = engine;
 		this.executor = executor;
-
-		this.net2engineQueue = null; //asyncTcpSocket.getReadQueue();
-		this.engine2netQueue = null; //asyncTcpSocket.getWriteQueue();
 
 		this.upstream = asyncTcpSocket;
 		this.upstream.setEventHandler(upstreamEventHandler);
@@ -104,43 +112,38 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		this.downstreamEventHandler = eventHandler;
 	}
 
+	// read cycle
 	@Override
 	public void read() {
 		if (!isOpen()) return;
 		upstream.read();
 		readInterest = true;
-		postSync();
+		postProcessMsg();
 	}
 
-	private void postSync() {
-		if (!syncPosted) {
-			syncPosted = true;
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					syncPosted = false;
-					sync();
-				}
-			});
-		}
+	private SSLEngineResult doRead() throws SSLException {
+		return writeToNet(net2engine.getFirst());
 	}
 
+	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		if (!isOpen()) return;
-		try {
+		if (isOpen()) {
+			app2engine.add(buf);
 			writeInterest = true;
-			SSLEngineResult.HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
-			if (handshakeStatus == SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING) {
-				postSync();
-			} else {
-				if (doWrite().bytesProduced() != 0) {
-					upstream.write(buf);
-				}
-			}
-		} catch (SSLException e) {
-			handleSSLException(e, true);
+			postProcessMsg();
 		}
+	}
+
+	private SSLEngineResult doWrite() throws SSLException {
+		// TODO: (arashev)
+		ByteBuf buf = getFromQueue(app2engine);
+		return writeToNet(buf);
+	}
+
+	// miscellaneous
+	public boolean isOpen() {
+		return open;
 	}
 
 	@Override
@@ -150,13 +153,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		upstream.close();
 	}
 
-	public boolean isOpen() {
-		return open;
-	}
-
 	private void handleSSLException(final SSLException e, boolean post) {
-		if (!isOpen())
-			return;
+		if (!isOpen()) return;
 		upstream.close();
 		if (post) {
 			eventloop.post(new Runnable() {
@@ -170,100 +168,56 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		}
 	}
 
-	private interface Converter {
-		void endOfStream() throws SSLException;
+	private SSLEngineResult writeToNet(ByteBuf buf) throws SSLException {
+		ByteBuf targetBuf = ByteBufPool.allocate(getRecommendedSize());
+		targetBuf.limit(targetBuf.array().length);
+		ByteBuffer sourceBuffer = buf.toByteBuffer();
+		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
 
-		SSLEngineResult convert(ByteBuffer sourceBuffer, ByteBuffer targetBuffer) throws SSLException;
-	}
+		SSLEngineResult result = engine.wrap(sourceBuffer, targetBuffer);
 
-	private SSLEngineResult convert(ByteBufQueue sourceQueue, ByteBufQueue targetQueue, Converter converter) throws SSLException {
-//		if (logger.isTraceEnabled()) {
-//			logger.trace("" +
-//					(sourceQueue == app2engineQueue ? "app->net" : "net->app") + ": {" + sourceQueue + "}" + "->{" + targetQueue + "}" +
-//					" " + engine.getHandshakeStatus()
-//			);
-//		}
-
-		ByteBuf sourceBuf;
-		if (sourceQueue.remainingBufs() == 1) {
-			sourceBuf = sourceQueue.take();
-		} else {
-			sourceBuf = ByteBufPool.allocate(sourceQueue.remainingBytes());
-			sourceQueue.drainTo(sourceBuf);
-			sourceBuf.flip();
+		while (result.getStatus() == BUFFER_OVERFLOW) {
+			targetBuf = ByteBufPool.resize(targetBuf, targetBuffer.limit() * 2);    // apply some resize strategy
+			targetBuffer = targetBuf.toByteBuffer();
+			targetBuf.limit(targetBuf.array().length);
+			result = engine.wrap(sourceBuffer, targetBuffer);
 		}
 
-		ByteBuf targetBuf = ByteBufPool.allocate(Math.max(engine.getSession().getApplicationBufferSize(), engine.getSession().getPacketBufferSize()));
-		targetBuf.limit(targetBuf.array().length);
-		ByteBuffer sourceBuffer = sourceBuf.toByteBuffer();
-		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
-//		if (sourceQueue.isEndOfStream()) {
-//			converter.endOfStream();
-//		}
-
-		SSLEngineResult result = converter.convert(sourceBuffer, targetBuffer);
-
-		sourceBuf.setByteBuffer(sourceBuffer);
-		if (sourceBuf.hasRemaining()) {
-			sourceQueue.add(sourceBuf);
+		buf.setByteBuffer(sourceBuffer);
+		if (buf.hasRemaining()) {
+			app2engine.add(buf);
 		} else {
-			sourceBuf.recycle();
+			buf.recycle();
 		}
 
 		targetBuffer.flip();
 		targetBuf.setByteBuffer(targetBuffer);
-		if (targetBuf.hasRemaining()) {
-			targetQueue.add(targetBuf);
-		} else {
-			targetBuf.recycle();
-		}
 
-//		if (logger.isTraceEnabled()) {
-//			logger.trace("" +
-//					(sourceQueue == app2engineQueue ? "app->net" : "net->app") + ": {" + sourceQueue + "}" + "->{" + targetQueue + "}" +
-//					" " + result
-//			);
-//		}
+		upstream.write(targetBuf);
+
 		return result;
 	}
 
-	private final Converter app2netConverter = new Converter() {
-		@Override
-		public void endOfStream() throws SSLException {
-			engine.closeOutbound();
-		}
-
-		@Override
-		public SSLEngineResult convert(ByteBuffer sourceBuffer, ByteBuffer targetBuffer) throws SSLException {
-			return engine.wrap(sourceBuffer, targetBuffer);
-		}
-	};
-
-	private SSLEngineResult doWrite() throws SSLException {
-		return convert(app2engineQueue, engine2netQueue, app2netConverter);
+	private int getRecommendedSize() {
+		return Math.max(engine.getSession().getApplicationBufferSize(), engine.getSession().getPacketBufferSize());
 	}
 
-	private final Converter net2appConverter = new Converter() {
-		@Override
-		public void endOfStream() throws SSLException {
-			engine.closeInbound();
+	private ByteBuf getFromQueue(ByteBufQueue queue) {
+		ByteBuf sourceBuf;
+		if (queue.remainingBufs() == 1) {
+			sourceBuf = queue.peekBuf();
+		} else {
+			sourceBuf = ByteBufPool.allocate(queue.remainingBytes());
+			queue.drainTo(sourceBuf);
+			sourceBuf.flip();
 		}
-
-		@Override
-		public SSLEngineResult convert(ByteBuffer sourceBuffer, ByteBuffer targetBuffer) throws SSLException {
-			return engine.unwrap(sourceBuffer, targetBuffer);
-		}
-	};
-
-	private SSLEngineResult doRead() throws SSLException {
-		return convert(net2engineQueue, engine2appQueue, net2appConverter);
+		return sourceBuf;
 	}
 
 	private void executeTasks() {
 		while (true) {
 			final Runnable task = engine.getDelegatedTask();
-			if (task == null)
-				break;
+			if (task == null) break;
 			executor.execute(new Runnable() {
 				@Override
 				public void run() {
@@ -271,7 +225,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							sync();
+							processMsg();
 						}
 					});
 				}
@@ -279,56 +233,62 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		}
 	}
 
-	private void sync() {
+	private void processMsg() {
 		try {
-			doSync();
+			doProcessMsg();
 		} catch (SSLException e) {
 			handleSSLException(e, false);
 		}
 	}
 
-	private void doSync() throws SSLException {
-		int engine2appRemaining = engine2appQueue.remainingBytes();
-		int engine2netRemaining = engine2netQueue.remainingBytes();
-
+	private void doProcessMsg() throws SSLException {
 		SSLEngineResult result;
 		while (true) {
 			SSLEngineResult.HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
-			if (handshakeStatus == SSLEngineResult.HandshakeStatus.NEED_WRAP) {
+			if (handshakeStatus == NEED_WRAP) {
 				result = doWrite();
-			} else if (handshakeStatus == SSLEngineResult.HandshakeStatus.NEED_UNWRAP && (net2engineQueue.hasRemaining())){// || net2engineQueue.isEndOfStream())) {
+			} else if (handshakeStatus == NEED_UNWRAP) {
 				result = doRead();
-				if (result.getStatus() == SSLEngineResult.Status.BUFFER_UNDERFLOW)
+				if (result.getStatus() == BUFFER_UNDERFLOW) {
 					break;
-			} else if (handshakeStatus == SSLEngineResult.HandshakeStatus.NEED_TASK) {
-				executeTasks();
-			} else if (handshakeStatus == SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING) {
-				if (readInterest && (net2engineQueue.hasRemaining())){// || net2engineQueue.isEndOfStream())) {
-					do {
-						result = doRead();
-					} while (net2engineQueue.hasRemaining());
 				}
-				if (writeInterest && (app2engineQueue.hasRemaining())){// || app2engineQueue.isEndOfStream())) {
-					do {
+			} else if (handshakeStatus == NEED_TASK) {
+				executeTasks();
+				return;
+			} else if (handshakeStatus == NOT_HANDSHAKING) {
+				if (readInterest) {
+					while (!net2engine.isEmpty()) {
+						result = doRead();
+						if (result.getStatus() == BUFFER_UNDERFLOW) {
+							break;
+						}
+					}
+				}
+				if (writeInterest) {
+					while (app2engine.hasRemaining()) {
 						result = doWrite();
-					} while (app2engineQueue.hasRemaining());
+					}
 				}
 				break;
 			} else
 				break;
 		}
 
-		if (engine2netRemaining != engine2netQueue.remainingBytes()) {
-//			upstream.write();
-		}
-		if (engine.getHandshakeStatus() == SSLEngineResult.HandshakeStatus.NEED_UNWRAP || readInterest) {
+		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
 			upstream.read();
 		}
-		if (engine2appRemaining != engine2appQueue.remainingBytes() && readInterest) {
-			readInterest = false;
-//			downstreamEventHandler.onRead();
-		}
-
 	}
 
+	private void postProcessMsg() {
+		if (!syncPosted) {
+			syncPosted = true;
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					syncPosted = false;
+					processMsg();
+				}
+			});
+		}
+	}
 }

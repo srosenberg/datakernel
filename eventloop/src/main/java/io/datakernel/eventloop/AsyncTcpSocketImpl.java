@@ -26,41 +26,53 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-/**
- * Represent the TCP connection, which is {@link SocketConnection}. It is created with socketChannel
- * and in which sides can exchange {@link ByteBuf}.
- */
+import static io.datakernel.util.Preconditions.checkNotNull;
+
+@SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8 * 1024;
+	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
+	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
 	private final Eventloop eventloop;
+	private final SocketChannel channel;
+	private final ByteBufQueue writeQueue;
+	private AsyncTcpSocket.EventHandler socketEventHandler;
 	private SelectionKey key;
 
-	public static final int OP_RECORDING = 1 << 7;
-
 	private int ops = 0;
+	private boolean writing = false;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
-	private final SocketChannel channel;
-	private final ByteBufQueue writeQueue;
+	private final Runnable writeRunnable = new Runnable() {
+		@Override
+		public void run() {
+			if (!writing || !isOpen())
+				return;
+			writing = false;
+			try {
+				doWrite();
+				if (writeQueue.isEmpty()) {
+					socketEventHandler.onWrite();
+				}
+			} catch (IOException e) {
+				closeWithError(e, true);
+			}
+		}
+	};
 
-	private AsyncTcpSocket.EventHandler socketEventHandler;
-
-	/**
-	 * Creates a new instance of TcpSocketConnection
-	 *
-	 * @param socketChannel socketChannel for creating this connection
-	 */
+	// creators and builder methods
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
-		this.eventloop = eventloop;
-		this.channel = socketChannel;
-		this.writeQueue = new ByteBufQueue();
+		this.eventloop = checkNotNull(eventloop);
+		this.channel = checkNotNull(socketChannel);
+		this.writeQueue = checkNotNull(new ByteBufQueue());
 	}
 
-	/**
-	 * Registers channel of this connection in eventloop with which it was related.
-	 */
+	@Override
+	public void setEventHandler(AsyncTcpSocket.EventHandler eventHandler) {
+		this.socketEventHandler = eventHandler;
+	}
+
 	public final void register() {
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
@@ -76,17 +88,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		socketEventHandler.onRegistered();
 	}
 
-	/**
-	 * Gets interested operations of channel of this connection.
-	 *
-	 * @param newOps new interest
-	 */
+	// interests management
 	@SuppressWarnings("MagicConstant")
 	private void interests(int newOps) {
-		ops = newOps;
-		if ((ops & OP_RECORDING) == 0 && key != null) {
-			key.interestOps(ops);
+		if (ops != newOps) {
+			ops = newOps;
+			if ((ops & OP_POSTPONED) == 0 && key != null) {
+				key.interestOps(ops);
+			}
 		}
+
 	}
 
 	private void readInterest(boolean readInterest) {
@@ -97,44 +108,31 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
 	}
 
-	private void recordInterests() {
-		ops = ops | OP_RECORDING;
-	}
-
-	private void applyInterests() {
-		interests(ops & ~OP_RECORDING);
-	}
-
-	@Override
-	public void setEventHandler(AsyncTcpSocket.EventHandler eventHandler) {
-		this.socketEventHandler = eventHandler;
-	}
-
+	// read cycle
 	@Override
 	public void read() {
 		readInterest(true);
 	}
 
-	/**
-	 * Reads received bytes, creates ByteBufs with it and call its method onRead() with
-	 * this buffer.
-	 */
 	@Override
 	public void onReadReady() {
-		recordInterests();
+		int oldOps = ops;
+		ops = ops | OP_POSTPONED;
 		readInterest(false);
 		doRead();
-		applyInterests();
+		int newOps = ops & ~OP_POSTPONED;
+		ops = oldOps;
+		interests(newOps);
 	}
 
 	private void doRead() {
 		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
-		ByteBuffer byteBuffer = buf.toByteBuffer();
+		ByteBuffer buffer = buf.toByteBuffer();
 
 		int numRead;
 		try {
-			numRead = channel.read(byteBuffer);
-			buf.setByteBuffer(byteBuffer);
+			numRead = channel.read(buffer);
+			buf.setByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
 			closeWithError(e, false);
@@ -157,25 +155,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		socketEventHandler.onRead(buf);
 	}
 
-	private boolean writing = false;
-
-	private final Runnable writeRunnable = new Runnable() {
-		@Override
-		public void run() {
-			if (!writing || !isOpen())
-				return;
-			writing = false;
-			try {
-				doWrite();
-				if (writeQueue.isEmpty()) {
-					socketEventHandler.onWrite();
-				}
-			} catch (IOException e) {
-				closeWithError(e, true);
-			}
-		}
-	};
-
+	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
 		writeQueue.add(buf);
@@ -185,15 +165,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	/**
-	 * This method is called if writeInterest is on and it is possible to write to the channel.
-	 */
 	@Override
 	public void onWriteReady() {
 		writing = false;
 		try {
-			int writtenBytes = doWrite();
-			if (writtenBytes != 0) {
+			if (doWrite() != 0) {
 				socketEventHandler.onWrite();
 			}
 		} catch (IOException e) {
@@ -201,33 +177,33 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	/**
-	 * Peeks ByteBuf from writeQueue, and sends its bytes to address.
-	 */
 	private int doWrite() throws IOException {
-		int writtenBytes = 0;
+		int numWrite = 0;
 		while (!writeQueue.isEmpty()) {
 			ByteBuf buf = writeQueue.peekBuf();
-			ByteBuffer byteBuffer = buf.toByteBuffer();
-			writtenBytes += channel.write(byteBuffer);
-			buf.setByteBuffer(byteBuffer);
+			@SuppressWarnings("ConstantConditions")
+			ByteBuffer buffer = buf.toByteBuffer();
+			numWrite += channel.write(buffer);
+			buf.setByteBuffer(buffer);
 
-			int remainingNew = buf.remaining();
+			int remaining = buf.remaining();
 
-			if (remainingNew > 0) {
+			if (remaining > 0) {
 				break;
 			}
 			writeQueue.take();
 			buf.recycle();
 		}
+
 		if (writeQueue.isEmpty()) {
 			writeInterest(false);
 		} else {
 			writeInterest(true);
 		}
-		return writtenBytes;
+		return numWrite;
 	}
 
+	// close methods
 	@Override
 	public void close() {
 		assert eventloop.inEventloopThread();
@@ -238,17 +214,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void closeChannel() {
-		if (channel == null)
-			return;
+		if (channel == null) return;
 		try {
 			channel.close();
 		} catch (IOException e) {
 			eventloop.recordIoError(e, toString());
 		}
-	}
-
-	public boolean isOpen() {
-		return key != null;
 	}
 
 	private void closeWithError(final Exception e, boolean fireAsync) {
@@ -265,6 +236,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			else
 				socketEventHandler.onClosedWithError(e);
 		}
+	}
+
+	// miscellaneous
+	public boolean isOpen() {
+		return key != null;
 	}
 
 	public InetSocketAddress getRemoteSocketAddress() {

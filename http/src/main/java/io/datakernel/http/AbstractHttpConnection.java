@@ -349,7 +349,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			if (readQueue.hasRemaining()) {
 				doRead();
 			}
-			if (reading != NOTHING && isRegistered()) {
+			if ((reading != NOTHING || readQueue.isEmpty()) && isRegistered()) {
 				asyncTcpSocket.read();
 			}
 		} catch (ParseException e) {

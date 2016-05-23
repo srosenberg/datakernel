@@ -10,7 +10,7 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.util.ArrayDeque;
 
-import static io.datakernel.eventloop.AsyncTcpSocketImpl.OP_RECORDING;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.OP_POSTPONED;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("unused")
@@ -147,7 +147,7 @@ public class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandle
 	@SuppressWarnings("MagicConstant")
 	private void interests(int newOps) {
 		ops = newOps;
-		if ((ops & OP_RECORDING) == 0 && key != null) {
+		if ((ops & OP_POSTPONED) == 0 && key != null) {
 			key.interestOps(ops);
 		}
 	}
