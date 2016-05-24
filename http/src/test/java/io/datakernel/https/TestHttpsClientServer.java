@@ -24,7 +24,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,6 @@ public class TestHttpsClientServer {
 		//System.setProperty("javax.net.debug", "all");
 	}
 
-	@Ignore
 	@Test
 	public void testClientServerInteraction() throws Exception {
 		Eventloop eventloop = new Eventloop();

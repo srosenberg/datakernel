@@ -277,7 +277,7 @@ public class ByteBuf {
 	/**
 	 * Returns this buffer's capacity.
 	 */
-	int capacity() {
+	public int capacity() {
 		return array.length;
 	}
 
