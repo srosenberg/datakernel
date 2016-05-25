@@ -18,13 +18,13 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayDeque;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -35,7 +35,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
-	private final ByteBufQueue writeQueue;
+	private final ArrayDeque<ByteBuf> writeQueue;
 	private AsyncTcpSocket.EventHandler socketEventHandler;
 	private SelectionKey key;
 
@@ -65,7 +65,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
-		this.writeQueue = checkNotNull(new ByteBufQueue());
+		this.writeQueue = new ArrayDeque<>();
 	}
 
 	@Override
@@ -177,10 +177,47 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
+	private ByteBuf rightHand;
+	private ByteBuf leftHand;
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private int recommendedWriteBufSize = 16 * 1024;
+
 	private int doWrite() throws IOException {
 		int numWrite = 0;
 		while (!writeQueue.isEmpty()) {
-			ByteBuf buf = writeQueue.peekBuf();
+
+			while (true) {
+				if (rightHand == null) {
+					if (leftHand != null) {
+						rightHand = leftHand;
+						leftHand = null;
+					} else {
+						rightHand = writeQueue.poll();
+					}
+				} else {
+					if (leftHand == null) {
+						leftHand = writeQueue.poll(); // пробуем что-то взять
+					}
+
+					if (leftHand == null) {
+						break; // всего один буф был и он уже в правой руке
+					}
+
+					if (rightHand.limit() + leftHand.limit() < recommendedWriteBufSize) {
+						int oldPos = rightHand.position();
+						rightHand.position(rightHand.limit());
+						rightHand = ByteBufPool.append(rightHand, leftHand);
+						rightHand.position(oldPos);
+						leftHand.recycle();
+						leftHand = null;
+					} else {
+						break;
+					}
+				}
+			}
+
+			ByteBuf buf = rightHand;
 			@SuppressWarnings("ConstantConditions")
 			ByteBuffer buffer = buf.toByteBuffer();
 			numWrite += channel.write(buffer);
@@ -191,7 +228,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			if (remaining > 0) {
 				break;
 			}
-			writeQueue.take();
+
+			rightHand = null;
 			buf.recycle();
 		}
 
@@ -210,6 +248,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (key == null) return;
 		closeChannel();
 		key = null;
+		for (ByteBuf buf : writeQueue) {
+			buf.recycle();
+		}
 		writeQueue.clear();
 	}
 

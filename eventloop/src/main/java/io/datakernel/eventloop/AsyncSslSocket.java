@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
+import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 
 public final class AsyncSslSocket implements AsyncTcpSocket {
 	private final Eventloop eventloop;
@@ -144,9 +145,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		if (!isOpen()) return;
 		app2engineQueue.add(buf);
 		writeInterest = true;
-		if (engine.getHandshakeStatus() == NOT_HANDSHAKING) { // should always be in this state, check
-			postSync();
-		}
+		postSync();
 	}
 
 	@Override
@@ -177,7 +176,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	private SSLEngineResult tryToWriteToApp() throws SSLException {
-		ByteBuf targetBuf = ByteBufPool.allocate(Math.max(engine.getSession().getApplicationBufferSize(), engine.getSession().getPacketBufferSize()));
+		ByteBuf targetBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		targetBuf.limit(targetBuf.array().length);
 		ByteBuffer sourceBuffer = net2engine.toByteBuffer();
 		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
@@ -204,7 +203,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
 		ByteBuf sourceBuf = app2engineQueue.takeRemaining();
 
-		ByteBuf targetBuf = ByteBufPool.allocate(Math.max(engine.getSession().getApplicationBufferSize(), engine.getSession().getPacketBufferSize()));
+		ByteBuf targetBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		targetBuf.limit(targetBuf.array().length);
 		ByteBuffer sourceBuffer = sourceBuf.toByteBuffer();
 		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
@@ -231,8 +230,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private void executeTasks() {
 		while (true) {
 			final Runnable task = engine.getDelegatedTask();
-			if (task == null)
-				break;
+			if (task == null) break;
 			executor.execute(new Runnable() {
 				@Override
 				public void run() {
@@ -266,7 +264,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				if (net2engine != null) {
 					result = tryToWriteToApp();
-					if (result.getStatus() == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
+					if (result.getStatus() == BUFFER_UNDERFLOW) {
 						readInterest = true;
 						break;
 					}
@@ -281,8 +279,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 				if (readInterest && net2engine != null) {
 					do {
 						result = tryToWriteToApp();
-					}
-					while (net2engine != null && result.getStatus() != SSLEngineResult.Status.BUFFER_UNDERFLOW);
+					} while (net2engine != null && result.getStatus() != BUFFER_UNDERFLOW);
 				}
 				if (writeInterest && app2engineQueue.hasRemaining()) {
 					do {
@@ -290,8 +287,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 					} while (app2engineQueue.hasRemaining());
 				}
 				break;
-			} else
+			} else {
 				break;
+			}
 		}
 
 		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
