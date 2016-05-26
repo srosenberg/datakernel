@@ -2,13 +2,13 @@ package io.datakernel.eventloop;
 
 public interface AsyncUdpSocket {
 	interface EventHandler {
-		void onRead(UdpPacket packet);
+		void onRegistered();
 
 		void onSent();
 
-		void onClosedWithError(Exception e);
+		void onRead(UdpPacket packet);
 
-		void onRegistered();
+		void onClosedWithError(Exception e);
 	}
 
 	void setEventHandler(AsyncUdpSocket.EventHandler eventHandler);

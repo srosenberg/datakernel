@@ -60,7 +60,7 @@ public class BinaryProtocolTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
 						new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10),
 						new StreamBinarySerializer<>(eventloop, intSerializer(), 2, 10, 0, false))
@@ -127,7 +127,7 @@ public class BinaryProtocolTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
 						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
 						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
@@ -201,7 +201,7 @@ public class BinaryProtocolTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
 						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
 						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
@@ -283,7 +283,7 @@ public class BinaryProtocolTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
 						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
 						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
@@ -384,7 +384,7 @@ public class BinaryProtocolTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
 						new StreamGsonDeserializer<>(eventloop, new Gson(), String.class, 10),
 						new StreamGsonSerializer<>(eventloop, new Gson(), String.class, 1, 50, 0))

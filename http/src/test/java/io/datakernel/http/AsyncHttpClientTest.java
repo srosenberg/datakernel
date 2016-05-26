@@ -19,12 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.eventloop.TcpSocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
@@ -226,16 +224,35 @@ public class AsyncHttpClientTest {
 
 		final AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
-				return new TcpSocketConnection(eventloop, socketChannel) {
+			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+				final AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+				asyncTcpSocket.setEventHandler(new AsyncTcpSocket.EventHandler() {
 					@Override
-					protected void onRead() {
-						readInterest(false);
-						write(ByteBufStrings.wrapAscii("\r\n"));
-						writeInterest(false);
-						this.close();
+					public void onRegistered() {
+						asyncTcpSocket.read();
 					}
-				};
+
+					@Override
+					public void onRead(ByteBuf buf) {
+						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+						// ignored
+					}
+
+					@Override
+					public void onWrite() {
+						asyncTcpSocket.close();
+					}
+
+					@Override
+					public void onClosedWithError(Exception e) {
+						throw new AssertionError(e);
+					}
+				});
+				return asyncTcpSocket;
 			}
 		}
 				.setListenPort(PORT);

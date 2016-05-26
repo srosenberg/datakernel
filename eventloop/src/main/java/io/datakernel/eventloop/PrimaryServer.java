@@ -74,7 +74,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	 * @param socketChannel the socketChannel for creating connection.
 	 */
 	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
+	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 		throw new UnsupportedOperationException();
 	}
 

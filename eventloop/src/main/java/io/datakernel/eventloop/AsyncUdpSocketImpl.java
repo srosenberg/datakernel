@@ -13,8 +13,7 @@ import java.util.ArrayDeque;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.OP_POSTPONED;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-@SuppressWarnings("unused")
-public class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
+public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
 	private static final int DEFAULT_UDP_BUFFER_SIZE = 16 * 1024;
 
 	private final Eventloop eventloop;
@@ -135,21 +134,23 @@ public class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandle
 		}
 	}
 
-	//  interests management
-	private void writeInterest(boolean writeInterest) {
-		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
+	// interests management
+	@SuppressWarnings("MagicConstant")
+	private void interests(int newOps) {
+		if (ops != newOps) {
+			ops = newOps;
+			if ((ops & OP_POSTPONED) == 0 && key != null) {
+				key.interestOps(ops);
+			}
+		}
 	}
 
 	private void readInterest(boolean readInterest) {
 		interests(readInterest ? (ops | SelectionKey.OP_READ) : (ops & ~SelectionKey.OP_READ));
 	}
 
-	@SuppressWarnings("MagicConstant")
-	private void interests(int newOps) {
-		ops = newOps;
-		if ((ops & OP_POSTPONED) == 0 && key != null) {
-			key.interestOps(ops);
-		}
+	private void writeInterest(boolean writeInterest) {
+		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
 	}
 
 	//  close handling

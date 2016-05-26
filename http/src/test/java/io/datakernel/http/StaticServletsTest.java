@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
@@ -61,7 +60,6 @@ public class StaticServletsTest {
 		Files.write(resources.resolve("pom.xml"), encodeAscii(EXPECTED_CONTENT));
 	}
 
-	@Ignore
 	@Test
 	public void testStaticServletForFiles() throws InterruptedException {
 		Eventloop eventloop = new Eventloop();
@@ -84,7 +82,6 @@ public class StaticServletsTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testStaticServletForFilesAccessToRestrictedFile() {
 		Eventloop eventloop = new Eventloop();
@@ -110,7 +107,6 @@ public class StaticServletsTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testStaticServletForResourcesAccessToRestrictedFile() {
 		Eventloop eventloop = new Eventloop();
@@ -136,7 +132,6 @@ public class StaticServletsTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testStaticServletForFilesFileNotFound() {
 		Eventloop eventloop = new Eventloop();
@@ -164,7 +159,6 @@ public class StaticServletsTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testStaticServletForResourcesFileNotFound() {
 		Eventloop eventloop = new Eventloop();

@@ -18,7 +18,7 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -106,7 +106,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected SocketConnection createConnection(final SocketChannel socketChannel) {
+	protected NioChannelEventHandler createConnection(final SocketChannel socketChannel) {
 		StatusListener statusListener = new StatusListener() {
 			@Override
 			public void onOpen(RpcServerConnection connection) {

@@ -24,7 +24,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.*;
@@ -160,7 +160,7 @@ public abstract class FsClient {
 
 		@Override
 		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
+			NioChannelEventHandler connection = createConnection(channel)
 					.addStarter(new MessagingStarter<FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommand> messaging) {
@@ -231,7 +231,7 @@ public abstract class FsClient {
 
 		@Override
 		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
+			NioChannelEventHandler connection = createConnection(channel)
 					.addStarter(new MessagingStarter<FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommand> messaging) {
@@ -284,7 +284,7 @@ public abstract class FsClient {
 
 		@Override
 		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
+			NioChannelEventHandler connection = createConnection(channel)
 					.addStarter(new MessagingStarter<FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommand> messaging) {
@@ -334,7 +334,7 @@ public abstract class FsClient {
 
 		@Override
 		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
+			NioChannelEventHandler connection = createConnection(channel)
 					.addStarter(new MessagingStarter<FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommand> messaging) {

@@ -26,7 +26,7 @@ import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
@@ -109,7 +109,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
+	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
 				new StreamGsonDeserializer<>(eventloop, serialization.gson, DatagraphCommand.class, 256 * 1024),

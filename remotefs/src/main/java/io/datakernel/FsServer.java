@@ -24,7 +24,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
@@ -81,7 +81,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	// set up connection
 	@Override
-	protected final SocketConnection createConnection(SocketChannel socketChannel) {
+	protected final NioChannelEventHandler createConnection(SocketChannel socketChannel) {
 		StreamMessagingConnection<FsCommand, FsResponse> conn = new StreamMessagingConnection<>(eventloop, socketChannel,
 				new StreamGsonDeserializer<>(eventloop, getCommandGSON(), FsCommand.class, deserializerBufferSize),
 				new StreamGsonSerializer<>(eventloop, getResponseGson(), FsResponse.class, serializerBufferSize,

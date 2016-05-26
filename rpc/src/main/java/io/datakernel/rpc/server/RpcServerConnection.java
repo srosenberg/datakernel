@@ -19,7 +19,7 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -127,7 +127,7 @@ public final class RpcServerConnection implements RpcConnection {
 		return eventloop;
 	}
 
-	public SocketConnection getSocketConnection() {
+	public NioChannelEventHandler getSocketConnection() {
 		return protocol.getSocketConnection();
 	}
 

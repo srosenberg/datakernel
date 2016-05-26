@@ -18,7 +18,7 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.serializer.BufferSerializer;
@@ -195,7 +195,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	}
 
 	@Override
-	public SocketConnection getSocketConnection() {
+	public NioChannelEventHandler getSocketConnection() {
 		return connection;
 	}
 

@@ -27,7 +27,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingExceptionHandler;
@@ -87,7 +87,7 @@ public final class HashFsClient extends FsClient {
 
 		@Override
 		public void onConnect(SocketChannel socketChannel) {
-			SocketConnection connection = createConnection(socketChannel)
+			NioChannelEventHandler connection = createConnection(socketChannel)
 					.addStarter(new MessagingStarter<FsCommands.FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommands.FsCommand> messaging) {
@@ -141,7 +141,7 @@ public final class HashFsClient extends FsClient {
 
 		@Override
 		public void onConnect(SocketChannel socketChannel) {
-			SocketConnection connection = createConnection(socketChannel)
+			NioChannelEventHandler connection = createConnection(socketChannel)
 					.addStarter(new MessagingStarter<FsCommands.FsCommand>() {
 						@Override
 						public void onStart(Messaging<FsCommands.FsCommand> messaging) {
