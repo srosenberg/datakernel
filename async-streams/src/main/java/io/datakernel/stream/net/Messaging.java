@@ -16,20 +16,44 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
-public interface Messaging<O> {
-	void sendMessage(O outputItem);
+public interface Messaging<I, O> {
+	interface MessagingProtocol<I, O> {
+		void onStart(Messaging<I, O> messaging);
+	}
 
-	void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback);
+	final class MessageOrEndOfStream<I> {
+		@Nullable
+		I message;
 
-	StreamProducer<ByteBuf> read();
+		MessageOrEndOfStream(I message) {
+			this.message = message;
+		}
 
-	void shutdown();
+		public I getMessage() {
+			return message;
+		}
 
-	void shutdownReader();
+		public boolean isEndOfStream() {
+			return message == null;
+		}
+	}
 
-	void shutdownWriter();
+	void read(ResultCallback<MessageOrEndOfStream<I>> callback);
+
+	void write(O message, CompletionCallback callback);
+
+	void writeEndOfStream(CompletionCallback callback);
+
+	void streamFrom(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
+
+	void streamTo(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
+
+	void close();
 }

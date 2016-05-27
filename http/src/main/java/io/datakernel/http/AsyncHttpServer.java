@@ -23,7 +23,6 @@ import io.datakernel.util.Stopwatch;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
-import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -131,17 +130,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return count;
 	}
 
-	/**
-	 * Creates connection for this server
-	 *
-	 * @param socketChannel socket from new connection
-	 * @return new connection
-	 */
 	@Override
-	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-
-		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 
 		AsyncSslSocket asyncSslSocket = null;
 		if (sslContext != null) {
@@ -150,13 +141,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
 		}
 
-		new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(),
+		HttpServerConnection connection = new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(),
 				asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
 
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();
-		return asyncTcpSocket;
+		return connection;
 	}
 
 	/**

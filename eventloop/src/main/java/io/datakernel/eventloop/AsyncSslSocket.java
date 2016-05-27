@@ -149,6 +149,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	@Override
+	public void writeEndOfStream() {
+		// TODO
+	}
+
+	@Override
 	public void close() {
 		if (!isOpen()) return;
 		open = false;

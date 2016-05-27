@@ -27,10 +27,40 @@ public class PingPongSocketConnectionTest {
 
 		final AbstractServer ppServer = new AbstractServer(eventloop) {
 			@Override
-			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
-				AsyncTcpSocketImpl serverTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-				serverTcpSocket.setEventHandler(createServerSideEventHandler(serverTcpSocket));
-				return serverTcpSocket;
+			protected EventHandler createSocketHandler(final AsyncTcpSocketImpl asyncTcpSocket) {
+				return new EventHandler() {
+					int counter = 0;
+
+					@Override
+					public void onRegistered() {
+						asyncTcpSocket.read();
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+						asyncTcpSocket.close();
+						assertEquals(ITERATIONS, counter);
+					}
+
+					@Override
+					public void onRead(ByteBuf buf) {
+						assertEquals(REQUEST_MSG, decodeAscii(buf));
+						buf.recycle();
+						counter++;
+						asyncTcpSocket.write(wrapAscii(RESPONSE_MSG));
+
+					}
+
+					@Override
+					public void onWrite() {
+						asyncTcpSocket.read();
+					}
+
+					@Override
+					public void onClosedWithError(Exception e) {
+						e.printStackTrace();
+					}
+				};
 			}
 		};
 		ppServer.setListenAddress(ADDRESS);
@@ -91,39 +121,4 @@ public class PingPongSocketConnectionTest {
 		};
 	}
 
-	private EventHandler createServerSideEventHandler(final AsyncTcpSocketImpl serverTcpSocket) {
-		return new EventHandler() {
-			int counter = 0;
-
-			@Override
-			public void onRegistered() {
-				serverTcpSocket.read();
-			}
-
-			@Override
-			public void onReadEndOfStream() {
-				serverTcpSocket.close();
-				assertEquals(ITERATIONS, counter);
-			}
-
-			@Override
-			public void onRead(ByteBuf buf) {
-				assertEquals(REQUEST_MSG, decodeAscii(buf));
-				buf.recycle();
-				counter++;
-				serverTcpSocket.write(wrapAscii(RESPONSE_MSG));
-
-			}
-
-			@Override
-			public void onWrite() {
-				serverTcpSocket.read();
-			}
-
-			@Override
-			public void onClosedWithError(Exception e) {
-				e.printStackTrace();
-			}
-		};
-	}
 }

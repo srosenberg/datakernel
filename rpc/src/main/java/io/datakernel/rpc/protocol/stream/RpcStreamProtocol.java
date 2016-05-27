@@ -23,7 +23,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
-import io.datakernel.stream.net.TcpStreamSocketConnection;
+import io.datakernel.stream.net.MessagingConnection;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,7 +138,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	private final StreamSerializer<RpcMessage> serializer;
 	private final StreamDeserializer<RpcMessage> deserializer;
 	private final boolean compression;
-	private final TcpStreamSocketConnection connection;
+	private final MessagingConnection connection;
 
 	protected RpcStreamProtocol(Eventloop eventloop, SocketChannel socketChannel,
 	                            BufferSerializer<RpcMessage> messageSerializer,
@@ -158,7 +158,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 			decompressor = null;
 		}
 
-		connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
+		connection = new MessagingConnection(eventloop, socketChannel, serializer, messagingProtocol) {
 			@Override
 			protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 				if (RpcStreamProtocol.this.compression) {

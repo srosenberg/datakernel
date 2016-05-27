@@ -31,11 +31,13 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
 	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
-	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant used to denote 'state of recording' when ops can not be applied to key
+	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
+	private static final int MAX_MERGE_SIZE = 16 * 1024;
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
-	private final ArrayDeque<ByteBuf> writeQueue;
+	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
+	private boolean writeEndOfStream;
 	private AsyncTcpSocket.EventHandler socketEventHandler;
 	private SelectionKey key;
 
@@ -65,7 +67,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
-		this.writeQueue = new ArrayDeque<>();
 	}
 
 	@Override
@@ -129,9 +130,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
 		ByteBuffer buffer = buf.toByteBuffer();
 
-		int readBytes;
+		int numRead;
 		try {
-			readBytes = channel.read(buffer);
+			numRead = channel.read(buffer);
 			buf.setByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
@@ -139,12 +140,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return;
 		}
 
-		if (readBytes == 0) {
+		if (numRead == 0) {
 			buf.recycle();
 			return;
 		}
 
-		if (readBytes == -1) {
+		if (numRead == -1) {
 			buf.recycle();
 			socketEventHandler.onReadEndOfStream();
 			return;
@@ -158,7 +159,18 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
+		assert !writeEndOfStream;
 		writeQueue.add(buf);
+		if (!writing) {
+			writing = true;
+			eventloop.post(writeRunnable);
+		}
+	}
+
+	@Override
+	public void writeEndOfStream() {
+		assert !writeEndOfStream;
+		writeEndOfStream = true;
 		if (!writing) {
 			writing = true;
 			eventloop.post(writeRunnable);
@@ -169,71 +181,58 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public void onWriteReady() {
 		writing = false;
 		try {
-			if (doWrite() != 0) {
-				socketEventHandler.onWrite();
-			}
+			doWrite();
 		} catch (IOException e) {
 			closeWithError(e, false);
 		}
 	}
 
-	private ByteBuf rightHand;
-	private ByteBuf leftHand;
-
-	@SuppressWarnings("FieldCanBeLocal")
-	private int recommendedWriteBufSize = 16 * 1024;
-
-	private int doWrite() throws IOException {
-		int writtenBytes = 0;
-
-		while (!writeQueue.isEmpty()) {
+	private void doWrite() throws IOException {
+		while (true) {
+			ByteBuf bufToSend = writeQueue.poll();
+			if (bufToSend == null)
+				break;
 
 			while (true) {
-				if (rightHand == null) {
-					if (leftHand != null) {
-						rightHand = leftHand;
-						leftHand = null;
-					} else {
-						rightHand = writeQueue.poll();
-					}
+				ByteBuf nextBuf = writeQueue.peek();
+				if (nextBuf == null)
+					break;
+
+				int bytesToCopy = nextBuf.remaining(); // bytes to append to bufToSend
+				if (bufToSend.position() + bufToSend.remaining() + bytesToCopy > bufToSend.array().length)
+					bytesToCopy += bufToSend.remaining(); // append will resize bufToSend
+				if (bytesToCopy < MAX_MERGE_SIZE) {
+					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
+					nextBuf.recycle();
+					writeQueue.poll();
 				} else {
-
-					if (leftHand == null) {
-						leftHand = writeQueue.poll();
-					}
-
-					if (leftHand == null) {
-						break;
-					}
-
-					if (rightHand.limit() + leftHand.limit() < recommendedWriteBufSize) {
-						int oldPos = rightHand.position();
-						rightHand.position(rightHand.limit());
-						rightHand = ByteBufPool.append(rightHand, leftHand);
-						rightHand.position(oldPos);
-						leftHand.recycle();
-						leftHand = null;
-					} else {
-						break;
-					}
+					break;
 				}
 			}
 
-			ByteBuffer buffer = rightHand.toByteBuffer();
-			writtenBytes += channel.write(buffer);
-			rightHand.setByteBuffer(buffer);
+			@SuppressWarnings("ConstantConditions")
+			ByteBuffer buffer = bufToSend.toByteBuffer();
+			channel.write(buffer);
+			bufToSend.setByteBuffer(buffer);
 
-			if (rightHand.remaining() > 0) {
+			int remaining = bufToSend.remaining();
+
+			if (remaining > 0) {
+				writeQueue.addFirst(bufToSend); // put the buf back to the queue, to send it the next time
 				break;
 			}
-
-			rightHand.recycle();
-			rightHand = null;
+			bufToSend.recycle();
 		}
 
-		writeInterest(!writeQueue.isEmpty());
-
-		return writtenBytes;
+		if (writeQueue.isEmpty()) {
+			if (writeEndOfStream) {
+				channel.shutdownOutput();
+			}
+			writeInterest(false);
+			socketEventHandler.onWrite();
+		} else {
+			writeInterest(true);
+		}
 	}
 
 	// close methods
@@ -246,15 +245,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		for (ByteBuf buf : writeQueue) {
 			buf.recycle();
 		}
-
-		if (leftHand != null) {
-			leftHand.recycle();
-		}
-
-		if (rightHand != null) {
-			rightHand.recycle();
-		}
-
 		writeQueue.clear();
 	}
 

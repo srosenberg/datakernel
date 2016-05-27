@@ -37,5 +37,7 @@ public interface AsyncTcpSocket {
 
 	void write(ByteBuf buf);
 
+	void writeEndOfStream();
+
 	void close();
 }

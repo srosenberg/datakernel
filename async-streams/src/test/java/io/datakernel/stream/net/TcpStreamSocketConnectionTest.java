@@ -65,7 +65,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+			public AsyncTcpSocket.EventHandler createConnection(AsyncTcpSocket asyncTcpSocket) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
@@ -119,7 +119,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
@@ -184,7 +184,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
@@ -249,7 +249,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {

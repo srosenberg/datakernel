@@ -67,14 +67,8 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		return this;
 	}
 
-	/**
-	 * Instance of this class can not create a connection, it only forwards it. That is why this method
-	 * throws Exception
-	 *
-	 * @param socketChannel the socketChannel for creating connection.
-	 */
 	@Override
-	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 		throw new UnsupportedOperationException();
 	}
 
