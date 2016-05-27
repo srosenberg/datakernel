@@ -54,9 +54,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			writing = false;
 			try {
 				doWrite();
-				if (writeQueue.isEmpty()) {
-					socketEventHandler.onWrite();
-				}
 			} catch (IOException e) {
 				closeWithError(e, true);
 			}
@@ -202,7 +199,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				if (bufToSend.position() + bufToSend.remaining() + bytesToCopy > bufToSend.array().length)
 					bytesToCopy += bufToSend.remaining(); // append will resize bufToSend
 				if (bytesToCopy < MAX_MERGE_SIZE) {
+					int oldPos = bufToSend.position();
+					bufToSend.position(bufToSend.limit());
 					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
+					bufToSend.position(oldPos);
 					nextBuf.recycle();
 					writeQueue.poll();
 				} else {

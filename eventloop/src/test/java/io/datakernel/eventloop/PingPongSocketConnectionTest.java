@@ -28,7 +28,7 @@ public class PingPongSocketConnectionTest {
 		final AbstractServer ppServer = new AbstractServer(eventloop) {
 			@Override
 			protected EventHandler createSocketHandler(final AsyncTcpSocketImpl asyncTcpSocket) {
-				return new EventHandler() {
+				EventHandler eventHandler = new EventHandler() {
 					int counter = 0;
 
 					@Override
@@ -61,6 +61,8 @@ public class PingPongSocketConnectionTest {
 						e.printStackTrace();
 					}
 				};
+				asyncTcpSocket.setEventHandler(eventHandler);
+				return eventHandler;
 			}
 		};
 		ppServer.setListenAddress(ADDRESS);
