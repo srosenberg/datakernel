@@ -148,7 +148,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 							public void onResult(StreamProducer<ByteBuf> result) {
 								logger.info("opened stream for file: {}", item.filePath);
 								messaging.sendMessage(new Ready(size));
-								messaging.write(result, new CompletionCallback() {
+								messaging.writeStream(result, new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										logger.info("succeed to stream file: {}", item.filePath);

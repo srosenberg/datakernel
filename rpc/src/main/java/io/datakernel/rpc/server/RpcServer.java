@@ -16,9 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioChannelEventHandler;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -103,6 +101,11 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			serializer = serializerBuilder.create(RpcMessage.class);
 		}
 		return serializer;
+	}
+
+	@Override
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+		return null;
 	}
 
 	@Override

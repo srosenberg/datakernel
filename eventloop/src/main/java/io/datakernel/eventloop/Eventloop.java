@@ -645,6 +645,22 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		connect(address, socketSettings, 0, connectCallback);
 	}
 
+	public void connect(SocketAddress address, SocketSettings socketSettings, final ConnectCallback2 connectCallback) {
+		connect(address, socketSettings, 0, new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(Eventloop.this, socketChannel);
+				connectCallback.onConnect(asyncTcpSocket);
+				asyncTcpSocket.register();
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				connectCallback.onException(exception);
+			}
+		});
+	}
+
 	/**
 	 * Connects to given socket address asynchronously with a specified timeout value.
 	 * A timeout of zero is interpreted as an default system timeout

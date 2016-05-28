@@ -37,6 +37,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
+	private boolean readEndOfStream;
 	private boolean writeEndOfStream;
 	private AsyncTcpSocket.EventHandler socketEventHandler;
 	private SelectionKey key;
@@ -144,6 +145,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		if (numRead == -1) {
 			buf.recycle();
+			readEndOfStream = true;
+			if (isOpen() && writeEndOfStream && writeQueue.isEmpty()) {
+				close();
+			}
 			socketEventHandler.onReadEndOfStream();
 			return;
 		}
@@ -226,7 +231,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		if (writeQueue.isEmpty()) {
 			if (writeEndOfStream) {
-				channel.shutdownOutput();
+				if (readEndOfStream) {
+					close();
+				} else {
+					channel.shutdownOutput();
+				}
 			}
 			writeInterest(false);
 			socketEventHandler.onWrite();

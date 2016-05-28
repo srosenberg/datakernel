@@ -22,7 +22,11 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
-import io.datakernel.stream.*;
+import io.datakernel.net.SocketSettings;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamForwarder;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
@@ -31,17 +35,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.SocketReconnector.reconnect;
-import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 
+@SuppressWarnings("unchecked")
 public final class TcpStreamSocketConnectionTest {
 	private static final int LISTEN_PORT = 1234;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
@@ -65,32 +68,29 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			public AsyncTcpSocket.EventHandler createConnection(AsyncTcpSocket asyncTcpSocket) {
-				return new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
-						streamDeserializer.getOutput().streamTo(consumerToList);
-						socketReader.streamTo(streamDeserializer.getInput());
-					}
-				};
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+
+				StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
+				streamDeserializer.getOutput().streamTo(consumerToList);
+				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+
+				return connection;
 			}
 		};
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
-		reconnect(eventloop, address, defaultSocketSettings(), 3, 100L, new ConnectCallback() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.getOutput().streamTo(socketWriter);
-						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-					}
-				};
-				connection.register();
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+
+				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+
+				return connection;
 			}
 
 			@Override
@@ -119,13 +119,14 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
-				return new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						socketReader.streamTo(socketWriter);
-					}
-				};
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+
+				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				connection.readStream(forwarder.getInput(), ignoreCompletionCallback());
+				connection.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
+
+				return connection;
 			}
 		};
 		server.setListenAddress(address).acceptOnce();
@@ -133,19 +134,15 @@ public final class TcpStreamSocketConnectionTest {
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
-		reconnect(eventloop, address, defaultSocketSettings(), 3, 100L, new ConnectCallback() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.getOutput().streamTo(socketWriter);
-						socketReader.streamTo(streamDeserializer.getInput());
-					}
-				};
-				connection.register();
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToList);
+				return connection;
 			}
 
 			@Override
@@ -184,13 +181,14 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
-				return new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						socketReader.streamTo(socketWriter);
-					}
-				};
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+
+				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				connection.readStream(forwarder.getInput(), ignoreCompletionCallback());
+				connection.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
+
+				return connection;
 			}
 		};
 		server.setListenAddress(address).acceptOnce();
@@ -198,19 +196,15 @@ public final class TcpStreamSocketConnectionTest {
 
 		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
 		final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
-		reconnect(eventloop, address, defaultSocketSettings(), 3, 100L, new ConnectCallback() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.getOutput().streamTo(socketWriter);
-						socketReader.streamTo(streamDeserializer.getInput());
-					}
-				};
-				connection.register();
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToListWithError);
+				return connection;
 			}
 
 			@Override
@@ -249,32 +243,25 @@ public final class TcpStreamSocketConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
-				return new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
-						streamDeserializer.getOutput().streamTo(consumerToListWithError);
-						socketReader.streamTo(streamDeserializer.getInput());
-					}
-				};
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
+				streamDeserializer.getOutput().streamTo(consumerToListWithError);
+				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+				return connection;
 			}
 		};
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
 		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
-		reconnect(eventloop, address, defaultSocketSettings(), 3, 100L, new ConnectCallback() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
-					@Override
-					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.getOutput().streamTo(socketWriter);
-						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-					}
-				};
-				connection.register();
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+				return connection;
 			}
 
 			@Override

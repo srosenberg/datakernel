@@ -16,33 +16,13 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
-public interface Messaging<I, O> extends SocketStreaming {
-	final class MessageOrEndOfStream<I> {
-		@Nullable
-		I message;
+public interface SocketStreaming {
+	void readStream(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
 
-		MessageOrEndOfStream(I message) {
-			this.message = message;
-		}
-
-		public I getMessage() {
-			return message;
-		}
-
-		public boolean isEndOfStream() {
-			return message == null;
-		}
-	}
-
-	void read(ResultCallback<MessageOrEndOfStream<I>> callback);
-
-	void write(O message, CompletionCallback callback);
-
-	void writeEndOfStream(CompletionCallback callback);
-
-	void close();
+	void writeStream(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
 }

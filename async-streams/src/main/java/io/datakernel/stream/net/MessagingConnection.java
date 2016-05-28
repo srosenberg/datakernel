@@ -43,7 +43,6 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final MessagingSerializer<I, O> serializer;
-	private final MessagingProtocol<I, O> messagingProtocol;
 
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
@@ -53,20 +52,12 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	private SocketStreamProducer socketReader;
 	private SocketStreamConsumer socketWriter;
 
-	/**
-	 * Returns new instance of TcpStreamSocketConnection
-	 *
-	 * @param eventloop         eventloop in with this connection will be handled
-	 * @param serializer
-	 * @param messagingProtocol
-	 */
-	public MessagingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer,
-	                           MessagingProtocol<I, O> messagingProtocol) {
+	public MessagingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;
 		this.asyncTcpSocket.setEventHandler(this);
-		this.messagingProtocol = messagingProtocol;
+//		this.messagingProtocol = messagingProtocol;
 	}
 
 	@Override
@@ -82,6 +73,8 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 					}
 				}
 			});
+		} else {
+			asyncTcpSocket.read();
 		}
 	}
 
@@ -123,14 +116,14 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void streamFrom(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void writeStream(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		checkState(socketWriter == null && writeCallbacks.isEmpty() && !writeEndOfStream);
 		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket);
 		producer.streamTo(socketWriter);
 	}
 
 	@Override
-	public void streamTo(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+	public void readStream(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
 		checkState(this.socketReader == null && this.readCallback == null);
 		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket);
 		socketReader.streamTo(consumer);
@@ -162,7 +155,6 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	 */
 	@Override
 	public void onRegistered() {
-		messagingProtocol.onStart(this);
 	}
 
 	private void readUnconsumedBuf() {
@@ -204,14 +196,14 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void onWrite() {
-		if (socketWriter != null) {
-			socketWriter.onWrite();
-		} else {
+		if (socketWriter == null) {
 			List<CompletionCallback> callbacks = this.writeCallbacks;
 			writeCallbacks = new ArrayList<>();
 			for (CompletionCallback callback : callbacks) {
 				callback.onComplete();
 			}
+		} else {
+			socketWriter.onWrite();
 		}
 	}
 
@@ -222,6 +214,6 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public String toString() {
-		return "{asyncTcpSocket=" + asyncTcpSocket + ", messagingProtocol=" + messagingProtocol + '}';
+		return "{asyncTcpSocket=" + asyncTcpSocket + "}";
 	}
 }

@@ -80,6 +80,7 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 
 	public void onReadEndOfStream() {
 		this.readEndOfStream = true;
+		doProduce();
 	}
 
 }

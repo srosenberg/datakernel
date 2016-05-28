@@ -78,7 +78,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 			forwarder = new StreamForwarder<>(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
-		messaging.write(forwarder.getOutput(), ignoreCompletionCallback());
+		messaging.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
 	}
 
 	private void onExecute(DatagraphCommandExecute item, Messaging<DatagraphResponse> messaging) {

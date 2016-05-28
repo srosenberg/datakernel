@@ -27,7 +27,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.*;
+import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.processor.StreamByteChunker;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
@@ -174,7 +174,7 @@ public abstract class FsClient {
 							logger.trace("received ok for {}, start streaming", file);
 							StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
 							producer.streamTo(byteChunker.getInput());
-							messaging.write(byteChunker.getOutput(), new CompletionCallback() {
+							messaging.writeStream(byteChunker.getOutput(), new CompletionCallback() {
 								@Override
 								public void onComplete() {
 									logger.info("Finished streaming {}", file);
