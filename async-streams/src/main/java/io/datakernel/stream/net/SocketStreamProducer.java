@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -23,13 +24,15 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamProducer;
 
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
+	private final CompletionCallback completionCallback;
 	private final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
 	private boolean readEndOfStream;
 
-	public SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
+	public SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
+		this.completionCallback = completionCallback;
 	}
 
 	@Override
@@ -52,7 +55,12 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void onError(Exception e) {
-//			TcpStreamSocketConnection.this.close();
+		completionCallback.onException(e);
+	}
+
+	@Override
+	protected void onEndOfStream() {
+		completionCallback.onComplete();
 	}
 
 	@Override

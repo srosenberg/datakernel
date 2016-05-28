@@ -45,7 +45,7 @@ import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("unchecked")
-public final class TcpStreamSocketConnectionTest {
+public final class SocketStreamingConnectionTest {
 	private static final int LISTEN_PORT = 1234;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 

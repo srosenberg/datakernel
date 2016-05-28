@@ -45,7 +45,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
-public class BinaryProtocolTest {
+public class MessagingConnectionTest {
 	private static final int LISTEN_PORT = 4821;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 

@@ -45,12 +45,32 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	 *
 	 * @param eventloop eventloop in with this connection will be handled
 	 */
-	public SocketStreamingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
+	public SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.asyncTcpSocket.setEventHandler(this);
-		this.socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket);
-		this.socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket);
+		this.socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, new CompletionCallback() {
+			@Override
+			public void onException(Exception exception) {
+				socketReader.closeWithError(exception);
+				asyncTcpSocket.close();
+			}
+
+			@Override
+			public void onComplete() {
+			}
+		});
+		this.socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, new CompletionCallback() {
+			@Override
+			public void onException(Exception exception) {
+				socketWriter.closeWithError(exception);
+				asyncTcpSocket.close();
+			}
+
+			@Override
+			public void onComplete() {
+			}
+		});
 		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
 		new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);
 	}
@@ -96,7 +116,8 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		// TODO
+		socketReader.closeWithError(e);
+		socketWriter.closeWithError(e);
 	}
 
 	@Override

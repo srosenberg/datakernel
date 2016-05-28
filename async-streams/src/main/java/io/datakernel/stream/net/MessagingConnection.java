@@ -116,16 +116,16 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void writeStream(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void writeStream(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		checkState(socketWriter == null && writeCallbacks.isEmpty() && !writeEndOfStream);
-		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket);
+		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, callback);
 		producer.streamTo(socketWriter);
 	}
 
 	@Override
-	public void readStream(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+	public void readStream(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
 		checkState(this.socketReader == null && this.readCallback == null);
-		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket);
+		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, callback);
 		socketReader.streamTo(consumer);
 		if (readBuf.hasRemaining() || readEndOfStream) {
 			eventloop.post(new Runnable() {

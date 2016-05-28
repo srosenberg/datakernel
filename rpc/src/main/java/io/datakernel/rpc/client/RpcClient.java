@@ -19,7 +19,8 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.ConnectCallback2;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.CountStats;
@@ -27,7 +28,6 @@ import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -232,37 +231,14 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 
 		logger.info("Connecting {}", address);
-		eventloop.connect(address, socketSettings, new ConnectCallback() {
+		eventloop.connect(address, socketSettings, new ConnectCallback2() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				StatusListener statusListener = new StatusListener() {
-					@Override
-					public void onOpen(RpcClientConnection connection) {
-						addConnection(address, connection);
-					}
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
+						asyncTcpSocket, address,
+						getSerializer(), protocolFactory);
 
-					@Override
-					public void onClosed() {
-						logger.info("Connection to {} closed", address);
-						removeConnection(address);
-
-						// jmx
-						generalConnectsStats.getClosedConnects().recordEvent();
-						connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
-
-						eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
-							@Override
-							public void run() {
-								if (running) {
-									connect(address);
-								}
-							}
-						});
-					}
-				};
-				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel,
-						getSerializer(), protocolFactory, statusListener);
-				connection.getSocketConnection().register();
+				addConnection(address, connection);
 
 				// jmx
 				generalConnectsStats.getSuccessfulConnects().recordEvent();
@@ -273,6 +249,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 					postCompletion(eventloop, startCallback);
 					startCallback = null;
 				}
+				return connection.getSocketConnection();
 			}
 
 			@Override
@@ -309,10 +286,25 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		requestSender = sender != null ? sender : new Sender();
 	}
 
-	private void removeConnection(InetSocketAddress address) {
+	public void removeConnection(final InetSocketAddress address) {
+		logger.info("Connection to {} closed", address);
+
 		connections.remove(address);
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
+
+		// jmx
+		generalConnectsStats.getClosedConnects().recordEvent();
+		connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
+
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+			@Override
+			public void run() {
+				if (running) {
+					connect(address);
+				}
+			}
+		});
 	}
 
 	private void closeConnections() {

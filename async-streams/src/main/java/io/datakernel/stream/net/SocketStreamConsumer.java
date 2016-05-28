@@ -16,19 +16,24 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamStatus;
 
 final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private final AsyncTcpSocket asyncTcpSocket;
+	private final CompletionCallback completionCallback;
+
 	private long writeTick;
 
-	public SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket) {
+	public SocketStreamConsumer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {
 		super(eventloop);
 		this.asyncTcpSocket = asyncTcpSocket;
+		this.completionCallback = completionCallback;
 	}
 
 	@Override
@@ -43,6 +48,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	protected void onError(Exception e) {
+		completionCallback.onException(e);
 	}
 
 	/**
@@ -67,7 +73,11 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	void onWrite() {
 		writeTick = 0;
-		resume();
+		if (getConsumerStatus() == StreamStatus.SUSPENDED) {
+			resume();
+		} else if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+			completionCallback.onComplete();
+		}
 	}
 
 }

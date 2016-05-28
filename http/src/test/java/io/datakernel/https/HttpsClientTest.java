@@ -42,7 +42,7 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
-public class TestHttpsClient {
+public class HttpsClientTest {
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
