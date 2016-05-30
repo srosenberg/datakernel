@@ -90,7 +90,7 @@ public class MessagingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			void ping(int n, final Messaging<Integer, Integer> messaging) {
 				messaging.write(n, ignoreCompletionCallback());
 
@@ -109,10 +109,10 @@ public class MessagingConnectionTest {
 					public void onException(Exception exception) {
 					}
 				});
-			}
+					}
 
 					@Override
-					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, MessagingSerializers.ofGson(new Gson(), new Gson()));
 						ping(3, messaging);
 						return messaging;
@@ -180,9 +180,9 @@ public class MessagingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
-					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), new Gson()));
 
@@ -250,9 +250,9 @@ public class MessagingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
-					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), new Gson()));
 
@@ -330,9 +330,9 @@ public class MessagingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
-					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), new Gson()));
 
@@ -403,9 +403,9 @@ public class MessagingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
-					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), new Gson()));
 

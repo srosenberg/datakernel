@@ -195,7 +195,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				@Override
 				public void onResult(final HttpResponse httpResponse) {
 					assert eventloop.inEventloopThread();
-					if (isRegistered()) {
+					if (!isClosed()) {
 						try {
 							if (shouldGzip && httpResponse.getBody() != null) {
 								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
@@ -215,7 +215,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				@Override
 				public void onHttpError(HttpServletError httpServletError) {
 					assert eventloop.inEventloopThread();
-					if (isRegistered()) {
+					if (!isClosed()) {
 						writeException(httpServletError);
 					} else {
 						// connection is closed, but bufs are not recycled, let's recycle them now
@@ -241,7 +241,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onWrite() {
-		assert isRegistered();
+		assert !isClosed();
 		if (reading != NOTHING) return;
 		if (keepAlive) {
 			reset();

@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -184,22 +183,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return count;
 	}
 
-	private HttpClientConnection createConnection(AsyncTcpSocketImpl asyncTcpSocket) {
-		AsyncSslSocket asyncSslSocket = null;
-		if (sslContext != null) {
-			SSLEngine ssl = sslContext.createSSLEngine();
-			ssl.setUseClientMode(true);
-			asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
-		}
-
-		HttpClientConnection connection = new HttpClientConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress(),
-				asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
-				this, headerChars, maxHttpMessageSize);
-		if (connectionsList.isEmpty())
-			scheduleCheck();
-		return connection;
-	}
-
 	private HttpClientConnection getFreeConnection(InetSocketAddress address) {
 		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
 		if (list == null)
@@ -208,7 +191,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			HttpClientConnection connection = list.removeFirstValue();
 			if (connection == null)
 				break;
-			if (connection.isRegistered()) {
+			if (!connection.isClosed()) {
 				connection.ipConnectionListNode = null;
 				return connection;
 			}
@@ -222,7 +205,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	 * @param connection connections for putting
 	 */
 	protected void addToIpPool(HttpClientConnection connection) {
-		assert connection.isRegistered();
+		assert !connection.isClosed();
 		assert connection.ipConnectionListNode == null;
 
 		InetSocketAddress address = connection.getRemoteSocketAddress();
@@ -327,19 +310,25 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		logger.trace("eventloop.connect Calling {}", request);
 		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				logger.trace("eventloop.connect.onConnect Calling {}", request);
 				removePendingSocketConnect(address);
-				AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-				HttpClientConnection connection = createConnection(asyncTcpSocket);
-				asyncTcpSocket.register();
-				if (timeoutTime <= eventloop.currentTimeMillis()) {
-					// timeout for this request, reuse for other requests
-					addToIpPool(connection);
-					callback.onException(TIMEOUT_EXCEPTION);
-					return;
+				AsyncSslSocket asyncSslSocket = null;
+				if (sslContext != null) {
+					SSLEngine ssl = sslContext.createSSLEngine();
+					ssl.setUseClientMode(true);
+					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
 				}
+
+				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
+						asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
+						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+				if (asyncSslSocket != null)
+					asyncSslSocket.setEventHandler(connection);
+				if (connectionsList.isEmpty())
+					scheduleCheck();
 				sendRequest(connection, request, timeoutTime, callback);
+				return asyncSslSocket != null ? asyncSslSocket : connection;
 			}
 
 			@Override
@@ -535,7 +524,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			String string = StringUtils.join(",",
 					asList(
 							connection.getRemoteSocketAddress(),
-							connection.isRegistered(),
+							!connection.isClosed(),
 							MBeanFormat.formatPeriodAgo(connection.getActivityTime())
 					)
 			);

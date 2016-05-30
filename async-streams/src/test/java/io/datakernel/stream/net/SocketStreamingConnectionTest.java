@@ -82,9 +82,9 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
@@ -134,9 +134,9 @@ public final class SocketStreamingConnectionTest {
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
@@ -196,9 +196,9 @@ public final class SocketStreamingConnectionTest {
 
 		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
 		final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
@@ -255,9 +255,9 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback2() {
+		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());

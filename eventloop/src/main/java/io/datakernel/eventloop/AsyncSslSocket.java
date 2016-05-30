@@ -27,74 +27,15 @@ import javax.net.ssl.SSLException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 
-public final class AsyncSslSocket implements AsyncTcpSocket {
+public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final ExecutorService executor;
 	private final AsyncTcpSocket upstream;
 
-	@SuppressWarnings("FieldCanBeLocal")
-	private final AsyncTcpSocket.EventHandler upstreamEventHandler = new AsyncTcpSocket.EventHandler() {
-		@Override
-		public void onRegistered() {
-			open = true;
-			downstreamEventHandler.onRegistered();
-			try {
-				engine.beginHandshake();
-				doSync();
-			} catch (SSLException e) {
-				handleSSLException(e, true);
-			}
-		}
-
-		@Override
-		public void onRead(ByteBuf buf) {
-			if (!isOpen()) return;
-			if (net2engine == null) {
-				net2engine = buf;
-			} else {
-				if (net2engine.position() + buf.remaining() > net2engine.capacity()) {
-					net2engine = ByteBufPool.resize(net2engine, net2engine.remaining() + buf.remaining());
-				}
-				int oldPos = net2engine.position();
-				net2engine.position(net2engine.limit());
-				net2engine = ByteBufPool.append(net2engine, buf);
-				net2engine.position(oldPos);
-				buf.recycle();
-			}
-			sync();
-		}
-
-		@Override
-		public void onReadEndOfStream() {
-			try {
-				engine.closeInbound();
-				downstreamEventHandler.onReadEndOfStream();
-			} catch (SSLException e) {
-				handleSSLException(e, false);
-			}
-		}
-
-		@Override
-		public void onWrite() {
-			if (!isOpen()) return;
-			if (app2engineQueue.isEmpty() && writeInterest) {
-				writeInterest = false;
-				downstreamEventHandler.onWrite();
-			}
-		}
-
-		@Override
-		public void onClosedWithError(Exception e) {
-			if (!isOpen()) return;
-			open = false;
-			downstreamEventHandler.onClosedWithError(e);
-		}
-	};
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
 	private ByteBuf net2engine;
@@ -106,12 +47,66 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private boolean syncPosted = false;
 
 	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, ExecutorService executor) {
-		this.eventloop = checkNotNull(eventloop);
-		this.engine = checkNotNull(engine);
-		this.executor = checkNotNull(executor);
+		this.eventloop = eventloop;
+		this.engine = engine;
+		this.executor = executor;
+		this.upstream = asyncTcpSocket;
+	}
 
-		this.upstream = checkNotNull(asyncTcpSocket);
-		this.upstream.setEventHandler(upstreamEventHandler);
+	@Override
+	public void onRegistered() {
+		open = true;
+		downstreamEventHandler.onRegistered();
+		try {
+			engine.beginHandshake();
+			doSync();
+		} catch (SSLException e) {
+			handleSSLException(e, true);
+		}
+	}
+
+	@Override
+	public void onRead(ByteBuf buf) {
+		if (!isOpen()) return;
+		if (net2engine == null) {
+			net2engine = buf;
+		} else {
+			if (net2engine.position() + buf.remaining() > net2engine.capacity()) {
+				net2engine = ByteBufPool.resize(net2engine, net2engine.remaining() + buf.remaining());
+			}
+			int oldPos = net2engine.position();
+			net2engine.position(net2engine.limit());
+			net2engine = ByteBufPool.append(net2engine, buf);
+			net2engine.position(oldPos);
+			buf.recycle();
+		}
+		sync();
+	}
+
+	@Override
+	public void onReadEndOfStream() {
+		try {
+			engine.closeInbound();
+			downstreamEventHandler.onReadEndOfStream();
+		} catch (SSLException e) {
+			handleSSLException(e, false);
+		}
+	}
+
+	@Override
+	public void onWrite() {
+		if (!isOpen()) return;
+		if (app2engineQueue.isEmpty() && writeInterest) {
+			writeInterest = false;
+			downstreamEventHandler.onWrite();
+		}
+	}
+
+	@Override
+	public void onClosedWithError(Exception e) {
+		if (!isOpen()) return;
+		open = false;
+		downstreamEventHandler.onClosedWithError(e);
 	}
 
 	@Override

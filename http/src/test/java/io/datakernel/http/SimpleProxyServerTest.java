@@ -115,11 +115,11 @@ public class SimpleProxyServerTest {
 		stream.write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nFORWARDED: /hello");
 
+		httpClient.closeFuture().await();
+
 		echoServer.closeFuture().await();
 
 		proxyServer.closeFuture().await();
-
-		httpClient.closeFuture().await();
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();

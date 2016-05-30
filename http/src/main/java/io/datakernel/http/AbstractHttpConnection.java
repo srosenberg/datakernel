@@ -47,7 +47,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
 
-	private boolean registered;
+	private boolean closed;
 	private long activityTime;
 
 	protected boolean keepAlive = true;
@@ -94,13 +94,13 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.asyncTcpSocket.setEventHandler(this);
 		this.activityTime = eventloop.currentTimeMillis();
 		reset();
+		connectionsListNode = connectionsList.addLastValue(this);
 	}
 
-	protected boolean isRegistered() {
-		return registered;
+	protected boolean isClosed() {
+		return closed;
 	}
 
 	/**
@@ -108,12 +108,8 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	 */
 	@Override
 	public void onRegistered() {
-		assert connectionsListNode == null;
-		assert !isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
-
-		registered = true;
-		connectionsListNode = connectionsList.addLastValue(this);
 	}
 
 	public final void close() {
@@ -122,14 +118,14 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	}
 
 	protected final void closeWithError(final Exception e) {
-		if (!isRegistered()) return;
+		if (isClosed()) return;
 		eventloop.recordIoError(e, this);
 		asyncTcpSocket.close();
 		onClosedWithError(e);
 	}
 
 	protected void onClosed() {
-		registered = false;
+		closed = true;
 	}
 
 	protected void reset() {
@@ -212,7 +208,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		if (header == CONTENT_LENGTH) {
@@ -246,7 +242,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	}
 
 	private void readBody() throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		if (reading == BODY) {
@@ -270,7 +266,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	@SuppressWarnings("ConstantConditions")
 	private void readChunks() throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		while (!readQueue.isEmpty()) {
@@ -334,7 +330,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	@Override
 	public void onRead(ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		assert isRegistered();
+		assert !isClosed();
 		if (buf != null) readQueue.add(buf);
 		activityTime = eventloop.currentTimeMillis();
 
@@ -345,7 +341,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			if (readQueue.hasRemaining()) {
 				doRead();
 			}
-			if ((reading != NOTHING || readQueue.isEmpty()) && isRegistered()) {
+			if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
 				asyncTcpSocket.read();
 			}
 		} catch (ParseException e) {
@@ -360,7 +356,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	private void doRead() throws ParseException {
 		if (reading < BODY) {
 			while (true) {
-				assert isRegistered();
+				assert !isClosed();
 				assert reading == FIRSTLINE || reading == HEADERS;
 				ByteBuf line = takeLine();
 				if (line == null) {
@@ -395,7 +391,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			}
 		}
 
-		assert isRegistered();
+		assert !isClosed();
 		assert reading >= BODY;
 		readBody();
 	}

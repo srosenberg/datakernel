@@ -73,6 +73,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	public final void register() {
+		socketEventHandler.onRegistered();
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);
 		} catch (final IOException e) {
@@ -84,7 +85,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			});
 		}
-		socketEventHandler.onRegistered();
 	}
 
 	// interests management
@@ -293,6 +293,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} catch (IOException ignored) {
 			throw new AssertionError("I/O error occurs or channel closed");
 		}
+	}
+
+	public SocketChannel getSocketChannel() {
+		return channel;
 	}
 
 	@Override

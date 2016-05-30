@@ -126,12 +126,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
-		assert isRegistered();
+		assert !isClosed();
 		response.body(bodyBuf);
 		ResultCallback<HttpResponse> callback = this.callback;
 		this.callback = null;
 		callback.onResult(response);
-		if (!isRegistered())
+		if (isClosed())
 			return;
 		if (keepAlive) {
 			reset();
@@ -196,12 +196,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	private void scheduleTimeout(final long timeoutTime) {
-		assert isRegistered();
+		assert !isClosed();
 
 		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
 			@Override
 			public void run() {
-				if (isRegistered()) {
+				if (!isClosed()) {
 					closeWithError(TIMEOUT_EXCEPTION);
 				}
 			}
@@ -210,7 +210,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onWrite() {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 		reading = FIRSTLINE;
 		asyncTcpSocket.read();

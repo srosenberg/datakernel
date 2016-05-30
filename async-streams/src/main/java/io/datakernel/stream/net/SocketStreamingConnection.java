@@ -48,7 +48,6 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	public SocketStreamingConnection(Eventloop eventloop, final AsyncTcpSocket asyncTcpSocket) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.asyncTcpSocket.setEventHandler(this);
 		this.socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, new CompletionCallback() {
 			@Override
 			public void onException(Exception exception) {

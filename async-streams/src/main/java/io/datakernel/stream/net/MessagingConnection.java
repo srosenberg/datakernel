@@ -56,8 +56,6 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;
-		this.asyncTcpSocket.setEventHandler(this);
-//		this.messagingProtocol = messagingProtocol;
 	}
 
 	@Override

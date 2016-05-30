@@ -243,12 +243,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
 		prepareSocket(socketChannel);
-		NioChannelEventHandler connection = createSocket(socketChannel);
-		connection.register();
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+		AsyncTcpSocket.EventHandler handler = createSocketHandler(asyncTcpSocket);
+		asyncTcpSocket.setEventHandler(handler);
+		asyncTcpSocket.register();
 		if (acceptOnce) {
 			close();
 		}
 	}
+
+	protected abstract AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket);
 
 	protected void prepareSocket(SocketChannel socketChannel) {
 		try {
@@ -278,14 +282,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			}
 		}
 	}
-
-	protected NioChannelEventHandler createSocket(SocketChannel socketChannel) {
-		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-		AsyncTcpSocket.EventHandler handler = createSocketHandler(asyncTcpSocket);
-		return asyncTcpSocket;
-	}
-
-	protected abstract AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket);
 
 	// jmx
 	@JmxAttribute

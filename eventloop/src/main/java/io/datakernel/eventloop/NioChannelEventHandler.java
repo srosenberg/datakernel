@@ -17,8 +17,6 @@
 package io.datakernel.eventloop;
 
 public interface NioChannelEventHandler {
-	void register();
-
 	void onReadReady();
 
 	void onWriteReady();

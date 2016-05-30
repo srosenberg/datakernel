@@ -44,7 +44,6 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	}
 
 	//  miscellaneous
-	@Override
 	public void register() {
 		try {
 			key = channel.register(eventloop.ensureSelector(), ops, this);

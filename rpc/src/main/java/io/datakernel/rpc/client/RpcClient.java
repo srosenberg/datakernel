@@ -19,10 +19,7 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.ConnectCallback2;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.CountStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -231,9 +228,9 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 
 		logger.info("Connecting {}", address);
-		eventloop.connect(address, socketSettings, new ConnectCallback2() {
+		eventloop.connect(address, socketSettings, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
 						getSerializer(), protocolFactory);

@@ -145,9 +145,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
 
+		if (asyncSslSocket != null) {
+			asyncSslSocket.setEventHandler(connection);
+		}
+
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();
-		return connection;
+		return asyncSslSocket != null ? asyncSslSocket : connection;
 	}
 
 	/**
