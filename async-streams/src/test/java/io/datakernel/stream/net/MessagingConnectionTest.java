@@ -63,7 +63,7 @@ public class MessagingConnectionTest {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 				MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingSerializers.ofGson(new Gson(), Integer.class, new Gson(), Integer.class));
 				pong(messaging);
 				return messaging;
 			}
@@ -91,29 +91,30 @@ public class MessagingConnectionTest {
 		server.listen();
 
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
-			void ping(int n, final Messaging<Integer, Integer> messaging) {
-				messaging.write(n, ignoreCompletionCallback());
+					void ping(int n, final Messaging<Integer, Integer> messaging) {
+						messaging.write(n, ignoreCompletionCallback());
 
-				messaging.read(new ResultCallback<MessageOrEndOfStream<Integer>>() {
-					@Override
-					public void onResult(MessageOrEndOfStream<Integer> result) {
-						int message = result.getMessage();
-						if (message > 0) {
-							ping(message - 1, messaging);
-						} else {
-							messaging.close();
-						}
-					}
+						messaging.read(new ResultCallback<MessageOrEndOfStream<Integer>>() {
+							@Override
+							public void onResult(MessageOrEndOfStream<Integer> result) {
+								int message = result.getMessage();
+								if (message > 0) {
+									ping(message - 1, messaging);
+								} else {
+									messaging.close();
+								}
+							}
 
-					@Override
-					public void onException(Exception exception) {
-					}
-				});
+							@Override
+							public void onException(Exception exception) {
+							}
+						});
 					}
 
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+								MessagingSerializers.ofGson(new Gson(), Integer.class, new Gson(), Integer.class));
 						ping(3, messaging);
 						return messaging;
 					}
@@ -146,7 +147,7 @@ public class MessagingConnectionTest {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
 					@Override
@@ -184,7 +185,7 @@ public class MessagingConnectionTest {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-								MessagingSerializers.ofGson(new Gson(), new Gson()));
+								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 						messaging.write("start", ignoreCompletionCallback());
 						messaging.writeEndOfStream(ignoreCompletionCallback());
@@ -224,7 +225,7 @@ public class MessagingConnectionTest {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
 					@Override
@@ -254,7 +255,7 @@ public class MessagingConnectionTest {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-								MessagingSerializers.ofGson(new Gson(), new Gson()));
+								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 						messaging.write("start", ignoreCompletionCallback());
 
@@ -296,7 +297,7 @@ public class MessagingConnectionTest {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
 					@Override
@@ -334,7 +335,7 @@ public class MessagingConnectionTest {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-								MessagingSerializers.ofGson(new Gson(), new Gson()));
+								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 						messaging.write("start", ignoreCompletionCallback());
 
@@ -375,7 +376,7 @@ public class MessagingConnectionTest {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(new Gson(), new Gson()));
+						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
 					@Override
@@ -407,7 +408,7 @@ public class MessagingConnectionTest {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
-								MessagingSerializers.ofGson(new Gson(), new Gson()));
+								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 						messaging.write("start", ignoreCompletionCallback());
 
