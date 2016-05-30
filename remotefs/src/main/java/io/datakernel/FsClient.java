@@ -19,15 +19,15 @@ package io.datakernel;
 import com.google.gson.Gson;
 import io.datakernel.FsCommands.FsCommand;
 import io.datakernel.FsResponses.FsResponse;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioChannelEventHandler;
+import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.Messaging.MessageOrEndOfStream;
+import io.datakernel.stream.net.MessagingConnection;
+import io.datakernel.stream.net.MessagingSerializers;
 import io.datakernel.stream.processor.StreamByteChunker;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
@@ -114,10 +114,77 @@ public abstract class FsClient {
 
 	public abstract void delete(String fileName, CompletionCallback callback);
 
+	// TODO(dvolvach) --------------------------------------------------------------------------------------------------
 	// transport code
-	protected final void doUpload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		connect(address, new UploadConnectCallback(fileName, producer, callback));
+	protected final void doUpload(InetSocketAddress address, final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		connect(address, new ConnectCallback() {
+			@Override
+			public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+				final MessagingConnection<FsResponse, FsCommand> messaging = new MessagingConnection<>(
+						eventloop, asyncTcpSocket, MessagingSerializers.ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class));
+
+				logger.trace("send command to upload {}", fileName);
+				messaging.write(new FsCommands.Upload(fileName), new ForwardingCompletionCallback(callback) {
+					@Override
+					public void onComplete() {
+						messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+							@Override
+							public void onResult(MessageOrEndOfStream<FsResponse> result) {
+								if (result.isEndOfStream()) {
+									callback.onException(new SimpleException("unexpected end of stream"));
+								} else {
+									FsResponse response = result.getMessage();
+									if (response instanceof FsResponses.Ok) {
+										logger.trace("received ok for {}, start streaming", fileName);
+										messaging.writeStream(producer, new ForwardingCompletionCallback(callback) {
+											@Override
+											public void onComplete() {
+												messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+													@Override
+													public void onResult(MessageOrEndOfStream<FsResponse> result) {
+														if (result.isEndOfStream()) {
+															callback.onException(new SimpleException("unexpected end of stream"));
+														} else {
+															FsResponse response = result.getMessage();
+															if (response instanceof FsResponses.Acknowledge) {
+																messaging.close();
+																callback.onComplete();
+															} else if (response instanceof FsResponses.Err) {
+																messaging.close();
+																callback.onException(new Exception(((FsResponses.Err) response).msg));
+															} else {
+																messaging.close();
+																callback.onException(new SimpleException("invalid message received"));
+															}
+														}
+													}
+												});
+											}
+										});
+									} else if (response instanceof FsResponses.Err) {
+										messaging.close();
+										callback.onException(new SimpleException(((FsResponses.Err) response).msg));
+									} else {
+										messaging.close();
+										callback.onException(new SimpleException("invalid message received"));
+									}
+								}
+							}
+						});
+					}
+				});
+
+				return messaging;
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
+			}
+		});
 	}
+
+	// TODO(dvolvach) --------------------------------------------------------------------------------------------------
 
 	protected final void doDownload(InetSocketAddress address, String fileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback) {
 		connect(address, new DownloadConnectCallback(callback, fileName, startPosition));
@@ -159,15 +226,8 @@ public abstract class FsClient {
 		}
 
 		@Override
-		public void onConnect(SocketChannel channel) {
+		public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl channel) {
 			NioChannelEventHandler connection = createConnection(channel)
-					.addStarter(new MessagingStarter<FsCommand>() {
-						@Override
-						public void onStart(Messaging<FsCommand> messaging) {
-							logger.trace("send command to upload {}", file);
-							messaging.sendMessage(new FsCommands.Upload(file));
-						}
-					})
 					.addHandler(FsResponses.Ok.class, new MessagingHandler<FsResponses.Ok, FsCommand>() {
 						@Override
 						public void onMessage(FsResponses.Ok item, final Messaging<FsCommand> messaging) {
@@ -212,6 +272,7 @@ public abstract class FsClient {
 						}
 					});
 			connection.register();
+			return null;
 		}
 
 		@Override
