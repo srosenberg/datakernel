@@ -19,13 +19,11 @@ package io.datakernel.simplefs;
 import io.datakernel.FileManager;
 import io.datakernel.FsServer;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -37,24 +35,13 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 	}
 
 	@Override
-	public void upload(String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		fileManager.save(fileName, new ForwardingResultCallback<StreamFileWriter>(callback) {
-			@Override
-			public void onResult(StreamFileWriter writer) {
-				writer.setFlushCallback(callback);
-				producer.streamTo(writer);
-			}
-		});
+	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
+		fileManager.save(fileName, callback);
 	}
 
 	@Override
 	public void download(String fileName, long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
-		fileManager.get(fileName, startPosition, new ForwardingResultCallback<StreamFileReader>(callback) {
-			@Override
-			public void onResult(StreamFileReader reader) {
-				callback.onResult(reader);
-			}
-		});
+		fileManager.get(fileName, startPosition, callback);
 	}
 
 	@Override

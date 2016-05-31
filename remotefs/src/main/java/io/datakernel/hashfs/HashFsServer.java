@@ -17,25 +17,22 @@
 package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
-import io.datakernel.FsCommands;
+import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingHandler;
-import io.datakernel.stream.net.StreamMessagingConnection;
+import io.datakernel.stream.net.MessagingConnection;
 
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.FsResponses.*;
+import static io.datakernel.FsResponses.Err;
+import static io.datakernel.FsResponses.FsResponse;
 import static io.datakernel.hashfs.HashFsCommands.Alive;
 import static io.datakernel.hashfs.HashFsCommands.Announce;
 import static io.datakernel.hashfs.HashFsResponses.ListOfServers;
@@ -51,29 +48,11 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	// core
 	@Override
-	protected final void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	protected final void upload(final String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
 		if (localReplica.canUpload(fileName)) {
 			localReplica.onUploadStart(fileName);
-			fileManager.save(fileName, new ResultCallback<StreamFileWriter>() {
-				@Override
-				public void onResult(StreamFileWriter writer) {
-					logger.trace("{} opened", writer);
-					writer.setFlushCallback(new ForwardingCompletionCallback(this) {
-						@Override
-						public void onComplete() {
-							localReplica.onUploadComplete(fileName);
-							callback.onComplete();
-						}
-					});
-					producer.streamTo(writer);
-				}
-
-				@Override
-				public void onException(Exception e) {
-					localReplica.onUploadFailed(fileName);
-					callback.onException(e);
-				}
-			});
+			// TODO: (arashev) logic violation
+			fileManager.save(fileName, callback);
 		} else {
 			logger.warn("refused to upload {}", fileName);
 			callback.onException(new Exception("Refused to upload file"));
@@ -84,26 +63,8 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	protected final void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		if (localReplica.canDownload(fileName)) {
 			localReplica.onDownloadStart(fileName);
-			fileManager.get(fileName, startPosition, new ResultCallback<StreamFileReader>() {
-				@Override
-				public void onResult(StreamFileReader reader) {
-					logger.trace("{} opened", reader);
-					reader.setPositionCallback(new ForwardingResultCallback<Long>(this) {
-						@Override
-						public void onResult(Long result) {
-							logger.trace("streamed {} bytes for {}", result - startPosition, fileName);
-							localReplica.onDownloadComplete(fileName);
-						}
-					});
-					callback.onResult(reader);
-				}
-
-				@Override
-				public void onException(Exception e) {
-					localReplica.onDownloadFailed(fileName);
-					callback.onException(e);
-				}
-			});
+			// TODO: (arashev) logic violation
+			fileManager.get(fileName, startPosition, callback);
 		} else {
 			logger.warn("refused to download {}", fileName);
 			callback.onException(new Exception("Refused to download file"));
@@ -138,14 +99,6 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 		localReplica.getList(callback);
 	}
 
-	// connection
-	@Override
-	protected void addHandlers(StreamMessagingConnection<FsCommands.FsCommand, FsResponse> conn) {
-		super.addHandlers(conn);
-		conn.addHandler(Alive.class, new AliveMessagingHandler());
-		conn.addHandler(Announce.class, new AnnounceMessagingHandler());
-	}
-
 	@Override
 	protected Gson getResponseGson() {
 		return HashFsResponses.responseGSON;
@@ -158,18 +111,26 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AliveMessagingHandler implements MessagingHandler<Alive, FsResponse> {
 		@Override
-		public void onMessage(Alive item, final Messaging<FsResponse> messaging) {
+		public void onMessage(final MessagingConnection<Alive, FsResponse> messaging, Alive item) {
 			localReplica.showAlive(eventloop.currentTimeMillis(), new ResultCallback<Set<Replica>>() {
 				@Override
 				public void onResult(Set<Replica> result) {
-					messaging.sendMessage(new ListOfServers(result));
-					messaging.shutdown();
+					messaging.write(new ListOfServers(result), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
@@ -177,18 +138,26 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AnnounceMessagingHandler implements MessagingHandler<Announce, FsResponse> {
 		@Override
-		public void onMessage(Announce item, final Messaging<FsResponse> messaging) {
+		public void onMessage(final MessagingConnection<Announce, FsResponse> messaging, Announce item) {
 			localReplica.onAnnounce(item.forUpload, item.forDeletion, new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					messaging.sendMessage(new ListOfFiles(result));
-					messaging.shutdown();
+					messaging.write(new ListOfFiles(result), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}

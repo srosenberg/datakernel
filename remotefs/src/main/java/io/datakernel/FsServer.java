@@ -21,24 +21,31 @@ import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.Messaging.MessageOrEndOfStream;
 import io.datakernel.stream.net.MessagingConnection;
-import io.datakernel.stream.net.MessagingSerializers;
+import io.datakernel.stream.net.MessagingSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 @SuppressWarnings("unchecked")
 public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> {
 	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 	protected final FileManager fileManager;
+	private MessagingSerializer serializer = ofGson(getCommandGSON(), FsCommand.class, getResponseGson(), FsResponse.class);
 
 	// creators & builder methods
 	protected FsServer(Eventloop eventloop, FileManager fileManager) {
@@ -46,17 +53,59 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		this.fileManager = fileManager;
 	}
 
+	// abstract core methods
+	protected abstract void upload(String filePath, ResultCallback<StreamConsumer<ByteBuf>> callback);
+
+	protected abstract void download(String filePath, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
+
+	protected abstract void delete(String filePath, CompletionCallback callback);
+
+	protected abstract void list(ResultCallback<List<String>> callback);
+
 	// set up connection
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
-		MessagingConnection<FsCommand, FsResponse> messaging =
-				new MessagingConnection<>(eventloop, asyncTcpSocket,
-						MessagingSerializers.ofGson(getCommandGSON(), FsCommand.class, getResponseGson(), FsResponse.class));
+		final MessagingConnection<FsCommand, FsResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
+		messaging.read(new ResultCallback<MessageOrEndOfStream<FsCommand>>() {
+			@Override
+			public void onResult(MessageOrEndOfStream<FsCommand> result) {
+				if (result.isEndOfStream()) {
+					logger.warn("unexpected end of stream");
+				} else {
+					onRead(messaging, result.getMessage());
+				}
+			}
 
-		messaging.read();
-
-
+			@Override
+			public void onException(Exception e) {
+				logger.error("received error while reading", e);
+				messaging.close();
+			}
+		});
 		return messaging;
+	}
+
+	protected interface MessagingHandler<I, O> {
+		void onMessage(MessagingConnection<I, O> messaging, I item);
+	}
+
+	protected final Map<Class, MessagingHandler> handlers = new HashMap();
+
+	{
+		handlers.put(Upload.class, new UploadMessagingHandler());
+		handlers.put(Download.class, new DownloadMessagingHandler());
+		handlers.put(Delete.class, new DeleteMessagingHandler());
+		handlers.put(ListFiles.class, new ListFilesMessagingHandler());
+	}
+
+	private void onRead(MessagingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
+		MessagingHandler handler = handlers.get(item.getClass());
+		if (handler == null) {
+			messaging.close();
+			logger.error("missing handler for " + item);
+		} else {
+			handler.onMessage(messaging, item);
+		}
 	}
 
 	protected Gson getResponseGson() {
@@ -67,42 +116,59 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		return FsCommands.commandGSON;
 	}
 
-	protected void addHandlers(StreamMessagingConnection<FsCommand, FsResponse> conn) {
-		conn.addHandler(Upload.class, new UploadMessagingHandler());
-		conn.addHandler(Download.class, new DownloadMessagingHandler());
-		conn.addHandler(Delete.class, new DeleteMessagingHandler());
-		conn.addHandler(ListFiles.class, new ListFilesMessagingHandler());
-	}
-
 	// handler classes
 	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
 		@Override
-		public void onMessage(final Upload item, final Messaging<FsCommands.Upload, FsResponse> messaging) {
-			logger.info("received command to upload file: {}", item.filePath);
+		public void onMessage(final MessagingConnection<Upload, FsResponse> messaging, final Upload item) {
 			messaging.write(new Ok(), new CompletionCallback() {
 				@Override
-				public void onException(Exception exception) {
-
-				}
-
-				@Override
 				public void onComplete() {
+					upload(item.filePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
+						@Override
+						public void onResult(StreamConsumer<ByteBuf> result) {
+							messaging.readStream(result, new CompletionCallback() {
+								@Override
+								public void onComplete() {
+									messaging.write(new Acknowledge(), new SimpleCompletionCallback() {
+										@Override
+										protected void onCompleteOrException() {
+											messaging.close();
+										}
+									});
+								}
 
-				}
-			});
-			upload(item.filePath, messaging.read(), new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					logger.info("succeed to upload file: {}", item.filePath);
-					messaging.sendMessage(new Acknowledge());
-					messaging.shutdown();
+								@Override
+								public void onException(Exception e) {
+									messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+										@Override
+										protected void onCompleteOrException() {
+											messaging.close();
+										}
+									});
+								}
+							});
+						}
+
+						@Override
+						public void onException(Exception e) {
+							messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+								@Override
+								protected void onCompleteOrException() {
+									messaging.close();
+								}
+							});
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					logger.error("failed to upload file: {}", item.filePath, e);
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
@@ -110,42 +176,52 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
 		@Override
-		public void onMessage(final Download item, final Messaging<FsResponse> messaging) {
-			logger.info("received command to download file: {}", item.filePath);
+		public void onMessage(final MessagingConnection<Download, FsResponse> messaging, final Download item) {
 			fileManager.size(item.filePath, new ResultCallback<Long>() {
 				@Override
 				public void onResult(final Long size) {
 					if (size < 0) {
-						logger.warn("missing file: {}", item.filePath);
-						messaging.sendMessage(new Err("File not found"));
-						messaging.shutdown();
+						messaging.write(new Err("File not found"), new SimpleCompletionCallback() {
+							@Override
+							protected void onCompleteOrException() {
+								messaging.close();
+							}
+						});
 					} else {
-						// preventing output stream from being explicitly closed
-						messaging.shutdownReader();
 						download(item.filePath, item.startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 							@Override
-							public void onResult(StreamProducer<ByteBuf> result) {
-								logger.info("opened stream for file: {}", item.filePath);
-								messaging.sendMessage(new Ready(size));
-								messaging.writeStream(result, new CompletionCallback() {
+							public void onResult(final StreamProducer<ByteBuf> result) {
+								messaging.write(new Ready(size), new CompletionCallback() {
 									@Override
 									public void onComplete() {
-										logger.info("succeed to stream file: {}", item.filePath);
-										messaging.shutdownWriter();
+										messaging.writeStream(result, new SimpleCompletionCallback() {
+											@Override
+											protected void onCompleteOrException() {
+												messaging.close();
+											}
+										});
 									}
 
 									@Override
 									public void onException(Exception e) {
-										logger.error("failed to stream file: {}", item.filePath, e);
-										messaging.shutdownWriter();
+										messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+											@Override
+											protected void onCompleteOrException() {
+												messaging.close();
+											}
+										});
 									}
 								});
 							}
 
 							@Override
 							public void onException(Exception e) {
-								logger.error("failed to open stream for file: {}", item.filePath, e);
-								messaging.shutdown();
+								messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+									@Override
+									protected void onCompleteOrException() {
+										messaging.close();
+									}
+								});
 							}
 						});
 					}
@@ -153,8 +229,12 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 				@Override
 				public void onException(Exception e) {
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
@@ -162,21 +242,26 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DeleteMessagingHandler implements MessagingHandler<Delete, FsResponse> {
 		@Override
-		public void onMessage(final Delete item, final Messaging<FsResponse> messaging) {
-			logger.info("received command to delete file: {}", item.filePath);
+		public void onMessage(final MessagingConnection<Delete, FsResponse> messaging, final Delete item) {
 			delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					logger.info("succeed to delete file: {}", item.filePath);
-					messaging.sendMessage(new Ok());
-					messaging.shutdown();
+					messaging.write(new Ok(), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					logger.error("failed to delete file: {}", item.filePath, e);
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
@@ -184,32 +269,28 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class ListFilesMessagingHandler implements MessagingHandler<ListFiles, FsResponse> {
 		@Override
-		public void onMessage(ListFiles item, final Messaging<FsResponse> messaging) {
-			logger.info("received command to list files");
+		public void onMessage(final MessagingConnection<ListFiles, FsResponse> messaging, ListFiles item) {
 			list(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					logger.info("succeed to list files: {}", result.size());
-					messaging.sendMessage(new ListOfFiles(result));
-					messaging.shutdown();
+					messaging.write(new ListOfFiles(result), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					logger.error("failed to list files", e);
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
 	}
-
-	// abstract core methods
-	protected abstract void upload(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
-
-	protected abstract void download(String filePath, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
-
-	protected abstract void delete(String filePath, CompletionCallback callback);
-
-	protected abstract void list(ResultCallback<List<String>> callback);
 }
