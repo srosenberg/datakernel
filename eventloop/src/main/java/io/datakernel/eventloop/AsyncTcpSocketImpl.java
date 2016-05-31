@@ -301,6 +301,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public String toString() {
-		return getRemoteSocketAddress() + " " + socketEventHandler.toString();
+		return getRemoteSocketAddress().toString();
 	}
 }

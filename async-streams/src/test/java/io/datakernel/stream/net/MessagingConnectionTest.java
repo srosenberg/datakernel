@@ -35,7 +35,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -77,6 +76,7 @@ public class MessagingConnectionTest {
 						else {
 							Integer message = result.getMessage();
 							messaging.write(message, ignoreCompletionCallback());
+							pong(messaging);
 						}
 					}
 
@@ -134,9 +134,9 @@ public class MessagingConnectionTest {
 	@Test
 	public void testMessagingDownload() throws Exception {
 		final List<Long> source = Lists.newArrayList();
-		for (long i = 0; i < 100; i++) {
-			source.add(i);
-		}
+//		for (long i = 0; i < 100; i++) {
+//			source.add(i);
+//		}
 
 		final Eventloop eventloop = new Eventloop();
 
@@ -157,17 +157,7 @@ public class MessagingConnectionTest {
 
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-						messaging.writeStream(streamSerializer.getOutput(), new CompletionCallback() {
-							@Override
-							public void onComplete() {
-
-							}
-
-							@Override
-							public void onException(Exception exception) {
-
-							}
-						});
+						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 					}
 
 					@Override
@@ -287,7 +277,7 @@ public class MessagingConnectionTest {
 			source.add(i);
 		}
 
-		final AtomicBoolean ack = new AtomicBoolean(false);
+		final boolean[] ack = new boolean[]{false};
 
 		final Eventloop eventloop = new Eventloop();
 
@@ -334,7 +324,7 @@ public class MessagingConnectionTest {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
 						messaging.write("start", ignoreCompletionCallback());
@@ -342,6 +332,21 @@ public class MessagingConnectionTest {
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+
+						messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+							@Override
+							public void onResult(MessageOrEndOfStream<String> result) {
+								String message = result.getMessage();
+								assertEquals("ack", message);
+								messaging.close();
+								ack[0] = true;
+							}
+
+							@Override
+							public void onException(Exception exception) {
+
+							}
+						});
 
 						return messaging;
 					}
@@ -356,7 +361,7 @@ public class MessagingConnectionTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
-		assertTrue(ack.get());
+		assertTrue(ack[0]);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

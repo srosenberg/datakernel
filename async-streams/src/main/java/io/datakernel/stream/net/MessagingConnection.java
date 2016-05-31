@@ -62,7 +62,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	public void read(ResultCallback<MessageOrEndOfStream<I>> callback) {
 		checkState(socketReader == null && readCallback == null);
 		readCallback = callback;
-		if (readBuf.hasRemaining() || readEndOfStream) {
+		if (readBuf != null || readEndOfStream) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
@@ -77,24 +77,33 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	private void tryReadMessage() {
-		assert readCallback != null;
-		if (readBuf.hasRemaining()) {
+		if (readBuf != null && readCallback != null) {
 			try {
 				I message = serializer.tryDeserialize(readBuf);
 				if (message == null) {
 					asyncTcpSocket.read();
 				} else {
-					readCallback.onResult(new MessageOrEndOfStream<>(message));
-					readCallback = null;
+					if (!readBuf.hasRemaining()) {
+						readBuf.recycle();
+						readBuf = null;
+					}
+					takeReadCallback().onResult(new MessageOrEndOfStream<>(message));
 				}
 			} catch (ParseException e) {
-				readCallback.onException(e);
-				readCallback = null;
+				takeReadCallback().onException(e);
 			}
-		} else if (readEndOfStream) {
-			readCallback.onResult(new MessageOrEndOfStream<I>(null));
-			readCallback = null;
 		}
+		if (readBuf == null && readEndOfStream) {
+			if (readCallback != null) {
+				takeReadCallback().onResult(new MessageOrEndOfStream<I>(null));
+			}
+		}
+	}
+
+	private ResultCallback<MessageOrEndOfStream<I>> takeReadCallback() {
+		ResultCallback<MessageOrEndOfStream<I>> callback = this.readCallback;
+		readCallback = null;
+		return callback;
 	}
 
 	@Override
@@ -115,7 +124,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void writeStream(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		checkState(socketWriter == null && writeCallbacks.isEmpty() && !writeEndOfStream);
+		checkState(socketWriter == null && !writeEndOfStream);
 		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, callback);
 		producer.streamTo(socketWriter);
 	}
@@ -125,11 +134,11 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		checkState(this.socketReader == null && this.readCallback == null);
 		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, callback);
 		socketReader.streamTo(consumer);
-		if (readBuf.hasRemaining() || readEndOfStream) {
+		if (readBuf != null || readEndOfStream) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					if (readBuf.hasRemaining()) {
+					if (readBuf != null) {
 						readUnconsumedBuf();
 					}
 					if (readEndOfStream) {
@@ -143,6 +152,10 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void close() {
 		asyncTcpSocket.close();
+		if (readBuf != null) {
+			readBuf.recycle();
+			readBuf = null;
+		}
 	}
 
 	/**
@@ -153,13 +166,13 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	 */
 	@Override
 	public void onRegistered() {
+		asyncTcpSocket.read();
 	}
 
 	private void readUnconsumedBuf() {
-		assert readBuf.hasRemaining();
+		assert readBuf != null;
 		socketReader.onRead(readBuf);
-		readBuf.recycle();
-		readBuf = ByteBuf.empty();
+		readBuf = null;
 	}
 
 	/**
@@ -167,12 +180,24 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	 */
 	@Override
 	public void onRead(ByteBuf buf) {
+		logger.trace("onRead", this);
 		assert eventloop.inEventloopThread();
 		if (socketReader == null) {
+			if (readBuf == null) {
+				readBuf = ByteBufPool.allocate(Math.max(8192, buf.remaining()));
+				readBuf.limit(0);
+			}
+			int oldPos = readBuf.position();
+			readBuf.position(readBuf.limit());
 			readBuf = ByteBufPool.append(readBuf, buf);
+			buf.recycle();
+			readBuf.position(oldPos);
 			tryReadMessage();
+			if (readBuf == null) {
+				asyncTcpSocket.read();
+			}
 		} else {
-			if (readBuf.hasRemaining()) {
+			if (readBuf != null) {
 				readUnconsumedBuf();
 			}
 			socketReader.onRead(buf);
@@ -181,11 +206,12 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void onReadEndOfStream() {
+		logger.trace("onReadEndOfStream", this);
 		readEndOfStream = true;
 		if (socketReader == null) {
 			tryReadMessage();
 		} else {
-			if (readBuf.hasRemaining()) {
+			if (readBuf != null) {
 				readUnconsumedBuf();
 			}
 			socketReader.onReadEndOfStream();
@@ -194,6 +220,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void onWrite() {
+		logger.trace("onWrite", this);
 		if (socketWriter == null) {
 			List<CompletionCallback> callbacks = this.writeCallbacks;
 			writeCallbacks = new ArrayList<>();
@@ -207,7 +234,13 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	@Override
 	public void onClosedWithError(Exception e) {
+		logger.trace("onClosedWithError", this);
 		// TODO
+
+		if (readBuf != null) {
+			readBuf.recycle();
+			readBuf = null;
+		}
 	}
 
 	@Override
