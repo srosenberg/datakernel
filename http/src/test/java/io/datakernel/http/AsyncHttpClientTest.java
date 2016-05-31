@@ -19,9 +19,14 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -215,21 +220,37 @@ public class AsyncHttpClientTest {
 		}
 	}
 
-/* FIXME (arashev)
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
 		final Eventloop eventloop = new Eventloop();
 
 		final AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
-				return new TcpSocketConnection(eventloop, socketChannel) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocketImpl asyncTcpSocket) {
+				return new AsyncTcpSocket.EventHandler() {
 					@Override
-					protected void onRead() {
-						readInterest(false);
-						write(ByteBufStrings.wrapAscii("\r\n"));
-						writeInterest(false);
-						this.close();
+					public void onRegistered() {
+						asyncTcpSocket.read();
+					}
+
+					@Override
+					public void onRead(ByteBuf buf) {
+						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+						// empty
+					}
+
+					@Override
+					public void onWrite() {
+						asyncTcpSocket.close();
+					}
+
+					@Override
+					public void onClosedWithError(Exception e) {
+						// empty
 					}
 				};
 			}
@@ -268,5 +289,4 @@ public class AsyncHttpClientTest {
 			throw e.getCause();
 		}
 	}
-*/
 }

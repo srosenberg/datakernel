@@ -41,6 +41,7 @@ public class MiddlewareServletTest {
 				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
 				assertEquals(expectedCode, result.getCode());
 				System.out.println(result + "  " + result.getBody());
+				result.recycleBufs();
 			}
 
 			@Override
@@ -254,6 +255,7 @@ public class MiddlewareServletTest {
 						+ " " + request.getUrlParameter("uid")
 						+ " " + request.getUrlParameter("eid")));
 				callback.onResult(response);
+				request.recycleBufs();
 			}
 		};
 
