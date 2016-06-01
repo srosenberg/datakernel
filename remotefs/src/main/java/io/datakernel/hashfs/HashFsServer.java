@@ -109,6 +109,11 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 		return HashFsCommands.commandGSON;
 	}
 
+	{
+		handlers.put(Alive.class, new AliveMessagingHandler());
+		handlers.put(Announce.class, new AnnounceMessagingHandler());
+	}
+
 	private class AliveMessagingHandler implements MessagingHandler<Alive, FsResponse> {
 		@Override
 		public void onMessage(final MessagingConnection<Alive, FsResponse> messaging, Alive item) {

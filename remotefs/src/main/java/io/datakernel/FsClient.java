@@ -111,11 +111,11 @@ public abstract class FsClient {
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Upload(fileName), new ForwardingCompletionCallback(callback) {
+			messaging.write(new Upload(fileName), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to upload {} send", fileName);
-					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+					messaging.read(new ResultCallback<MessageOrEndOfStream<FsResponse>>() {
 						@Override
 						public void onResult(MessageOrEndOfStream<FsResponse> result) {
 							if (result.isEndOfStream()) {
@@ -126,11 +126,11 @@ public abstract class FsClient {
 								FsResponse response = result.getMessage();
 								if (response instanceof Ok) {
 									logger.trace("received ok for {}, start streaming", fileName);
-									messaging.writeStream(producer, new ForwardingCompletionCallback(callback) {
+									messaging.writeStream(producer, new CompletionCallback() {
 										@Override
 										public void onComplete() {
 											logger.trace("send all bytes for {}", fileName);
-											messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+											messaging.read(new ResultCallback<MessageOrEndOfStream<FsResponse>>() {
 												@Override
 												public void onResult(MessageOrEndOfStream<FsResponse> result) {
 													if (result.isEndOfStream()) {
@@ -153,7 +153,19 @@ public abstract class FsClient {
 														}
 													}
 												}
+
+												@Override
+												public void onException(Exception e) {
+													messaging.close();
+													callback.onException(e);
+												}
 											});
+										}
+
+										@Override
+										public void onException(Exception e) {
+											messaging.close();
+											callback.onException(e);
 										}
 									});
 								} else if (response instanceof Err) {
@@ -167,7 +179,19 @@ public abstract class FsClient {
 								}
 							}
 						}
+
+						@Override
+						public void onException(Exception e) {
+							messaging.close();
+							callback.onException(e);
+						}
 					});
+				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(e);
 				}
 			});
 			return messaging;
@@ -209,7 +233,7 @@ public abstract class FsClient {
 								if (response instanceof Ready) {
 									long size = ((Ready) response).size;
 									logger.trace("received acknowledge for {} bytes ready", size, fileName);
-									StreamTransformerWithCounter stream = new StreamTransformerWithCounter(eventloop, size);
+									StreamTransformerWithCounter stream = new StreamTransformerWithCounter(eventloop, size - startPosition);
 									messaging.readStream(stream.getInput(), new ForwardingCompletionCallback(callback) {
 										@Override
 										public void onComplete() {
