@@ -16,6 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -25,25 +26,24 @@ import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingHandler;
-import io.datakernel.stream.net.StreamMessagingConnection;
+import io.datakernel.stream.net.MessagingConnection;
+import io.datakernel.stream.net.MessagingSerializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamGsonDeserializer;
-import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 /**
  * Server for processing JSON commands.
@@ -52,9 +52,18 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private static final Logger logger = LoggerFactory.getLogger(DatagraphServer.class);
 
 	private final DatagraphEnvironment environment;
-
 	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
+	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
+	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
+	{
+		handlers.put(DatagraphCommandDownload.class, new DownloadCommandHandler());
+		handlers.put(DatagraphCommandExecute.class, new ExecuteCommandHandler());
+	}
+
+	protected interface CommandHandler<I, O> {
+		void onCommand(MessagingConnection<I, O> messaging, I command);
+	}
 	/**
 	 * Constructs a datagraph server with the given environment that runs in the specified event loop.
 	 *
@@ -65,29 +74,36 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		super(eventloop);
 		this.environment = DatagraphEnvironment.extend(environment)
 				.set(DatagraphServer.class, this);
+		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
+		this.serializer = ofGson(serialization.gson, DatagraphCommand.class, serialization.gson, DatagraphResponse.class);
 	}
 
-	private void onDownload(final DatagraphCommandDownload item, Messaging<DatagraphResponse> messaging) {
-		messaging.shutdownReader();
-		StreamId streamId = item.streamId;
-		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
-		if (forwarder != null) {
-			logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
-		} else {
-			logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-			forwarder = new StreamForwarder<>(eventloop);
-			pendingStreams.put(streamId, forwarder);
+	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
+		@Override
+		public void onCommand(MessagingConnection<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+			StreamId streamId = command.streamId;
+			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+			if (forwarder != null) {
+				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
+			} else {
+				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
+				forwarder = new StreamForwarder<>(eventloop);
+				pendingStreams.put(streamId, forwarder);
+			}
+			messaging.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
 		}
-		messaging.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
 	}
 
-	private void onExecute(DatagraphCommandExecute item, Messaging<DatagraphResponse> messaging) {
-		messaging.shutdown();
-		TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
-		for (Node node : item.getNodes()) {
-			node.createAndBind(taskContext);
+	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
+		@Override
+		public void onCommand(MessagingConnection<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
+			messaging.close();
+			TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
+			for (Node node : command.getNodes()) {
+				node.createAndBind(taskContext);
+			}
+			taskContext.wireAll();
 		}
-		taskContext.wireAll();
 	}
 
 	public <T> StreamConsumer<T> upload(final StreamId streamId, Class<T> type) {
@@ -109,24 +125,35 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	@Override
-	protected NioChannelEventHandler createConnection(SocketChannel socketChannel) {
-		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
-		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, serialization.gson, DatagraphCommand.class, 256 * 1024),
-				new StreamGsonSerializer<>(eventloop, serialization.gson, DatagraphResponse.class, 256 * 1024, 256 * (1 << 20), 0))
-				.addHandler(DatagraphCommandDownload.class, new MessagingHandler<DatagraphCommandDownload, DatagraphResponse>() {
-					@Override
-					public void onMessage(DatagraphCommandDownload item, Messaging<DatagraphResponse> messaging) {
-						onDownload(item, messaging);
-					}
+	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+		final MessagingConnection<DatagraphCommand, DatagraphResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
+		messaging.read(new ResultCallback<Messaging.MessageOrEndOfStream<DatagraphCommand>>() {
+			@Override
+			public void onResult(Messaging.MessageOrEndOfStream<DatagraphCommand> result) {
+				if (result.isEndOfStream()) {
+					logger.warn("unexpected end of stream");
+				} else {
+					onRead(messaging, result.getMessage());
+				}
+			}
 
-				})
-				.addHandler(DatagraphCommandExecute.class, new MessagingHandler<DatagraphCommandExecute, DatagraphResponse>() {
-					@Override
-					public void onMessage(DatagraphCommandExecute item, Messaging<DatagraphResponse> messaging) {
-						onExecute(item, messaging);
-					}
-				});
+			@Override
+			public void onException(Exception e) {
+				logger.error("received error while reading", e);
+				messaging.close();
+			}
+		});
+		return messaging;
 	}
 
+	private void onRead(MessagingConnection<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
+		CommandHandler handler = handlers.get(command.getClass());
+		if (handler == null) {
+			messaging.close();
+			logger.error("missing handler for " + command);
+		} else {
+			//noinspection unchecked
+			handler.onCommand(messaging, command);
+		}
+	}
 }

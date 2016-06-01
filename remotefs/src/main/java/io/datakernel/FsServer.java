@@ -41,11 +41,10 @@ import java.util.Map;
 
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
-@SuppressWarnings("unchecked")
 public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> {
 	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 	protected final FileManager fileManager;
-	private MessagingSerializer serializer = ofGson(getCommandGSON(), FsCommand.class, getResponseGson(), FsResponse.class);
+	private MessagingSerializer<FsCommand, FsResponse> serializer = ofGson(getCommandGSON(), FsCommand.class, getResponseGson(), FsResponse.class);
 
 	// creators & builder methods
 	protected FsServer(Eventloop eventloop, FileManager fileManager) {
@@ -89,7 +88,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		void onMessage(MessagingConnection<I, O> messaging, I item);
 	}
 
-	protected final Map<Class, MessagingHandler> handlers = new HashMap();
+	protected final Map<Class, MessagingHandler> handlers = new HashMap<>();
 
 	{
 		handlers.put(Upload.class, new UploadMessagingHandler());
@@ -104,6 +103,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			messaging.close();
 			logger.error("missing handler for " + item);
 		} else {
+			//noinspection unchecked
 			handler.onMessage(messaging, item);
 		}
 	}

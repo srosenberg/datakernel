@@ -45,12 +45,11 @@ import static io.datakernel.FsResponses.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
-@SuppressWarnings("unchecked")
 public abstract class FsClient {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
-	private MessagingSerializer serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
+	private MessagingSerializer<FsResponse, FsCommand> serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
 
 	private SocketSettings socketSettings = SocketSettings.defaultSocketSettings();
 
@@ -89,7 +88,7 @@ public abstract class FsClient {
 
 	protected Gson getResponseGson() {return responseGson;}
 
-	protected MessagingConnection getMessaging(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected MessagingConnection<FsResponse, FsCommand> getMessaging(AsyncTcpSocketImpl asyncTcpSocket) {
 		return new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
 	}
 
