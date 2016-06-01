@@ -33,7 +33,7 @@ import org.junit.Test;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -134,6 +134,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -170,6 +171,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -212,6 +214,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -235,6 +238,7 @@ public class AsyncHttpClientTest {
 
 					@Override
 					public void onRead(ByteBuf buf) {
+						buf.recycle();
 						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
 					}
 
@@ -282,6 +286,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());

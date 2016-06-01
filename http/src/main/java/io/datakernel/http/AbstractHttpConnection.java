@@ -114,6 +114,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	public final void close() {
 		asyncTcpSocket.close();
+		readQueue.clear();
 		onClosed();
 	}
 
@@ -121,6 +122,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		if (isClosed()) return;
 		eventloop.recordIoError(e, this);
 		asyncTcpSocket.close();
+		readQueue.clear();
 		onClosedWithError(e);
 	}
 
@@ -213,7 +215,11 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.position(), value.remaining());
-			check(contentLength <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
+
+			if (contentLength > maxHttpMessageSize) {
+				value.recycle();
+				throw TOO_BIG_HTTP_MESSAGE;
+			}
 		} else if (header == CONNECTION) {
 			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.position(), value.remaining());
 		} else if (header == TRANSFER_ENCODING) {
