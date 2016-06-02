@@ -23,10 +23,16 @@ import io.datakernel.util.Stopwatch;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
@@ -46,6 +52,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// SSL
+	private List<Integer> sslPorts;
 	private SSLContext sslContext;
 	private ExecutorService executor;
 
@@ -78,8 +85,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	public AsyncHttpServer enableSsl(SSLContext sslContext, ExecutorService executor) {
-		this.sslContext = sslContext;
-		this.executor = executor;
+		return enableSslOnPorts(sslContext, executor, new ArrayList<Integer>());
+	}
+
+	public AsyncHttpServer enableSslOnPorts(SSLContext sslContext, ExecutorService executor, List<Integer> sslPorts) {
+		this.sslContext = checkNotNull(sslContext);
+		this.executor = checkNotNull(executor);
+		this.sslPorts = checkNotNull(sslPorts);
 		return this;
 	}
 
@@ -135,7 +147,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		assert eventloop.inEventloopThread();
 
 		AsyncSslSocket asyncSslSocket = null;
-		if (sslContext != null) {
+		if (sslContext != null && isAcceptedOnSslPort(asyncTcpSocket)) {
 			SSLEngine ssl = sslContext.createSSLEngine();
 			ssl.setUseClientMode(false);
 			asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
@@ -154,9 +166,18 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return asyncSslSocket != null ? asyncSslSocket : connection;
 	}
 
-	/**
-	 * Closes all connections from this server
-	 */
+	private boolean isAcceptedOnSslPort(AsyncTcpSocketImpl asyncTcpSocket) {
+		if (sslPorts.isEmpty()) return true;
+		SocketChannel socketChannel = asyncTcpSocket.getSocketChannel();
+		try {
+			int localAcceptedPort = ((InetSocketAddress) socketChannel.getLocalAddress()).getPort();
+			return sslPorts.contains(localAcceptedPort);
+		} catch (IOException e) {
+			// TODO: (arashev) handle?
+			return false;
+		}
+	}
+
 	@Override
 	protected void onClose() {
 		closeConnections();
@@ -180,15 +201,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	protected void onListen() {
 	}
 
-	// JMX
+	/* TODO (vmykhalko) JMX
+	@JmxAttribute
+	public JmxRefreshableStats<?> getConnectionsCount() {
+		return JmxStatsWrappers.forSummableValue(connectionsList.size());
+	}
 
-//	@JmxAttribute
-//	public JmxRefreshableStats<?> getConnectionsCount() {
-//		return JmxStatsWrappers.forSummableValue(connectionsList.size());
-//	}
-
-	// TODO (vmykhalko)
-/*	@Override
+	@Override
 	public void startMonitoring() {
 		monitoring = true;
 	}

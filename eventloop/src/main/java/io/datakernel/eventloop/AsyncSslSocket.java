@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 
-public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
+public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler, SecuredAsyncSocket {
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final ExecutorService executor;

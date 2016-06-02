@@ -23,6 +23,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SecuredAsyncSocket;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
@@ -236,5 +237,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Nullable
 	public InetSocketAddress getRemoteSocketAddress() {
 		return remoteSocketAddress;
+	}
+
+	public boolean isSecuredConnection() {
+		return this.asyncTcpSocket instanceof SecuredAsyncSocket;
 	}
 }

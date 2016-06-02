@@ -183,7 +183,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return count;
 	}
 
-	private HttpClientConnection getFreeConnection(InetSocketAddress address) {
+	private HttpClientConnection getFreeConnection(HttpRequest request, InetSocketAddress address) {
 		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
 		if (list == null)
 			return null;
@@ -192,12 +192,23 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			if (connection == null)
 				break;
 			if (!connection.isClosed()) {
+				if (isHttpsRequest(request)) {
+					if (!connection.isSecuredConnection()) {
+						return null;
+					}
+				} else {
+					if (connection.isSecuredConnection()) {
+						return null;
+					}
+				}
 				connection.ipConnectionListNode = null;
 				return connection;
 			}
 		}
 		return null;
 	}
+
+	private boolean isHttpsRequest(HttpRequest request) {return request.getUrl().getSchema().equals("https");}
 
 	/**
 	 * Puts the client connection to connections cache
@@ -301,7 +312,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		final long timeoutTime = eventloop.currentTimeMillis() + timeout;
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
-		HttpClientConnection connection = getFreeConnection(address);
+		HttpClientConnection connection = getFreeConnection(request, address);
 		if (connection != null) {
 			sendRequest(connection, request, timeoutTime, callback);
 			return;
@@ -314,7 +325,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 				logger.trace("eventloop.connect.onConnect Calling {}", request);
 				removePendingSocketConnect(address);
 				AsyncSslSocket asyncSslSocket = null;
-				if (sslContext != null) {
+				if (sslContext != null && isHttpsRequest(request)) {
 					SSLEngine ssl = sslContext.createSSLEngine();
 					ssl.setUseClientMode(true);
 					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
