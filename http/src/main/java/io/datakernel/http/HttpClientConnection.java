@@ -21,9 +21,9 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SecuredAsyncSocket;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
@@ -240,6 +240,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	public boolean isSecuredConnection() {
-		return this.asyncTcpSocket instanceof SecuredAsyncSocket;
+		return this.asyncTcpSocket instanceof AsyncSslSocket;
 	}
 }

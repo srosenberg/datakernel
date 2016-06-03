@@ -60,7 +60,7 @@ public class MessagingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), Integer.class, new Gson(), Integer.class));
 				pong(messaging);
@@ -145,7 +145,7 @@ public class MessagingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
@@ -213,7 +213,7 @@ public class MessagingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
@@ -285,7 +285,7 @@ public class MessagingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
@@ -379,7 +379,7 @@ public class MessagingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 

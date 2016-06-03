@@ -68,7 +68,7 @@ public final class SocketStreamingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
@@ -119,7 +119,7 @@ public final class SocketStreamingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
@@ -181,7 +181,7 @@ public final class SocketStreamingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
@@ -243,7 +243,7 @@ public final class SocketStreamingConnectionTest {
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
 				streamDeserializer.getOutput().streamTo(consumerToListWithError);

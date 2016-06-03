@@ -45,6 +45,9 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 
 public class TestHttpsClientServer {
+
+	public static final int PORT = 5590;
+
 	static {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.TRACE);
@@ -67,14 +70,13 @@ public class TestHttpsClientServer {
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
-				.enableSsl(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor)
-				.setListenPort(5590);
+				.setListenSecurePort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, 5590);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
 				.enableSsl(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
-		HttpRequest request = post("https://127.0.0.1:" + 5590).body(wrapAscii("Hello, I am Alice!"));
+		HttpRequest request = post("https://127.0.0.1:" + PORT).body(wrapAscii("Hello, I am Alice!"));
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
 		server.listen();

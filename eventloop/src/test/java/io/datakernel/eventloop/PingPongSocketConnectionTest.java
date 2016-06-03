@@ -25,7 +25,7 @@ public class PingPongSocketConnectionTest {
 
 		final AbstractServer ppServer = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
 				return new ServerConnection(asyncTcpSocket);
 			}
 		};
@@ -49,10 +49,10 @@ public class PingPongSocketConnectionTest {
 	}
 
 	private class ServerConnection implements AsyncTcpSocket.EventHandler {
-		private final AsyncTcpSocketImpl asyncTcpSocket;
+		private final AsyncTcpSocket asyncTcpSocket;
 		int counter;
 
-		public ServerConnection(AsyncTcpSocketImpl asyncTcpSocket) {
+		public ServerConnection(AsyncTcpSocket asyncTcpSocket) {
 			this.asyncTcpSocket = asyncTcpSocket;
 			counter = 0;
 		}

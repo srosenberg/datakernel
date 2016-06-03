@@ -60,8 +60,7 @@ public class TestHttpsServer {
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
-				.enableSsl(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor)
-				.setListenPort(PORT);
+				.setListenSecurePort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT);
 
 		System.out.println("https://127.0.0.1:" + PORT);
 

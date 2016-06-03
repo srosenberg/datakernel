@@ -24,13 +24,14 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 
-public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler, SecuredAsyncSocket {
+public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final ExecutorService executor;
@@ -153,6 +154,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		if (!isOpen()) return;
 		open = false;
 		upstream.close();
+	}
+
+	@Override
+	public InetSocketAddress getRemoteSocketAddress() {
+		return upstream.getRemoteSocketAddress();
 	}
 
 	public boolean isOpen() {

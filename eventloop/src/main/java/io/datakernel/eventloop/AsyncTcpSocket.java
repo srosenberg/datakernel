@@ -18,6 +18,8 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 
+import java.net.InetSocketAddress;
+
 public interface AsyncTcpSocket {
 	interface EventHandler {
 		void onRegistered();
@@ -40,4 +42,6 @@ public interface AsyncTcpSocket {
 	void writeEndOfStream();
 
 	void close();
+
+	InetSocketAddress getRemoteSocketAddress();
 }

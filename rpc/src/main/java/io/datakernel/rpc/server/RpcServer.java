@@ -18,7 +18,6 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
@@ -105,7 +104,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
 		RpcServerConnection connection = new RpcServerConnection(eventloop, this, asyncTcpSocket,
 				messageSerializer, handlers, protocolFactory);

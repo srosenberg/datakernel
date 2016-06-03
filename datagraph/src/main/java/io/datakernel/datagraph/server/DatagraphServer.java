@@ -27,7 +27,6 @@ import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
@@ -125,7 +124,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	@Override
-	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		final MessagingConnection<DatagraphCommand, DatagraphResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
 		messaging.read(new ResultCallback<Messaging.MessageOrEndOfStream<DatagraphCommand>>() {
 			@Override

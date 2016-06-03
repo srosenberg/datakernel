@@ -25,7 +25,6 @@ import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -63,7 +62,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	// set up connection
 	@Override
-	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		final MessagingConnection<FsCommand, FsResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
 		messaging.read(new ResultCallback<MessageOrEndOfStream<FsCommand>>() {
 			@Override

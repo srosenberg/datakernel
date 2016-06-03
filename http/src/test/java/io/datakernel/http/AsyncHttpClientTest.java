@@ -24,7 +24,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
@@ -229,7 +228,7 @@ public class AsyncHttpClientTest {
 
 		final AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocketImpl asyncTcpSocket) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
 				return new AsyncTcpSocket.EventHandler() {
 					@Override
 					public void onRegistered() {

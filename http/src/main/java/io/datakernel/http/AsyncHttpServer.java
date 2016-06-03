@@ -17,22 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.Stopwatch;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
@@ -50,11 +43,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
-
-	// SSL
-	private List<Integer> sslPorts;
-	private SSLContext sslContext;
-	private ExecutorService executor;
 
 	//JMX
 	private final ValueStats timeCheckExpired;
@@ -82,17 +70,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		// JMX
 		this.timeCheckExpired = new ValueStats();
 		this.expiredConnections = new ValueStats();
-	}
-
-	public AsyncHttpServer enableSsl(SSLContext sslContext, ExecutorService executor) {
-		return enableSslOnPorts(sslContext, executor, new ArrayList<Integer>());
-	}
-
-	public AsyncHttpServer enableSslOnPorts(SSLContext sslContext, ExecutorService executor, List<Integer> sslPorts) {
-		this.sslContext = checkNotNull(sslContext);
-		this.executor = checkNotNull(executor);
-		this.sslPorts = checkNotNull(sslPorts);
-		return this;
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -143,39 +120,16 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Override
-	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
 
-		AsyncSslSocket asyncSslSocket = null;
-		if (sslContext != null && isAcceptedOnSslPort(asyncTcpSocket)) {
-			SSLEngine ssl = sslContext.createSSLEngine();
-			ssl.setUseClientMode(false);
-			asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
-		}
-
-		HttpServerConnection connection = new HttpServerConnection(eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(),
-				asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
+		HttpServerConnection connection = new HttpServerConnection(
+				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
 
-		if (asyncSslSocket != null) {
-			asyncSslSocket.setEventHandler(connection);
-		}
+		if (connectionsList.isEmpty()) scheduleExpiredConnectionCheck();
 
-		if (connectionsList.isEmpty())
-			scheduleExpiredConnectionCheck();
-		return asyncSslSocket != null ? asyncSslSocket : connection;
-	}
-
-	private boolean isAcceptedOnSslPort(AsyncTcpSocketImpl asyncTcpSocket) {
-		if (sslPorts.isEmpty()) return true;
-		SocketChannel socketChannel = asyncTcpSocket.getSocketChannel();
-		try {
-			int localAcceptedPort = ((InetSocketAddress) socketChannel.getLocalAddress()).getPort();
-			return sslPorts.contains(localAcceptedPort);
-		} catch (IOException e) {
-			// TODO: (arashev) handle?
-			return false;
-		}
+		return connection;
 	}
 
 	@Override

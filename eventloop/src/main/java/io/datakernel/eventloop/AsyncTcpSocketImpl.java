@@ -287,6 +287,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return key != null;
 	}
 
+	@Override
 	public InetSocketAddress getRemoteSocketAddress() {
 		try {
 			return (InetSocketAddress) channel.getRemoteAddress();
