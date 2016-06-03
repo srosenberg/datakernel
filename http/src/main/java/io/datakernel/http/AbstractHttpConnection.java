@@ -144,7 +144,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	 */
 	protected abstract void onHttpMessage(ByteBuf bodyBuf);
 
-	private ByteBuf takeLine() {
+	private ByteBuf takeHeader() {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
 			ByteBuf buf = readQueue.peekBuf(i);
@@ -152,7 +152,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				if (buf.at(p) == LF) {
 
 					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-					if ((p + 1 < buf.limit()) && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+					if (isMultilineHeader(buf, p)) {
 						preprocessMultiLine(buf, p);
 						continue;
 					}
@@ -169,6 +169,21 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			offset += buf.remaining();
 		}
 		return null;
+	}
+
+	private boolean isMultilineHeader(ByteBuf buf, int p) {
+		// ensure CRLF
+		if (p + 1 < buf.limit() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+			if (p > 0 && buf.at(p - 1) == CR) {
+				if (p > 1 && buf.at(p - 2) == LF) {
+					return false;
+				}
+			} else if (buf.at(p - 1) == LF) {
+				return false;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	private void preprocessMultiLine(ByteBuf buf, int pos) {
@@ -363,14 +378,14 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 			while (true) {
 				assert !isClosed();
 				assert reading == FIRSTLINE || reading == HEADERS;
-				ByteBuf line = takeLine();
-				if (line == null) {
+				ByteBuf headerBuf = takeHeader();
+				if (headerBuf == null) { // states that more bytes are being required
 					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
 					return;
 				}
 
-				if (!line.hasRemaining()) {
-					line.recycle();
+				if (!headerBuf.hasRemaining()) {
+					headerBuf.recycle();
 
 					if (reading == FIRSTLINE)
 						throw new ParseException("Empty response from server");
@@ -385,13 +400,13 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 				}
 
 				if (reading == FIRSTLINE) {
-					onFirstLine(line);
-					line.recycle();
+					onFirstLine(headerBuf);
+					headerBuf.recycle();
 					reading = HEADERS;
 					maxHeaders = MAX_HEADERS;
 				} else {
 					check(--maxHeaders >= 0, TOO_MANY_HEADERS);
-					onHeader(line);
+					onHeader(headerBuf);
 				}
 			}
 		}
