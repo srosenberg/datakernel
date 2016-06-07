@@ -19,11 +19,10 @@ package io.datakernel;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public final class FileManager {
 		}
 	}
 
-	public void get(String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
+	public void get(String fileName, final long startPosition, final ResultCallback<StreamFileReader> callback) {
 		logger.trace("downloading file: {}, position: {}", fileName, startPosition);
 		AsyncFile.open(eventloop, executor, storagePath.resolve(fileName),
 				new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
@@ -80,7 +79,7 @@ public final class FileManager {
 				});
 	}
 
-	public void save(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
+	public void save(String fileName, final ResultCallback<StreamFileWriter> callback) {
 		logger.trace("uploading file: {}", fileName);
 		ensureDirectory(storagePath, fileName, new ForwardingResultCallback<Path>(callback) {
 			@Override

@@ -20,10 +20,8 @@ import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -110,9 +108,9 @@ public class TestFileManager {
 		FileManager fs = new FileManager(eventloop, executor, storage);
 		final Path inputFile = client.resolve("c.txt");
 
-		fs.save("1/c.txt", new ForwardingResultCallback<StreamConsumer<ByteBuf>>(ignoreCompletionCallback()) {
+		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(ignoreCompletionCallback()) {
 			@Override
-			public void onResult(StreamConsumer<ByteBuf> writer) {
+			public void onResult(StreamFileWriter writer) {
 				try {
 					readFileFully(eventloop,
 							open(eventloop, executor, inputFile, READ_OPTIONS), bufferSize)
@@ -134,9 +132,9 @@ public class TestFileManager {
 		FileManager fs = new FileManager(eventloop, executor, storage);
 		final Path outputFile = client.resolve("d.txt");
 
-		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamProducer<ByteBuf>>(ignoreResultCallback()) {
+		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(ignoreResultCallback()) {
 			@Override
-			public void onResult(StreamProducer<ByteBuf> reader) {
+			public void onResult(StreamFileReader reader) {
 				try {
 					reader.streamTo(
 							StreamFileWriter.create(eventloop, open(
@@ -156,7 +154,7 @@ public class TestFileManager {
 	@Test
 	public void testDoDownloadFailed() throws Exception {
 		FileManager fs = new FileManager(eventloop, executor, storage);
-		ResultCallbackFuture<StreamProducer<ByteBuf>> callbackFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<StreamFileReader> callbackFuture = new ResultCallbackFuture<>();
 
 		fs.get("no_file.txt", 0, callbackFuture);
 		eventloop.run();

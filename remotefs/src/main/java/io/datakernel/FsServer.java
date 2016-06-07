@@ -45,10 +45,13 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	protected final FileManager fileManager;
 	private MessagingSerializer<FsCommand, FsResponse> serializer = ofGson(getCommandGSON(), FsCommand.class, getResponseGson(), FsResponse.class);
 
+	protected final Map<Class, MessagingHandler> handlers;
+
 	// creators & builder methods
 	protected FsServer(Eventloop eventloop, FileManager fileManager) {
 		super(eventloop);
 		this.fileManager = fileManager;
+		this.handlers = createHandlers();
 	}
 
 	// abstract core methods
@@ -83,19 +86,6 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		return messaging;
 	}
 
-	protected interface MessagingHandler<I, O> {
-		void onMessage(MessagingConnection<I, O> messaging, I item);
-	}
-
-	protected final Map<Class, MessagingHandler> handlers = new HashMap<>();
-
-	{
-		handlers.put(Upload.class, new UploadMessagingHandler());
-		handlers.put(Download.class, new DownloadMessagingHandler());
-		handlers.put(Delete.class, new DeleteMessagingHandler());
-		handlers.put(ListFiles.class, new ListFilesMessagingHandler());
-	}
-
 	private void onRead(MessagingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
 		MessagingHandler handler = handlers.get(item.getClass());
 		if (handler == null) {
@@ -113,6 +103,19 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	protected Gson getCommandGSON() {
 		return FsCommands.commandGSON;
+	}
+
+	protected interface MessagingHandler<I, O> {
+		void onMessage(MessagingConnection<I, O> messaging, I item);
+	}
+
+	private Map<Class, MessagingHandler> createHandlers() {
+		Map<Class, MessagingHandler> map = new HashMap<>();
+		map.put(Upload.class, new UploadMessagingHandler());
+		map.put(Download.class, new DownloadMessagingHandler());
+		map.put(Delete.class, new DeleteMessagingHandler());
+		map.put(ListFiles.class, new ListFilesMessagingHandler());
+		return map;
 	}
 
 	// handler classes

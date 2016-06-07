@@ -18,10 +18,9 @@ package io.datakernel.hashfs;
 
 import io.datakernel.FileManager;
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -215,9 +214,9 @@ public final class LocalReplica implements EventloopService {
 
 	private void replicate(final Replica server, final String file) {
 		onReplicationStart(file);
-		fileManager.get(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
+		fileManager.get(file, 0, new ResultCallback<StreamFileReader>() {
 			@Override
-			public void onResult(StreamProducer<ByteBuf> reader) {
+			public void onResult(StreamFileReader reader) {
 				client.makeReplica(server, file, reader, new ForwardingCompletionCallback(this) {
 					@Override
 					public void onComplete() {

@@ -19,13 +19,13 @@ package io.datakernel.hashfs;
 import com.google.gson.Gson;
 import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.net.MessagingConnection;
 
 import java.util.List;
@@ -44,6 +44,8 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	public HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
 		super(eventloop, localReplica.getFileManager());
 		this.localReplica = localReplica;
+		this.handlers.put(Alive.class, new AliveMessagingHandler());
+		this.handlers.put(Announce.class, new AnnounceMessagingHandler());
 	}
 
 	// core
@@ -51,8 +53,25 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	protected final void upload(final String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
 		if (localReplica.canUpload(fileName)) {
 			localReplica.onUploadStart(fileName);
-			// TODO: (arashev) logic violation
-			fileManager.save(fileName, callback);
+			fileManager.save(fileName, new ResultCallback<StreamFileWriter>() {
+				@Override
+				public void onResult(StreamFileWriter writer) {
+					logger.trace("{} opened", writer);
+					writer.setFlushCallback(new ForwardingCompletionCallback(this) {
+						@Override
+						public void onComplete() {
+							localReplica.onUploadComplete(fileName);
+						}
+					});
+					callback.onResult(writer);
+				}
+
+				@Override
+				public void onException(Exception e) {
+					localReplica.onUploadFailed(fileName);
+					callback.onException(e);
+				}
+			});
 		} else {
 			logger.warn("refused to upload {}", fileName);
 			callback.onException(new Exception("Refused to upload file"));
@@ -63,8 +82,26 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	protected final void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		if (localReplica.canDownload(fileName)) {
 			localReplica.onDownloadStart(fileName);
-			// TODO: (arashev) logic violation
-			fileManager.get(fileName, startPosition, callback);
+			fileManager.get(fileName, startPosition, new ResultCallback<StreamFileReader>() {
+				@Override
+				public void onResult(StreamFileReader reader) {
+					logger.trace("{} opened", reader);
+					reader.setPositionCallback(new ForwardingResultCallback<Long>(this) {
+						@Override
+						public void onResult(Long result) {
+							logger.trace("streamed {} bytes for {}", result - startPosition, fileName);
+							localReplica.onDownloadComplete(fileName);
+						}
+					});
+					callback.onResult(reader);
+				}
+
+				@Override
+				public void onException(Exception e) {
+					localReplica.onDownloadFailed(fileName);
+					callback.onException(e);
+				}
+			});
 		} else {
 			logger.warn("refused to download {}", fileName);
 			callback.onException(new Exception("Refused to download file"));
@@ -107,11 +144,6 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	@Override
 	protected Gson getCommandGSON() {
 		return HashFsCommands.commandGSON;
-	}
-
-	{
-		handlers.put(Alive.class, new AliveMessagingHandler());
-		handlers.put(Announce.class, new AnnounceMessagingHandler());
 	}
 
 	private class AliveMessagingHandler implements MessagingHandler<Alive, FsResponse> {
