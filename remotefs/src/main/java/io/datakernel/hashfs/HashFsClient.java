@@ -275,10 +275,10 @@ public final class HashFsClient extends FsClient {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-				messaging.write(new HashFsCommands.Alive(), new ForwardingCompletionCallback(callback) {
+				messaging.write(new HashFsCommands.Alive(), new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						messaging.read(new ForwardingResultCallback<Messaging.MessageOrEndOfStream<FsResponse>>(callback) {
+						messaging.read(new ForwardingResultCallback<Messaging.MessageOrEndOfStream<FsResponse>>(this) {
 							@Override
 							public void onResult(Messaging.MessageOrEndOfStream<FsResponse> result) {
 								if (result.isEndOfStream()) {
@@ -300,6 +300,12 @@ public final class HashFsClient extends FsClient {
 								}
 							}
 						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.close();
+						callback.onException(e);
 					}
 				});
 				return messaging;

@@ -342,12 +342,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	private boolean isAcceptedOnSecuredPort(AsyncTcpSocketImpl asyncTcpSocket) {
-		if (secureListenAddresses.isEmpty()) return true;
+		if (secureListenAddresses.isEmpty()) return false;
 		SocketChannel socketChannel = asyncTcpSocket.getSocketChannel();
 		try {
 			InetSocketAddress address = (InetSocketAddress) socketChannel.getLocalAddress();
 			for (InetSocketAddress listenAddress : secureListenAddresses) {
-				if (isInetAddressAny(listenAddress) || listenAddress.equals(address)) {
+				if ((isInetAddressAny(listenAddress) && listenAddress.getPort() == address.getPort()) || listenAddress.equals(address)) {
 					return true;
 				}
 			}

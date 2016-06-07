@@ -75,6 +75,10 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 			send(buf);
 		}
 		if (readEndOfStream) {
+			if (readQueue.hasRemaining()) {
+				ByteBuf buf = readQueue.takeRemaining();
+				send(buf);
+			}
 			sendEndOfStream();
 		} else if (readQueue.remainingBufs() <= 1) {
 			asyncTcpSocket.read();

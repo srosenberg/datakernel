@@ -19,9 +19,7 @@ package io.datakernel;
 import com.google.gson.Gson;
 import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -125,38 +123,13 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			messaging.write(new Ok(), new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					upload(item.filePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
+					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBuf>>(this) {
 						@Override
 						public void onResult(StreamConsumer<ByteBuf> result) {
-							messaging.readStream(result, new CompletionCallback() {
+							messaging.readStream(result, new ForwardingCompletionCallback(this) {
 								@Override
 								public void onComplete() {
-									messaging.write(new Acknowledge(), new SimpleCompletionCallback() {
-										@Override
-										protected void onCompleteOrException() {
-											messaging.close();
-										}
-									});
-								}
-
-								@Override
-								public void onException(Exception e) {
-									messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-										@Override
-										protected void onCompleteOrException() {
-											messaging.close();
-										}
-									});
-								}
-							});
-						}
-
-						@Override
-						public void onException(Exception e) {
-							messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-								@Override
-								protected void onCompleteOrException() {
-									messaging.close();
+									messaging.writeAndClose(new Acknowledge());
 								}
 							});
 						}
@@ -165,12 +138,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 				@Override
 				public void onException(Exception e) {
-					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new Err(e.getMessage()));
 				}
 			});
 		}
@@ -183,45 +151,20 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 				@Override
 				public void onResult(final Long size) {
 					if (size < 0) {
-						messaging.write(new Err("File not found"), new SimpleCompletionCallback() {
-							@Override
-							protected void onCompleteOrException() {
-								messaging.close();
-							}
-						});
+						messaging.writeAndClose(new Err("File not found"));
 					} else {
-						download(item.filePath, item.startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
+						messaging.write(new Ready(size), new ForwardingCompletionCallback(this) {
 							@Override
-							public void onResult(final StreamProducer<ByteBuf> result) {
-								messaging.write(new Ready(size), new CompletionCallback() {
+							public void onComplete() {
+								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBuf>>(this) {
 									@Override
-									public void onComplete() {
+									public void onResult(final StreamProducer<ByteBuf> result) {
 										messaging.writeStream(result, new SimpleCompletionCallback() {
 											@Override
 											protected void onCompleteOrException() {
 												messaging.close();
 											}
 										});
-									}
-
-									@Override
-									public void onException(Exception e) {
-										messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-											@Override
-											protected void onCompleteOrException() {
-												messaging.close();
-											}
-										});
-									}
-								});
-							}
-
-							@Override
-							public void onException(Exception e) {
-								messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-									@Override
-									protected void onCompleteOrException() {
-										messaging.close();
 									}
 								});
 							}
@@ -231,12 +174,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 				@Override
 				public void onException(Exception e) {
-					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new Err(e.getMessage()));
 				}
 			});
 		}
@@ -248,22 +186,12 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					messaging.write(new Ok(), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new Ok());
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new Err(e.getMessage()));
 				}
 			});
 		}
@@ -275,22 +203,12 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			list(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					messaging.write(new ListOfFiles(result), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new ListOfFiles(result));
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.write(new Err(e.getMessage()), new SimpleCompletionCallback() {
-						@Override
-						protected void onCompleteOrException() {
-							messaging.close();
-						}
-					});
+					messaging.writeAndClose(new Err(e.getMessage()));
 				}
 			});
 		}

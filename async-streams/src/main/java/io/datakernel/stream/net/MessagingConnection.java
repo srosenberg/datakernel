@@ -19,6 +19,7 @@ package io.datakernel.stream.net;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -246,5 +247,14 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public String toString() {
 		return "{asyncTcpSocket=" + asyncTcpSocket + "}";
+	}
+
+	public void writeAndClose(O msg) {
+		write(msg, new SimpleCompletionCallback() {
+			@Override
+			protected void onCompleteOrException() {
+				close();
+			}
+		});
 	}
 }

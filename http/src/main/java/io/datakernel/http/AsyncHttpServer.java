@@ -26,14 +26,11 @@ import io.datakernel.util.Stopwatch;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.util.Preconditions.check;
 
-/**
- * A HttpServer is bound to an IP address and port number and listens for incoming connections
- * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
- */
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
-	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
+	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
 	private final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
@@ -43,6 +40,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
+	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
 	//JMX
 	private final ValueStats timeCheckExpired;
@@ -50,12 +48,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private boolean monitoring;
 	private volatile double smoothingWindow = 10.0;
 
-	/**
-	 * Creates new instance of AsyncHttpServer
-	 *
-	 * @param eventloop eventloop in which will handle this connection
-	 * @param servlet   servlet for handling requests
-	 */
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
 		this.connectionsList = new ExposedLinkedList<>();
@@ -70,6 +62,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		// JMX
 		this.timeCheckExpired = new ValueStats();
 		this.expiredConnections = new ValueStats();
+	}
+
+	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
+		check(maxIdleConnectionTime > 0);
+		this.maxIdleConnectionTime = maxIdleConnectionTime;
+		return this;
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -106,7 +104,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 				assert eventloop.inEventloopThread();
 				long idleTime = now - connection.getActivityTime();
-				if (idleTime > MAX_IDLE_CONNECTION_TIME) {
+				if (idleTime > maxIdleConnectionTime) {
 					connection.close(); // self removing from this pool
 					count++;
 				}
@@ -122,14 +120,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-
-		HttpServerConnection connection = new HttpServerConnection(
+		if (connectionsList.isEmpty()) scheduleExpiredConnectionCheck();
+		return new HttpServerConnection(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
-
-		if (connectionsList.isEmpty()) scheduleExpiredConnectionCheck();
-
-		return connection;
 	}
 
 	@Override

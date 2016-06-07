@@ -216,11 +216,11 @@ public abstract class FsClient {
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Download(fileName, startPosition), new ForwardingCompletionCallback(callback) {
+			messaging.write(new Download(fileName, startPosition), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to download {} send", fileName);
-					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(this) {
 						@Override
 						public void onResult(MessageOrEndOfStream<FsResponse> result) {
 							if (result.isEndOfStream()) {
@@ -233,7 +233,7 @@ public abstract class FsClient {
 									long size = ((Ready) response).size;
 									logger.trace("received acknowledge for {} bytes ready", size, fileName);
 									StreamTransformerWithCounter stream = new StreamTransformerWithCounter(eventloop, size - startPosition);
-									messaging.readStream(stream.getInput(), new ForwardingCompletionCallback(callback) {
+									messaging.readStream(stream.getInput(), new ForwardingCompletionCallback(this) {
 										@Override
 										public void onComplete() {
 											messaging.close();
@@ -252,6 +252,12 @@ public abstract class FsClient {
 							}
 						}
 					});
+				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(new RemoteFsException(e));
 				}
 			});
 			return messaging;
@@ -275,11 +281,11 @@ public abstract class FsClient {
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Delete(fileName), new ForwardingCompletionCallback(callback) {
+			messaging.write(new Delete(fileName), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to delete {} send", fileName);
-					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(this) {
 						@Override
 						public void onResult(MessageOrEndOfStream<FsResponse> result) {
 							if (result.isEndOfStream()) {
@@ -304,6 +310,12 @@ public abstract class FsClient {
 						}
 					});
 				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(e);
+				}
 			});
 			return messaging;
 		}
@@ -322,11 +334,11 @@ public abstract class FsClient {
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new ListFiles(), new ForwardingCompletionCallback(callback) {
+			messaging.write(new ListFiles(), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to list files send");
-					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(callback) {
+					messaging.read(new ForwardingResultCallback<MessageOrEndOfStream<FsResponse>>(this) {
 						@Override
 						public void onResult(MessageOrEndOfStream<FsResponse> result) {
 							if (result.isEndOfStream()) {
@@ -350,6 +362,12 @@ public abstract class FsClient {
 							}
 						}
 					});
+				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(e);
 				}
 			});
 			return messaging;

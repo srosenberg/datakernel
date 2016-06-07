@@ -208,7 +208,9 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return null;
 	}
 
-	private boolean isHttpsRequest(HttpRequest request) {return request.getUrl().getSchema().equals("https");}
+	private boolean isHttpsRequest(HttpRequest request) {
+		return request.getUrl().getSchema().equals("https");
+	}
 
 	/**
 	 * Puts the client connection to connections cache

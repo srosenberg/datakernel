@@ -59,7 +59,7 @@ public final class StreamTransformerWithCounter extends AbstractStreamTransforme
 					positionCallback.onResult(streamedSize);
 				}
 			} else {
-				Exception e = new Exception("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
+				Exception e = new RemoteFsException("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
 				onError(e);
 				if (positionCallback != null) {
 					positionCallback.onException(e);
