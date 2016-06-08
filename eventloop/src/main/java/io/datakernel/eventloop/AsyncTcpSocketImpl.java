@@ -45,6 +45,47 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private int ops = 0;
 	private boolean writing = false;
 
+	/*--TIMEOUTS-START------------------------------------------------------------------------------------------------*/
+	private long readTimeOut = 3 * 1000;
+	private long writeTimeOut = 3 * 1000;
+
+	private ScheduledRunnable readTask;
+	private ScheduledRunnable writeTask;
+
+	void scheduleReadTimeOut() {
+		if (readTask != null) readTask.cancel();
+		readTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeOut, new Runnable() {
+			@Override
+			public void run() {
+				checkReadTimeOut();
+			}
+		});
+	}
+
+	void scheduleWriteTimeOut() {
+		if (writeTask != null) writeTask.cancel();
+		writeTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeOut, new Runnable() {
+			@Override
+			public void run() {
+				checkWriteTimeOut();
+			}
+		});
+	}
+
+	void checkReadTimeOut() {
+		if (readTask == null) return;
+		readTask = null;
+		closeWithError(new Exception("Read timed out"), false);
+	}
+
+	void checkWriteTimeOut() {
+		if (writeTask == null) return;
+		writeTask = null;
+		closeWithError(new Exception("Write timed out"), false);
+	}
+
+	/*--TIMEOUTS-END--------------------------------------------------------------------------------------------------*/
+
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
 	private final Runnable writeRunnable = new Runnable() {
@@ -110,6 +151,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
+		scheduleReadTimeOut();
 		readInterest(true);
 	}
 
@@ -118,7 +160,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		doRead();
+		if (readTask != null) {
+			readTask.cancel();
+			readTask = null;
+			doRead();
+		}
 		int newOps = ops & ~OP_POSTPONED;
 		ops = oldOps;
 		interests(newOps);
@@ -161,6 +207,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
+		scheduleWriteTimeOut();
+
 		assert !writeEndOfStream;
 		writeQueue.add(buf);
 		if (!writing) {
@@ -230,6 +278,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
+			if (writeTask != null) {
+				writeTask.cancel();
+				writeTask = null;
+			}
 			if (writeEndOfStream) {
 				if (readEndOfStream) {
 					close();
