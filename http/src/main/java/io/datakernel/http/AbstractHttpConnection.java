@@ -48,7 +48,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
 
 	private boolean closed;
-	private long activityTime;
+	private long lastUsedTime;
 
 	protected boolean keepAlive = true;
 
@@ -94,7 +94,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.asyncTcpSocket = asyncTcpSocket;
-		this.activityTime = eventloop.currentTimeMillis();
 		reset();
 		connectionsListNode = connectionsList.addLastValue(this);
 	}
@@ -132,6 +131,7 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
+		this.lastUsedTime = eventloop.currentTimeMillis();
 		contentLength = UNKNOWN_LENGTH;
 		isChunked = false;
 		bodyQueue.clear();
@@ -338,7 +338,6 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		assert eventloop.inEventloopThread();
 		assert !isClosed();
 		if (buf != null) readQueue.add(buf);
-		activityTime = eventloop.currentTimeMillis();
 
 		if (reading == NOTHING) {
 			return;
@@ -402,8 +401,8 @@ public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHand
 		readBody();
 	}
 
-	public final long getActivityTime() {
-		return activityTime;
+	public final long getLastUsedTime() {
+		return lastUsedTime;
 	}
 
 	private static void check(boolean expression, ParseException e) throws ParseException {

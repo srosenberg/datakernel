@@ -34,12 +34,12 @@ import static java.lang.Math.max;
 
 /**
  * Represent serializer which serializes data from some type to ByteBuffer.It is a {@link AbstractStreamTransformer_1_1}
- * which receives specified type and streams ByteBufs . It is one of implementation of {@link StreamSerializer}.
+ * which receives specified type and streams ByteBufs.
  *
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, EventloopJmxMBean {
+public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
@@ -289,10 +289,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
 
-	/**
-	 * Bytes will be sent immediately.
-	 */
-	@Override
 	public void flush() {
 		outputProducer.flush();
 	}

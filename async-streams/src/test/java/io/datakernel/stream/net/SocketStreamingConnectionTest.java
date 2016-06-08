@@ -18,19 +18,17 @@ package io.datakernel.stream.net;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
-import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamGsonDeserializer;
-import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -194,8 +192,8 @@ public final class SocketStreamingConnectionTest {
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 
-		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
-		final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
+		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);
+		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, BufferSerializers.intSerializer(), 10);
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
@@ -216,63 +214,6 @@ public final class SocketStreamingConnectionTest {
 		eventloop.run();
 
 		assertEquals(list.size(), 50);
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-	}
-
-	@Test
-	public void testGsonWithError() throws Exception {
-		final List<Integer> source = Lists.newArrayList();
-		for (int i = 0; i < 100; i++) {
-			source.add(i);
-		}
-
-		final Eventloop eventloop = new Eventloop();
-
-		List<Integer> list = new ArrayList<>();
-		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
-			@Override
-			public void onData(Integer item) {
-				super.onData(item);
-				if (list.size() == 50) {
-					closeWithError(new Exception("Test Exception"));
-					return;
-				}
-			}
-		};
-
-		AbstractServer server = new AbstractServer(eventloop) {
-			@Override
-			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
-				final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
-				streamDeserializer.getOutput().streamTo(consumerToListWithError);
-				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
-				return connection;
-			}
-		};
-		server.setListenAddress(address).acceptOnce();
-		server.listen();
-
-		final StreamGsonSerializer<Integer> streamSerializer = new StreamGsonSerializer<>(eventloop, new Gson(), Integer.class, 1, 50, 0);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
-			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
-				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
-				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-				return connection;
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				fail();
-			}
-		});
-
-		eventloop.run();
-
-		assertEquals(50, list.size());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

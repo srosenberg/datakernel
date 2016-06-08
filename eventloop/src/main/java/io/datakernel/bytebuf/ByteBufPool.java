@@ -179,14 +179,17 @@ public final class ByteBufPool {
 	 * @return result buffer
 	 */
 	public static ByteBuf append(ByteBuf buf, byte[] array, int offset, int size) {
-		int newPosition = buf.position() + size;
-		if (newPosition > buf.array().length) {
-			buf = resize(buf, newPosition);
+		int newLimit = buf.limit() + size;
+		int currentPosition = buf.position();
+		buf.position(buf.limit());
+		if (newLimit > buf.array().length) {
+			buf = resize(buf, newLimit);
 		}
 		System.arraycopy(array, offset, buf.array(), buf.position(), size);
-		if (newPosition > buf.limit())
-			buf.limit(newPosition);
-		buf.position(newPosition);
+		if (newLimit > buf.limit())
+			buf.limit(newLimit);
+		buf.position(currentPosition);
+		buf.limit(newLimit);
 		return buf;
 	}
 

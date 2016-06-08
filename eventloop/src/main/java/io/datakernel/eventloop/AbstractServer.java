@@ -38,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.DEFAULT_TCP_TIMEOUT;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
@@ -73,6 +74,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private SSLContext sslContext;
 	private ExecutorService executor;
 	private List<InetSocketAddress> secureListenAddresses;
+
+	// timeouts
+	private long writeTimeout = DEFAULT_TCP_TIMEOUT;
+	private long readTimeout = DEFAULT_TCP_TIMEOUT;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
@@ -146,6 +151,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return setListenSecureAddress(sslContext, executor, new InetSocketAddress(port));
 	}
 
+	public S setReadTimeout(long readTimeout) {
+		this.readTimeout = readTimeout;
+		return self();
+	}
+
+	public S setWriteTimeout(long writeTimeout) {
+		this.writeTimeout = writeTimeout;
+		return self();
+	}
+
 	/**
 	 * Sets the flag as true, which means that this server can handle only one accepting.
 	 */
@@ -177,19 +192,19 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		onListen();
 		if (listenAddresses != null) {
 			serverSocketChannels = new ArrayList<>(listenAddresses.size());
-			doListenAddresses(listenAddresses);
+			listenAddresses(listenAddresses);
 			logger.info("Listening on {}", listenAddresses);
 		}
 		if (secureListenAddresses != null) {
 			if (serverSocketChannels == null) {
 				serverSocketChannels = new ArrayList<>(secureListenAddresses.size());
 			}
-			doListenAddresses(secureListenAddresses);
+			listenAddresses(secureListenAddresses);
 			logger.info("Listening securely on {}", secureListenAddresses);
 		}
 	}
 
-	private void doListenAddresses(List<InetSocketAddress> addresses) throws IOException {
+	private void listenAddresses(List<InetSocketAddress> addresses) throws IOException {
 		for (InetSocketAddress address : addresses) {
 			try {
 				serverSocketChannels.add(eventloop.listen(address, serverSocketSettings, this));
@@ -282,6 +297,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		prepareSocket(socketChannel);
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 
+		asyncTcpSocket.setReadTimeOut(readTimeout);
+		asyncTcpSocket.setWriteTimeOut(writeTimeout);
+
 		AsyncSslSocket asyncSslSocket = null;
 		if (isSslOn() && isAcceptedOnSecuredPort(asyncTcpSocket)) {
 			asyncSslSocket = createSecureSocket(asyncTcpSocket);
@@ -363,7 +381,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	private boolean isInetAddressAny(InetSocketAddress listenAddress) {
-		return listenAddress.hashCode() == listenAddress.getPort();
+		return listenAddress.getAddress().isAnyLocalAddress();
 	}
 
 	private void ensureNotIntersect(List<InetSocketAddress> container, List<InetSocketAddress> addresses) {

@@ -18,7 +18,6 @@ package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ParseException;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -51,6 +50,8 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	private boolean writeEndOfStream;
 	private SocketStreamProducer socketReader;
 	private SocketStreamConsumer socketWriter;
+
+	private Exception closedException;
 
 	public MessagingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
@@ -125,6 +126,11 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void writeStream(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
+
+		if (closedException != null) {
+			callback.onException(closedException);
+		}
+
 		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, callback);
 		producer.streamTo(socketWriter);
 	}
@@ -132,6 +138,11 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void readStream(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
 		checkState(this.socketReader == null && this.readCallback == null);
+
+		if (closedException != null) {
+			callback.onException(closedException);
+		}
+
 		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, callback);
 		socketReader.streamTo(consumer);
 		if (readBuf != null || readEndOfStream) {
@@ -184,11 +195,8 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 				readBuf = ByteBufPool.allocate(Math.max(8192, buf.remaining()));
 				readBuf.limit(0);
 			}
-			int oldPos = readBuf.position();
-			readBuf.position(readBuf.limit());
 			readBuf = ByteBufPool.append(readBuf, buf);
 			buf.recycle();
-			readBuf.position(oldPos);
 			tryReadMessage();
 			if (readBuf == null) {
 				asyncTcpSocket.read();
@@ -232,7 +240,22 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void onClosedWithError(Exception e) {
 		logger.trace("onClosedWithError", this);
-		// TODO
+
+		if (socketReader != null) {
+			socketReader.closeWithError(e);
+		} else if (socketWriter != null) {
+			socketWriter.closeWithError(e);
+		} else {
+			closedException = e;
+		}
+
+		if (readCallback != null) {
+			readCallback.onException(e);
+		} else if (!writeCallbacks.isEmpty()) {
+			for (CompletionCallback writeCallback : writeCallbacks) {
+				writeCallback.onException(e);
+			}
+		}
 
 		if (readBuf != null) {
 			readBuf.recycle();
@@ -245,10 +268,16 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		return "{asyncTcpSocket=" + asyncTcpSocket + "}";
 	}
 
-	public void writeAndClose(O msg) {
-		write(msg, new SimpleCompletionCallback() {
+	public void writeAndClose(final O msg) {
+		write(msg, new CompletionCallback() {
 			@Override
-			protected void onCompleteOrException() {
+			public void onComplete() {
+				close();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.warn("can't send message: {}", msg, e);
 				close();
 			}
 		});

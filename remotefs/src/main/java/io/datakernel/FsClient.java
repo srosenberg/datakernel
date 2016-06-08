@@ -108,10 +108,11 @@ public abstract class FsClient {
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Upload(fileName), new CompletionCallback() {
+			final Upload upload = new Upload(fileName);
+			messaging.write(upload, new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					logger.trace("command to upload {} send", fileName);
+					logger.trace("send {}", upload);
 					messaging.read(new ReadCallback<FsResponse>() {
 						@Override
 						public void onRead(FsResponse msg) {
@@ -163,7 +164,6 @@ public abstract class FsClient {
 								if (msg instanceof Err) {
 									callback.onException(new RemoteFsException(((Err) msg).msg));
 								} else {
-									messaging.close();
 									callback.onException(new RemoteFsException("Invalid message received: " + msg));
 								}
 							}

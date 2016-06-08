@@ -124,15 +124,18 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
 		@Override
 		public void onMessage(final MessagingConnection<Upload, FsResponse> messaging, final Upload item) {
-			messaging.write(new Ok(), new CompletionCallback() {
+			final Ok ok = new Ok();
+			messaging.write(ok, new CompletionCallback() {
 				@Override
 				public void onComplete() {
+					logger.trace("send {}", ok);
 					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBuf>>(this) {
 						@Override
 						public void onResult(StreamConsumer<ByteBuf> result) {
 							messaging.readStream(result, new ForwardingCompletionCallback(this) {
 								@Override
 								public void onComplete() {
+									logger.trace("read all bytes for {}", item.filePath);
 									messaging.writeAndClose(new Acknowledge());
 								}
 							});

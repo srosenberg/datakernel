@@ -75,9 +75,9 @@ final class RpcStreamProtocol implements RpcProtocol {
 			}
 		}, rpcConnection);
 
-		StreamSerializer<RpcMessage> serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
+		StreamBinarySerializer<RpcMessage> serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
 				maxPacketSize, 0, true);
-		StreamDeserializer<RpcMessage> deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
+		StreamBinaryDeserializer<RpcMessage> deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
 		this.connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 		if (compression) {

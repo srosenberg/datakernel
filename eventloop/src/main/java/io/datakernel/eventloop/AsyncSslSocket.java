@@ -75,10 +75,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			if (net2engine.position() + buf.remaining() > net2engine.capacity()) {
 				net2engine = ByteBufPool.resize(net2engine, net2engine.remaining() + buf.remaining());
 			}
-			int oldPos = net2engine.position();
-			net2engine.position(net2engine.limit());
 			net2engine = ByteBufPool.append(net2engine, buf);
-			net2engine.position(oldPos);
 			buf.recycle();
 		}
 		sync();

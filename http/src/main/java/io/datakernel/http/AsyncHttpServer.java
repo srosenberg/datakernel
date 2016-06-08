@@ -103,7 +103,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				node = node.getNext();
 
 				assert eventloop.inEventloopThread();
-				long idleTime = now - connection.getActivityTime();
+				long idleTime = now - connection.getLastUsedTime();
 				if (idleTime > maxIdleConnectionTime) {
 					connection.close(); // self removing from this pool
 					count++;

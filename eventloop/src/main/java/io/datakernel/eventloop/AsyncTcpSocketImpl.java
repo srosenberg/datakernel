@@ -33,25 +33,78 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 	private static final int MAX_MERGE_SIZE = 16 * 1024;
+	public static final int DEFAULT_TCP_TIMEOUT = 30 * 1000;
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
 	private boolean readEndOfStream;
 	private boolean writeEndOfStream;
-	private AsyncTcpSocket.EventHandler socketEventHandler;
+	private EventHandler socketEventHandler;
 	private SelectionKey key;
 
 	private int ops = 0;
 	private boolean writing = false;
 
-	/*--TIMEOUTS-START------------------------------------------------------------------------------------------------*/
-	private long readTimeOut = 3 * 1000;
-	private long writeTimeOut = 3 * 1000;
+	private long readTimeOut = DEFAULT_TCP_TIMEOUT;
+	private long writeTimeOut = DEFAULT_TCP_TIMEOUT;
 
 	private ScheduledRunnable readTask;
 	private ScheduledRunnable writeTask;
 
+	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
+
+	private final Runnable writeRunnable = new Runnable() {
+		@Override
+		public void run() {
+			if (!writing || !isOpen())
+				return;
+			writing = false;
+			try {
+				doWrite();
+			} catch (IOException e) {
+				closeWithError(e, true);
+			}
+		}
+	};
+
+	// creators and builder methods
+	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
+		this.eventloop = checkNotNull(eventloop);
+		this.channel = checkNotNull(socketChannel);
+	}
+
+	@Override
+	public void setEventHandler(EventHandler eventHandler) {
+		this.socketEventHandler = eventHandler;
+	}
+
+	public AsyncTcpSocketImpl setReadTimeOut(long readTimeOut) {
+		this.readTimeOut = readTimeOut;
+		return this;
+	}
+
+	public AsyncTcpSocketImpl setWriteTimeOut(long writeTimeOut) {
+		this.writeTimeOut = writeTimeOut;
+		return this;
+	}
+
+	public final void register() {
+		socketEventHandler.onRegistered();
+		try {
+			key = channel.register(eventloop.ensureSelector(), ops, this);
+		} catch (final IOException e) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					closeChannel();
+					socketEventHandler.onClosedWithError(e);
+				}
+			});
+		}
+	}
+
+	// timeouts management
 	void scheduleReadTimeOut() {
 		if (readTask != null) readTask.cancel();
 		readTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeOut, new Runnable() {
@@ -84,50 +137,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		closeWithError(new Exception("Write timed out"), false);
 	}
 
-	/*--TIMEOUTS-END--------------------------------------------------------------------------------------------------*/
-
-	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
-
-	private final Runnable writeRunnable = new Runnable() {
-		@Override
-		public void run() {
-			if (!writing || !isOpen())
-				return;
-			writing = false;
-			try {
-				doWrite();
-			} catch (IOException e) {
-				closeWithError(e, true);
-			}
-		}
-	};
-
-	// creators and builder methods
-	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {
-		this.eventloop = checkNotNull(eventloop);
-		this.channel = checkNotNull(socketChannel);
-	}
-
-	@Override
-	public void setEventHandler(AsyncTcpSocket.EventHandler eventHandler) {
-		this.socketEventHandler = eventHandler;
-	}
-
-	public final void register() {
-		socketEventHandler.onRegistered();
-		try {
-			key = channel.register(eventloop.ensureSelector(), ops, this);
-		} catch (final IOException e) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					closeChannel();
-					socketEventHandler.onClosedWithError(e);
-				}
-			});
-		}
-	}
-
 	// interests management
 	@SuppressWarnings("MagicConstant")
 	private void interests(int newOps) {
@@ -151,7 +160,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
-		scheduleReadTimeOut();
 		readInterest(true);
 	}
 
@@ -160,11 +168,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		if (readTask != null) {
-			readTask.cancel();
-			readTask = null;
-			doRead();
-		}
+		doRead();
 		int newOps = ops & ~OP_POSTPONED;
 		ops = oldOps;
 		interests(newOps);
@@ -207,8 +211,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		scheduleWriteTimeOut();
-
 		assert !writeEndOfStream;
 		writeQueue.add(buf);
 		if (!writing) {
@@ -252,10 +254,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				if (bufToSend.position() + bufToSend.remaining() + bytesToCopy > bufToSend.array().length)
 					bytesToCopy += bufToSend.remaining(); // append will resize bufToSend
 				if (bytesToCopy < MAX_MERGE_SIZE) {
-					int oldPos = bufToSend.position();
-					bufToSend.position(bufToSend.limit());
 					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
-					bufToSend.position(oldPos);
 					nextBuf.recycle();
 					writeQueue.poll();
 				} else {
@@ -278,10 +277,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
-			if (writeTask != null) {
-				writeTask.cancel();
-				writeTask = null;
-			}
 			if (writeEndOfStream) {
 				if (readEndOfStream) {
 					close();
@@ -307,6 +302,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.recycle();
 		}
 		writeQueue.clear();
+		if (writeTask != null) {
+			writeTask.cancel();
+			writeTask = null;
+		}
+		if (readTask != null) {
+			readTask.cancel();
+			readTask = null;
+		}
 	}
 
 	private void closeChannel() {
@@ -354,6 +357,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	@Override
 	public String toString() {
-		return getRemoteSocketAddress().toString();
+		return channel.toString();
 	}
 }

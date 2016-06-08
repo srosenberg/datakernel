@@ -36,18 +36,17 @@ import static java.lang.Math.min;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamTransformer_1_1}
- * which receives ByteBufs and streams specified type. It is one of implementation of {@link StreamDeserializer}.
+ * which receives ByteBufs and streams specified type.
  *
  * @param <T> original type of data
  */
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, EventloopJmxMBean {
+public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
 
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
 	private final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.produce();
@@ -316,18 +315,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 				buf.array());
 	}
 
-	@Override
-	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : outputProducer.byteBufs) {
-			dataReceiver.onData(byteBuf);
-		}
-		outputProducer.byteBufs.clear();
-		outputProducer.sendEndOfStream();
-		logger.info("Deserialized {} objects from {}", outputProducer.jmxItems, inputConsumer.getUpstream());
-	}
-
 	// jmx
-
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
