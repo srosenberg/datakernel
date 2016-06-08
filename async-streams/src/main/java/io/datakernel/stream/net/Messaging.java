@@ -16,31 +16,20 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 
 public interface Messaging<I, O> extends SocketStreaming {
-	final class MessageOrEndOfStream<I> {
-		@Nullable
-		I message;
+	interface ReadCallback<I> {
+		void onRead(I msg);
 
-		MessageOrEndOfStream(I message) {
-			this.message = message;
-		}
+		void onReadEndOfStream();
 
-		public I getMessage() {
-			return message;
-		}
-
-		public boolean isEndOfStream() {
-			return message == null;
-		}
+		void onException(Exception e);
 	}
 
-	void read(ResultCallback<MessageOrEndOfStream<I>> callback);
+	void read(ReadCallback<I> callback);
 
-	void write(O message, CompletionCallback callback);
+	void write(O msg, CompletionCallback callback);
 
 	void writeEndOfStream(CompletionCallback callback);
 

@@ -20,13 +20,12 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.net.Messaging.MessageOrEndOfStream;
+import io.datakernel.stream.net.Messaging.ReadCallback;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
@@ -68,20 +67,21 @@ public class MessagingConnectionTest {
 			}
 
 			void pong(final Messaging<Integer, Integer> messaging) {
-				messaging.read(new ResultCallback<MessageOrEndOfStream<Integer>>() {
+				messaging.read(new ReadCallback<Integer>() {
 					@Override
-					public void onResult(MessageOrEndOfStream<Integer> result) {
-						if (result.isEndOfStream())
-							messaging.close();
-						else {
-							Integer message = result.getMessage();
-							messaging.write(message, ignoreCompletionCallback());
-							pong(messaging);
-						}
+					public void onRead(Integer msg) {
+						messaging.write(msg, ignoreCompletionCallback());
+						pong(messaging);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					public void onReadEndOfStream() {
+						messaging.close();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.close();
 					}
 				});
 			}
@@ -94,19 +94,24 @@ public class MessagingConnectionTest {
 					void ping(int n, final Messaging<Integer, Integer> messaging) {
 						messaging.write(n, ignoreCompletionCallback());
 
-						messaging.read(new ResultCallback<MessageOrEndOfStream<Integer>>() {
+						messaging.read(new ReadCallback<Integer>() {
 							@Override
-							public void onResult(MessageOrEndOfStream<Integer> result) {
-								int message = result.getMessage();
-								if (message > 0) {
-									ping(message - 1, messaging);
+							public void onRead(Integer msg) {
+								if (msg > 0) {
+									ping(msg - 1, messaging);
 								} else {
 									messaging.close();
 								}
 							}
 
 							@Override
-							public void onException(Exception exception) {
+							public void onReadEndOfStream() {
+								// empty
+							}
+
+							@Override
+							public void onException(Exception e) {
+								messaging.close();
 							}
 						});
 					}
@@ -149,19 +154,22 @@ public class MessagingConnectionTest {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+				messaging.read(new ReadCallback<String>() {
 					@Override
-					public void onResult(MessageOrEndOfStream<String> result) {
-						String message = result.getMessage();
-						assertEquals("start", message);
-
+					public void onRead(String msg) {
+						assertEquals("start", msg);
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					public void onReadEndOfStream() {
+
+					}
+
+					@Override
+					public void onException(Exception e) {
 					}
 				});
 
@@ -217,10 +225,9 @@ public class MessagingConnectionTest {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+				messaging.read(new ReadCallback<String>() {
 					@Override
-					public void onResult(MessageOrEndOfStream<String> result) {
-						String message = result.getMessage();
+					public void onRead(String message) {
 						assertEquals("start", message);
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
@@ -231,7 +238,12 @@ public class MessagingConnectionTest {
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					public void onReadEndOfStream() {
+
+					}
+
+					@Override
+					public void onException(Exception e) {
 					}
 				});
 
@@ -289,11 +301,10 @@ public class MessagingConnectionTest {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+				messaging.read(new ReadCallback<String>() {
 					@Override
-					public void onResult(MessageOrEndOfStream<String> result) {
-						String message = result.getMessage();
-						assertEquals("start", message);
+					public void onRead(String msg) {
+						assertEquals("start", msg);
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
 						streamDeserializer.getOutput().streamTo(consumerToList);
@@ -308,6 +319,11 @@ public class MessagingConnectionTest {
 							public void onException(Exception exception) {
 							}
 						});
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+
 					}
 
 					@Override
@@ -333,13 +349,17 @@ public class MessagingConnectionTest {
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
 
-						messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+						messaging.read(new ReadCallback<String>() {
 							@Override
-							public void onResult(MessageOrEndOfStream<String> result) {
-								String message = result.getMessage();
-								assertEquals("ack", message);
+							public void onRead(String msg) {
+								assertEquals("ack", msg);
 								messaging.close();
 								ack[0] = true;
+							}
+
+							@Override
+							public void onReadEndOfStream() {
+
 							}
 
 							@Override
@@ -383,11 +403,10 @@ public class MessagingConnectionTest {
 				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ResultCallback<MessageOrEndOfStream<String>>() {
+				messaging.read(new ReadCallback<String>() {
 					@Override
-					public void onResult(MessageOrEndOfStream<String> result) {
-						String message = result.getMessage();
-						assertEquals("start", message);
+					public void onRead(String msg) {
+						assertEquals("start", msg);
 
 						messaging.writeEndOfStream(ignoreCompletionCallback());
 
@@ -395,6 +414,11 @@ public class MessagingConnectionTest {
 						messaging.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
 
 						streamDeserializer.getOutput().streamTo(consumerToList);
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+
 					}
 
 					@Override

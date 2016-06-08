@@ -23,10 +23,11 @@ import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging.MessageOrEndOfStream;
+import io.datakernel.stream.net.Messaging.ReadCallback;
 import io.datakernel.stream.net.MessagingConnection;
 import io.datakernel.stream.net.MessagingSerializer;
 import org.slf4j.Logger;
@@ -63,16 +64,19 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	// set up connection
 	@Override
-	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		final MessagingConnection<FsCommand, FsResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
-		messaging.read(new ResultCallback<MessageOrEndOfStream<FsCommand>>() {
+		messaging.read(new ReadCallback<FsCommand>() {
 			@Override
-			public void onResult(MessageOrEndOfStream<FsCommand> result) {
-				if (result.isEndOfStream()) {
-					logger.warn("unexpected end of stream");
-				} else {
-					onRead(messaging, result.getMessage());
-				}
+			public void onRead(FsCommand msg) {
+				logger.trace("received {}", msg);
+				doRead(messaging, msg);
+			}
+
+			@Override
+			public void onReadEndOfStream() {
+				logger.warn("unexpected end of stream");
+				messaging.close();
 			}
 
 			@Override
@@ -84,7 +88,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		return messaging;
 	}
 
-	private void onRead(MessagingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
+	private void doRead(MessagingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
 		MessagingHandler handler = handlers.get(item.getClass());
 		if (handler == null) {
 			messaging.close();

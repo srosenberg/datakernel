@@ -19,8 +19,9 @@ package io.datakernel.hashfs;
 import com.google.gson.Gson;
 import io.datakernel.FsClient;
 import io.datakernel.FsCommands.FsCommand;
-import io.datakernel.FsResponses;
+import io.datakernel.FsResponses.Err;
 import io.datakernel.FsResponses.FsResponse;
+import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.RemoteFsException;
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
@@ -32,10 +33,10 @@ import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
-import io.datakernel.hashfs.HashFsResponses.ListOfServers;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.Messaging.ReadCallback;
 import io.datakernel.stream.net.MessagingConnection;
 
 import java.net.InetSocketAddress;
@@ -135,28 +136,35 @@ public final class HashFsClient extends FsClient {
 				messaging.write(new Announce(forDeletion, forUpload), new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
-						messaging.read(new ForwardingResultCallback<Messaging.MessageOrEndOfStream<FsResponse>>(callback) {
+						messaging.read(new ReadCallback<FsResponse>() {
 							@Override
-							public void onResult(Messaging.MessageOrEndOfStream<FsResponse> result) {
-								if (result.isEndOfStream()) {
-									logger.warn("received unexpected end of stream");
+							public void onRead(FsResponse msg) {
+								logger.trace("received {}");
+								if (msg instanceof ListOfFiles) {
+									ListOfFiles listOfFiles = (ListOfFiles) msg;
 									messaging.close();
-									callback.onException(new RemoteFsException("Unexpected end of stream while trying to announce files"));
+									callback.onResult(listOfFiles.files);
+								} else if (msg instanceof Err) {
+									RemoteFsException e = new RemoteFsException(((Err) msg).msg);
+									messaging.close();
+									callback.onException(e);
 								} else {
-									FsResponse response = result.getMessage();
-									if (response instanceof FsResponses.ListOfFiles) {
-										messaging.close();
-										callback.onResult(((FsResponses.ListOfFiles) response).files);
-									} else if (response instanceof FsResponses.Err) {
-										RemoteFsException e = new RemoteFsException(((FsResponses.Err) response).msg);
-										logger.error("received err while trying to announce files");
-										messaging.close();
-										callback.onException(e);
-									} else {
-										messaging.close();
-										callback.onException(new RemoteFsException("Invalid message received: " + response));
-									}
+									messaging.close();
+									callback.onException(new RemoteFsException("Invalid message received: " + msg));
 								}
+							}
+
+							@Override
+							public void onReadEndOfStream() {
+								logger.warn("received unexpected end of stream");
+								messaging.close();
+								callback.onException(new RemoteFsException("Unexpected end of stream while trying to announce files"));
+							}
+
+							@Override
+							public void onException(Exception e) {
+								messaging.close();
+								callback.onException(new RemoteFsException(e));
 							}
 						});
 					}
@@ -275,29 +283,35 @@ public final class HashFsClient extends FsClient {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-				messaging.write(new HashFsCommands.Alive(), new CompletionCallback() {
+				messaging.write(new Alive(), new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						messaging.read(new ForwardingResultCallback<Messaging.MessageOrEndOfStream<FsResponse>>(this) {
+						messaging.read(new ReadCallback<FsResponse>() {
 							@Override
-							public void onResult(Messaging.MessageOrEndOfStream<FsResponse> result) {
-								if (result.isEndOfStream()) {
-									callback.onException(new RemoteFsException("Unexpected end of stream"));
+							public void onRead(FsResponse msg) {
+								logger.trace("received {}", msg);
+								if (msg instanceof HashFsResponses.ListOfServers) {
+									callback.onResult(((HashFsResponses.ListOfServers) msg).servers);
+									messaging.close();
+								} else if (msg instanceof Err) {
+									messaging.close();
+									callback.onException(new RemoteFsException(((Err) msg).msg));
 								} else {
-									FsResponse response = result.getMessage();
-									if (response instanceof ListOfServers) {
-										callback.onResult(((ListOfServers) response).servers);
-										messaging.close();
-									} else if (response instanceof FsResponses.Err) {
-										RemoteFsException e = new RemoteFsException(((FsResponses.Err) response).msg);
-										logger.error("received err while trying to list files");
-										messaging.close();
-										callback.onException(e);
-									} else {
-										messaging.close();
-										callback.onException(new RemoteFsException("Invalid message received: " + response));
-									}
+									messaging.close();
+									callback.onException(new RemoteFsException("Invalid message received: " + msg));
 								}
+							}
+
+							@Override
+							public void onReadEndOfStream() {
+								messaging.close();
+								callback.onException(new RemoteFsException("Unexpected end of stream"));
+							}
+
+							@Override
+							public void onException(Exception e) {
+								messaging.close();
+								callback.onException(e);
 							}
 						});
 					}

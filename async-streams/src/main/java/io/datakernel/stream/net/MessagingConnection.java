@@ -18,7 +18,6 @@ package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ParseException;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -47,7 +46,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
-	private ResultCallback<MessageOrEndOfStream<I>> readCallback;
+	private ReadCallback<I> readCallback;
 	private List<CompletionCallback> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStream;
 	private SocketStreamProducer socketReader;
@@ -60,7 +59,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void read(ResultCallback<MessageOrEndOfStream<I>> callback) {
+	public void read(ReadCallback<I> callback) {
 		checkState(socketReader == null && readCallback == null);
 		readCallback = callback;
 		if (readBuf != null || readEndOfStream) {
@@ -88,7 +87,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 						readBuf.recycle();
 						readBuf = null;
 					}
-					takeReadCallback().onResult(new MessageOrEndOfStream<>(message));
+					takeReadCallback().onRead(message);
 				}
 			} catch (ParseException e) {
 				takeReadCallback().onException(e);
@@ -96,22 +95,22 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		}
 		if (readBuf == null && readEndOfStream) {
 			if (readCallback != null) {
-				takeReadCallback().onResult(new MessageOrEndOfStream<I>(null));
+				takeReadCallback().onReadEndOfStream();
 			}
 		}
 	}
 
-	private ResultCallback<MessageOrEndOfStream<I>> takeReadCallback() {
-		ResultCallback<MessageOrEndOfStream<I>> callback = this.readCallback;
+	private ReadCallback<I> takeReadCallback() {
+		ReadCallback<I> callback = this.readCallback;
 		readCallback = null;
 		return callback;
 	}
 
 	@Override
-	public void write(O message, CompletionCallback callback) {
+	public void write(O msg, CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
 		writeCallbacks.add(callback);
-		ByteBuf buf = serializer.serialize(message);
+		ByteBuf buf = serializer.serialize(msg);
 		asyncTcpSocket.write(buf);
 	}
 
@@ -176,9 +175,6 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		readBuf = null;
 	}
 
-	/**
-	 * Sends received bytes to StreamConsumer
-	 */
 	@Override
 	public void onRead(ByteBuf buf) {
 		logger.trace("onRead", this);

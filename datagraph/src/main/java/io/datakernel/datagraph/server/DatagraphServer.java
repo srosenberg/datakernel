@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.server;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 /**
@@ -63,6 +62,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	protected interface CommandHandler<I, O> {
 		void onCommand(MessagingConnection<I, O> messaging, I command);
 	}
+
 	/**
 	 * Constructs a datagraph server with the given environment that runs in the specified event loop.
 	 *
@@ -79,7 +79,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
-		public void onCommand(MessagingConnection<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+		public void onCommand(final MessagingConnection<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.streamId;
 			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
@@ -89,7 +89,18 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 				forwarder = new StreamForwarder<>(eventloop);
 				pendingStreams.put(streamId, forwarder);
 			}
-			messaging.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
+			messaging.writeStream(forwarder.getOutput(), new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					messaging.close();
+				}
+
+				@Override
+				public void onException(Exception e) {
+					logger.warn("Exception occurred while trying to send data");
+					messaging.close();
+				}
+			});
 		}
 	}
 
@@ -126,26 +137,28 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		final MessagingConnection<DatagraphCommand, DatagraphResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
-		messaging.read(new ResultCallback<Messaging.MessageOrEndOfStream<DatagraphCommand>>() {
+		messaging.read(new Messaging.ReadCallback<DatagraphCommand>() {
 			@Override
-			public void onResult(Messaging.MessageOrEndOfStream<DatagraphCommand> result) {
-				if (result.isEndOfStream()) {
-					logger.warn("unexpected end of stream");
-				} else {
-					onRead(messaging, result.getMessage());
-				}
+			public void onRead(DatagraphCommand msg) {
+				doRead(messaging, msg);
+			}
+
+			@Override
+			public void onReadEndOfStream() {
+				logger.warn("unexpected end of stream");
+				messaging.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("received error while reading", e);
+				logger.error("received error while trying to read", e);
 				messaging.close();
 			}
 		});
 		return messaging;
 	}
 
-	private void onRead(MessagingConnection<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
+	private void doRead(MessagingConnection<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
 			messaging.close();
