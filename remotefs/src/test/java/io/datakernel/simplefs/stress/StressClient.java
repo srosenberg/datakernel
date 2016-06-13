@@ -132,11 +132,11 @@ class StressClient {
 
 						@Override
 						public void onException(Exception e) {
-							logger.error("can't download", e);
+							logger.info("can't download: {}", e.getMessage());
 						}
 					});
 				} catch (IOException e) {
-					logger.error("can't create consumer", e);
+					logger.info("can't create consumer: {}", e.getMessage());
 				}
 
 			}

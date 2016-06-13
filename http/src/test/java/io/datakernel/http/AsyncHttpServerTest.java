@@ -111,6 +111,7 @@ public class AsyncHttpServerTest {
 		thread.start();
 
 		Socket socket = new Socket();
+		socket.setTcpNoDelay(true);
 		socket.connect(new InetSocketAddress(port));
 
 		for (int i = 0; i < 100; i++) {

@@ -62,6 +62,12 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void read(ReadCallback<I> callback) {
 		checkState(socketReader == null && readCallback == null);
+
+		if (closedException != null) {
+			callback.onException(closedException);
+			return;
+		}
+
 		readCallback = callback;
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(new Runnable() {
@@ -110,6 +116,12 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void write(O msg, CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
+
+		if (closedException != null) {
+			callback.onException(closedException);
+			return;
+		}
+
 		writeCallbacks.add(callback);
 		ByteBuf buf = serializer.serialize(msg);
 		asyncTcpSocket.write(buf);
@@ -118,6 +130,12 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	@Override
 	public void writeEndOfStream(CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
+
+		if (closedException != null) {
+			callback.onException(closedException);
+			return;
+		}
+
 		writeEndOfStream = true;
 		writeCallbacks.add(callback);
 		asyncTcpSocket.writeEndOfStream();
@@ -129,6 +147,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 		if (closedException != null) {
 			callback.onException(closedException);
+			return;
 		}
 
 		socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, callback);
@@ -141,6 +160,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 		if (closedException != null) {
 			callback.onException(closedException);
+			return;
 		}
 
 		socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, callback);

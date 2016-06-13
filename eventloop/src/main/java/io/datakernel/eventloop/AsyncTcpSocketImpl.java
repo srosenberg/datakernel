@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
@@ -49,8 +50,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private long readTimeOut = DEFAULT_TCP_TIMEOUT;
 	private long writeTimeOut = DEFAULT_TCP_TIMEOUT;
 
-	private ScheduledRunnable readTask;
-	private ScheduledRunnable writeTask;
+	private ScheduledRunnable checkReadTimeout;
+	private ScheduledRunnable checkWriteTimeout;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
@@ -106,8 +107,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	// timeouts management
 	void scheduleReadTimeOut() {
-		if (readTask != null) readTask.cancel();
-		readTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeOut, new Runnable() {
+		if (checkReadTimeout != null) checkReadTimeout.cancel();
+		checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeOut, new Runnable() {
 			@Override
 			public void run() {
 				checkReadTimeOut();
@@ -116,8 +117,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	void scheduleWriteTimeOut() {
-		if (writeTask != null) writeTask.cancel();
-		writeTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeOut, new Runnable() {
+		if (checkWriteTimeout != null) checkWriteTimeout.cancel();
+		checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeOut, new Runnable() {
 			@Override
 			public void run() {
 				checkWriteTimeOut();
@@ -126,14 +127,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	void checkReadTimeOut() {
-		if (readTask == null) return;
-		readTask = null;
-		closeWithError(new Exception("Read timed out"), false);
+		if (checkReadTimeout == null) return;
+		checkReadTimeout = null;
+		closeWithError(new SimpleException("Read timed out"), true);
 	}
 
 	void checkWriteTimeOut() {
-		if (writeTask == null) return;
-		writeTask = null;
+		if (checkWriteTimeout == null) return;
+		checkWriteTimeout = null;
 		closeWithError(new Exception("Write timed out"), false);
 	}
 
@@ -160,6 +161,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
+		scheduleReadTimeOut();
 		readInterest(true);
 	}
 
@@ -168,7 +170,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		int oldOps = ops;
 		ops = ops | OP_POSTPONED;
 		readInterest(false);
-		doRead();
+		if (checkReadTimeout != null) {
+			checkReadTimeout.cancel();
+			checkReadTimeout = null;
+			doRead();
+		}
 		int newOps = ops & ~OP_POSTPONED;
 		ops = oldOps;
 		interests(newOps);
@@ -212,6 +218,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public void write(ByteBuf buf) {
 		assert !writeEndOfStream;
+		scheduleWriteTimeOut();
 		writeQueue.add(buf);
 		if (!writing) {
 			writing = true;
@@ -277,6 +284,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 
 		if (writeQueue.isEmpty()) {
+			if (checkWriteTimeout != null) {
+				checkWriteTimeout.cancel();
+				checkWriteTimeout = null;
+			}
 			if (writeEndOfStream) {
 				if (readEndOfStream) {
 					close();
@@ -302,13 +313,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			buf.recycle();
 		}
 		writeQueue.clear();
-		if (writeTask != null) {
-			writeTask.cancel();
-			writeTask = null;
+		if (checkWriteTimeout != null) {
+			checkWriteTimeout.cancel();
+			checkWriteTimeout = null;
 		}
-		if (readTask != null) {
-			readTask.cancel();
-			readTask = null;
+		if (checkReadTimeout != null) {
+			checkReadTimeout.cancel();
+			checkReadTimeout = null;
 		}
 	}
 

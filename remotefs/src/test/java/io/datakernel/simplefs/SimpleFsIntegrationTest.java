@@ -70,7 +70,7 @@ public class SimpleFsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress(5560);
 
 	private static Path storage;
-	private static final byte[] BIG_FILE = new byte[256 * 1024 * 1024];
+	private static final byte[] BIG_FILE = createBigByteArray();
 	private static final byte[] CONTENT = "content".getBytes(UTF_8);
 
 	@Before
@@ -503,6 +503,16 @@ public class SimpleFsIntegrationTest {
 	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		return new SimpleFsServer(eventloop, executor, storage)
 				.setListenAddress(address);
+	}
+
+	static byte[] createBigByteArray() {
+		byte[] bytes = new byte[2 * 1024 * 1024];
+		Random rand = new Random(1L);
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte) (rand.nextInt(256) - 128);
+		}
+		return bytes;
+
 	}
 
 	private static class CloseCompletionCallback implements CompletionCallback {
