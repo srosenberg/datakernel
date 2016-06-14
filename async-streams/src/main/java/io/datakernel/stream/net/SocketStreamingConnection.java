@@ -75,12 +75,12 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void writeStream(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void sendStreamFrom(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		producer.streamTo(socketWriter);
 	}
 
 	@Override
-	public void readStream(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+	public void receiveStreamTo(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
 		socketReader.streamTo(consumer);
 	}
 

@@ -25,7 +25,7 @@ import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.net.Messaging.ReadCallback;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
@@ -43,7 +43,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("unchecked")
-public class MessagingConnectionTest {
+public class MessagingWithBinaryStreamingConnectionTest {
 	private static final int LISTEN_PORT = 4821;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
@@ -60,22 +60,22 @@ public class MessagingConnectionTest {
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+				MessagingWithBinaryStreamingConnection<Integer, Integer> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), Integer.class, new Gson(), Integer.class));
 				pong(messaging);
 				return messaging;
 			}
 
 			void pong(final Messaging<Integer, Integer> messaging) {
-				messaging.read(new ReadCallback<Integer>() {
+				messaging.receive(new ReceiveMessageCallback<Integer>() {
 					@Override
-					public void onRead(Integer msg) {
-						messaging.write(msg, ignoreCompletionCallback());
+					public void onReceive(Integer msg) {
+						messaging.send(msg, ignoreCompletionCallback());
 						pong(messaging);
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onReceiveEndOfStream() {
 						messaging.close();
 					}
 
@@ -92,11 +92,11 @@ public class MessagingConnectionTest {
 
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					void ping(int n, final Messaging<Integer, Integer> messaging) {
-						messaging.write(n, ignoreCompletionCallback());
+						messaging.send(n, ignoreCompletionCallback());
 
-						messaging.read(new ReadCallback<Integer>() {
+						messaging.receive(new ReceiveMessageCallback<Integer>() {
 							@Override
-							public void onRead(Integer msg) {
+							public void onReceive(Integer msg) {
 								if (msg > 0) {
 									ping(msg - 1, messaging);
 								} else {
@@ -105,7 +105,7 @@ public class MessagingConnectionTest {
 							}
 
 							@Override
-							public void onReadEndOfStream() {
+							public void onReceiveEndOfStream() {
 								// empty
 							}
 
@@ -118,7 +118,7 @@ public class MessagingConnectionTest {
 
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<Integer, Integer> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						MessagingWithBinaryStreamingConnection<Integer, Integer> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), Integer.class, new Gson(), Integer.class));
 						ping(3, messaging);
 						return messaging;
@@ -151,20 +151,20 @@ public class MessagingConnectionTest {
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+				final MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ReadCallback<String>() {
+				messaging.receive(new ReceiveMessageCallback<String>() {
 					@Override
-					public void onRead(String msg) {
+					public void onReceive(String msg) {
 						assertEquals("start", msg);
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onReceiveEndOfStream() {
 
 					}
 
@@ -182,14 +182,14 @@ public class MessagingConnectionTest {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-						messaging.write("start", ignoreCompletionCallback());
-						messaging.writeEndOfStream(ignoreCompletionCallback());
+						messaging.send("start", ignoreCompletionCallback());
+						messaging.sendEndOfStream(ignoreCompletionCallback());
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-						messaging.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 						streamDeserializer.getOutput().streamTo(consumerToList);
 
 						return messaging;
@@ -222,23 +222,23 @@ public class MessagingConnectionTest {
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+				final MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ReadCallback<String>() {
+				messaging.receive(new ReceiveMessageCallback<String>() {
 					@Override
-					public void onRead(String message) {
+					public void onReceive(String message) {
 						assertEquals("start", message);
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-						messaging.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 						streamDeserializer.getOutput().streamTo(consumerToList);
 
-						messaging.writeEndOfStream(ignoreCompletionCallback());
+						messaging.sendEndOfStream(ignoreCompletionCallback());
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onReceiveEndOfStream() {
 
 					}
 
@@ -256,14 +256,14 @@ public class MessagingConnectionTest {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-						messaging.write("start", ignoreCompletionCallback());
+						messaging.send("start", ignoreCompletionCallback());
 
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 
 						return messaging;
 					}
@@ -298,21 +298,21 @@ public class MessagingConnectionTest {
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+				final MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ReadCallback<String>() {
+				messaging.receive(new ReceiveMessageCallback<String>() {
 					@Override
-					public void onRead(String msg) {
+					public void onReceive(String msg) {
 						assertEquals("start", msg);
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
 						streamDeserializer.getOutput().streamTo(consumerToList);
-						messaging.readStream(streamDeserializer.getInput(), new CompletionCallback() {
+						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), new CompletionCallback() {
 							@Override
 							public void onComplete() {
-								messaging.write("ack", ignoreCompletionCallback());
-								messaging.writeEndOfStream(ignoreCompletionCallback());
+								messaging.send("ack", ignoreCompletionCallback());
+								messaging.sendEndOfStream(ignoreCompletionCallback());
 							}
 
 							@Override
@@ -322,7 +322,7 @@ public class MessagingConnectionTest {
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onReceiveEndOfStream() {
 
 					}
 
@@ -340,25 +340,25 @@ public class MessagingConnectionTest {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						final MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-						messaging.write("start", ignoreCompletionCallback());
+						messaging.send("start", ignoreCompletionCallback());
 
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 
-						messaging.read(new ReadCallback<String>() {
+						messaging.receive(new ReceiveMessageCallback<String>() {
 							@Override
-							public void onRead(String msg) {
+							public void onReceive(String msg) {
 								assertEquals("ack", msg);
 								messaging.close();
 								ack[0] = true;
 							}
 
 							@Override
-							public void onReadEndOfStream() {
+							public void onReceiveEndOfStream() {
 
 							}
 
@@ -400,24 +400,24 @@ public class MessagingConnectionTest {
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+				final MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 						MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-				messaging.read(new ReadCallback<String>() {
+				messaging.receive(new ReceiveMessageCallback<String>() {
 					@Override
-					public void onRead(String msg) {
+					public void onReceive(String msg) {
 						assertEquals("start", msg);
 
-						messaging.writeEndOfStream(ignoreCompletionCallback());
+						messaging.sendEndOfStream(ignoreCompletionCallback());
 
 						StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-						messaging.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+						messaging.receiveBinaryStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 
 						streamDeserializer.getOutput().streamTo(consumerToList);
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onReceiveEndOfStream() {
 
 					}
 
@@ -436,14 +436,14 @@ public class MessagingConnectionTest {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-						MessagingConnection<String, String> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket,
+						MessagingWithBinaryStreamingConnection<String, String> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket,
 								MessagingSerializers.ofGson(new Gson(), String.class, new Gson(), String.class));
 
-						messaging.write("start", ignoreCompletionCallback());
+						messaging.send("start", ignoreCompletionCallback());
 
 						StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-						messaging.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+						messaging.sendBinaryStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 
 						return messaging;
 					}

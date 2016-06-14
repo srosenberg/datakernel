@@ -31,8 +31,8 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.MessagingConnection;
 import io.datakernel.stream.net.MessagingSerializer;
+import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
@@ -88,12 +88,12 @@ public final class DatagraphClient {
 
 		@Override
 		public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
+			final MessagingWithBinaryStreamingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
-			messaging.write(commandDownload, new CompletionCallback() {
+			messaging.send(commandDownload, new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					messaging.readStream(consumer, new CompletionCallback() {
+					messaging.receiveBinaryStreamTo(consumer, new CompletionCallback() {
 						@Override
 						public void onComplete() {
 							messaging.close();
@@ -134,9 +134,9 @@ public final class DatagraphClient {
 
 		@Override
 		public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
+			final MessagingWithBinaryStreamingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(nodes);
-			messaging.write(commandExecute, new CompletionCallback() {
+			messaging.send(commandExecute, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					messaging.close();

@@ -41,13 +41,9 @@ public class DnsClientHandler implements AsyncUdpSocket {
 	private final Eventloop eventloop;
 	private final AsyncUdpSocketImpl socket;
 
-	private EventHandler downstreamEventHandler;
-
 	private EventHandler upstreamEventHandler = new EventHandler() {
 		@Override
 		public void onRegistered() {
-			if (downstreamEventHandler != null)
-				downstreamEventHandler.onRegistered();
 		}
 
 		@Override
@@ -79,14 +75,10 @@ public class DnsClientHandler implements AsyncUdpSocket {
 
 		@Override
 		public void onSent() {
-			if (downstreamEventHandler != null)
-				downstreamEventHandler.onSent();
 		}
 
 		@Override
 		public void onClosedWithError(Exception e) {
-			if (downstreamEventHandler != null)
-				downstreamEventHandler.onClosedWithError(e);
 		}
 	};
 

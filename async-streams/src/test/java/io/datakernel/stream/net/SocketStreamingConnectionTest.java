@@ -71,7 +71,7 @@ public final class SocketStreamingConnectionTest {
 
 				StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
 				streamDeserializer.getOutput().streamTo(consumerToList);
-				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 
 				return connection;
 			}
@@ -85,7 +85,7 @@ public final class SocketStreamingConnectionTest {
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
+				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 
 				return connection;
@@ -121,8 +121,8 @@ public final class SocketStreamingConnectionTest {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-				connection.readStream(forwarder.getInput(), ignoreCompletionCallback());
-				connection.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
+				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
+				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
 				return connection;
 			}
@@ -136,8 +136,8 @@ public final class SocketStreamingConnectionTest {
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
-				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
-				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
+				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToList);
 				return connection;
@@ -183,8 +183,8 @@ public final class SocketStreamingConnectionTest {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
 				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-				connection.readStream(forwarder.getInput(), ignoreCompletionCallback());
-				connection.writeStream(forwarder.getOutput(), ignoreCompletionCallback());
+				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
+				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
 				return connection;
 			}
@@ -198,8 +198,8 @@ public final class SocketStreamingConnectionTest {
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
-				connection.writeStream(streamSerializer.getOutput(), ignoreCompletionCallback());
-				connection.readStream(streamDeserializer.getInput(), ignoreCompletionCallback());
+				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
+				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToListWithError);
 				return connection;

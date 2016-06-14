@@ -18,20 +18,20 @@ package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
 
-public interface Messaging<I, O> extends SocketStreaming {
-	interface ReadCallback<I> {
-		void onRead(I msg);
+public interface Messaging<I, O> {
+	interface ReceiveMessageCallback<I> {
+		void onReceive(I msg);
 
-		void onReadEndOfStream();
+		void onReceiveEndOfStream();
 
 		void onException(Exception e);
 	}
 
-	void read(ReadCallback<I> callback);
+	void receive(ReceiveMessageCallback<I> callback);
 
-	void write(O msg, CompletionCallback callback);
+	void send(O msg, CompletionCallback callback);
 
-	void writeEndOfStream(CompletionCallback callback);
+	void sendEndOfStream(CompletionCallback callback);
 
 	void close();
 }

@@ -22,7 +22,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public interface SocketStreaming {
-	void readStream(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
+	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
 
-	void writeStream(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
+	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
 }

@@ -28,9 +28,9 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging.ReadCallback;
-import io.datakernel.stream.net.MessagingConnection;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
+import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,8 +86,8 @@ public abstract class FsClient {
 
 	protected Gson getResponseGson() {return responseGson;}
 
-	protected MessagingConnection<FsResponse, FsCommand> getMessaging(AsyncTcpSocketImpl asyncTcpSocket) {
-		return new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
+	protected MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> getMessaging(AsyncTcpSocketImpl asyncTcpSocket) {
+		return new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
 	}
 
 	protected final void connect(SocketAddress address, ConnectCallback callback) {
@@ -107,24 +107,24 @@ public abstract class FsClient {
 
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			final Upload upload = new Upload(fileName);
-			messaging.write(upload, new CompletionCallback() {
+			messaging.send(upload, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("send {}", upload);
-					messaging.read(new ReadCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onRead(FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
 							if (msg instanceof Ok) {
-								messaging.writeStream(producer, new CompletionCallback() {
+								messaging.sendBinaryStreamFrom(producer, new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										logger.trace("send all bytes for {}", fileName);
-										messaging.read(new ReadCallback<FsResponse>() {
+										messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 											@Override
-											public void onRead(FsResponse msg) {
+											public void onReceive(FsResponse msg) {
 												logger.trace("received {}", msg);
 												if (msg instanceof Acknowledge) {
 													messaging.close();
@@ -139,7 +139,7 @@ public abstract class FsClient {
 											}
 
 											@Override
-											public void onReadEndOfStream() {
+											public void onReceiveEndOfStream() {
 												logger.warn("received unexpected end of stream");
 												messaging.close();
 												callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
@@ -170,7 +170,7 @@ public abstract class FsClient {
 						}
 
 						@Override
-						public void onReadEndOfStream() {
+						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
 							callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
@@ -212,19 +212,19 @@ public abstract class FsClient {
 
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Download(fileName, startPosition), new CompletionCallback() {
+			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			messaging.send(new Download(fileName, startPosition), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to download {} send", fileName);
-					messaging.read(new ReadCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onRead(FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
 							if (msg instanceof Ready) {
 								long size = ((Ready) msg).size;
 								StreamTransformerWithCounter stream = new StreamTransformerWithCounter(eventloop, size - startPosition);
-								messaging.readStream(stream.getInput(), new CompletionCallback() {
+								messaging.receiveBinaryStreamTo(stream.getInput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										messaging.close();
@@ -247,7 +247,7 @@ public abstract class FsClient {
 						}
 
 						@Override
-						public void onReadEndOfStream() {
+						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
 							callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
@@ -288,14 +288,14 @@ public abstract class FsClient {
 
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new Delete(fileName), new CompletionCallback() {
+			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			messaging.send(new Delete(fileName), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to delete {} send", fileName);
-					messaging.read(new ReadCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onRead(FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
 							if (msg instanceof Ok) {
 								messaging.close();
@@ -310,7 +310,7 @@ public abstract class FsClient {
 						}
 
 						@Override
-						public void onReadEndOfStream() {
+						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
 							callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
@@ -346,14 +346,14 @@ public abstract class FsClient {
 
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-			messaging.write(new ListFiles(), new CompletionCallback() {
+			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			messaging.send(new ListFiles(), new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("command to list files send");
-					messaging.read(new ReadCallback<FsResponse>() {
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onRead(FsResponse msg) {
+						public void onReceive(FsResponse msg) {
 							logger.trace("received {}", msg);
 							if (msg instanceof ListOfFiles) {
 								messaging.close();
@@ -368,7 +368,7 @@ public abstract class FsClient {
 						}
 
 						@Override
-						public void onReadEndOfStream() {
+						public void onReceiveEndOfStream() {
 							logger.warn("received unexpected end of stream");
 							messaging.close();
 							callback.onException(new RemoteFsException("Unexpected end of stream while trying to list files"));

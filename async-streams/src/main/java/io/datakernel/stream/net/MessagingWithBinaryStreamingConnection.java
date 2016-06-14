@@ -36,8 +36,8 @@ import static com.google.common.base.Preconditions.checkState;
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
-public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
-	private static final Logger logger = LoggerFactory.getLogger(MessagingConnection.class);
+public final class MessagingWithBinaryStreamingConnection<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
+	private static final Logger logger = LoggerFactory.getLogger(MessagingWithBinaryStreamingConnection.class);
 
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;
@@ -45,7 +45,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	private ByteBuf readBuf;
 	private boolean readEndOfStream;
-	private ReadCallback<I> readCallback;
+	private ReceiveMessageCallback<I> receiveMessageCallback;
 	private List<CompletionCallback> writeCallbacks = new ArrayList<>();
 	private boolean writeEndOfStream;
 	private SocketStreamProducer socketReader;
@@ -53,27 +53,27 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 
 	private Exception closedException;
 
-	public MessagingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
+	public MessagingWithBinaryStreamingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;
 	}
 
 	@Override
-	public void read(ReadCallback<I> callback) {
-		checkState(socketReader == null && readCallback == null);
+	public void receive(ReceiveMessageCallback<I> callback) {
+		checkState(socketReader == null && receiveMessageCallback == null);
 
 		if (closedException != null) {
 			callback.onException(closedException);
 			return;
 		}
 
-		readCallback = callback;
+		receiveMessageCallback = callback;
 		if (readBuf != null || readEndOfStream) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					if (socketReader == null && readCallback != null) {
+					if (socketReader == null && receiveMessageCallback != null) {
 						tryReadMessage();
 					}
 				}
@@ -84,7 +84,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	private void tryReadMessage() {
-		if (readBuf != null && readCallback != null) {
+		if (readBuf != null && receiveMessageCallback != null) {
 			try {
 				I message = serializer.tryDeserialize(readBuf);
 				if (message == null) {
@@ -94,27 +94,27 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 						readBuf.recycle();
 						readBuf = null;
 					}
-					takeReadCallback().onRead(message);
+					takeReadCallback().onReceive(message);
 				}
 			} catch (ParseException e) {
 				takeReadCallback().onException(e);
 			}
 		}
 		if (readBuf == null && readEndOfStream) {
-			if (readCallback != null) {
-				takeReadCallback().onReadEndOfStream();
+			if (receiveMessageCallback != null) {
+				takeReadCallback().onReceiveEndOfStream();
 			}
 		}
 	}
 
-	private ReadCallback<I> takeReadCallback() {
-		ReadCallback<I> callback = this.readCallback;
-		readCallback = null;
+	private ReceiveMessageCallback<I> takeReadCallback() {
+		ReceiveMessageCallback<I> callback = this.receiveMessageCallback;
+		receiveMessageCallback = null;
 		return callback;
 	}
 
 	@Override
-	public void write(O msg, CompletionCallback callback) {
+	public void send(O msg, CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
 
 		if (closedException != null) {
@@ -128,7 +128,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void writeEndOfStream(CompletionCallback callback) {
+	public void sendEndOfStream(CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
 
 		if (closedException != null) {
@@ -141,8 +141,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		asyncTcpSocket.writeEndOfStream();
 	}
 
-	@Override
-	public void writeStream(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void sendBinaryStreamFrom(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
 
 		if (closedException != null) {
@@ -154,9 +153,8 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 		producer.streamTo(socketWriter);
 	}
 
-	@Override
-	public void readStream(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
-		checkState(this.socketReader == null && this.readCallback == null);
+	public void receiveBinaryStreamTo(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
+		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
 			callback.onException(closedException);
@@ -269,8 +267,8 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 			closedException = e;
 		}
 
-		if (readCallback != null) {
-			readCallback.onException(e);
+		if (receiveMessageCallback != null) {
+			receiveMessageCallback.onException(e);
 		} else if (!writeCallbacks.isEmpty()) {
 			for (CompletionCallback writeCallback : writeCallbacks) {
 				writeCallback.onException(e);
@@ -289,7 +287,7 @@ public final class MessagingConnection<I, O> implements AsyncTcpSocket.EventHand
 	}
 
 	public void writeAndClose(final O msg) {
-		write(msg, new CompletionCallback() {
+		send(msg, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				close();

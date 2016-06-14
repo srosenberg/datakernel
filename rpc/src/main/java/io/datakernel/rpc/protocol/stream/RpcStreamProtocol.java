@@ -26,7 +26,10 @@ import io.datakernel.stream.SimpleStreamConsumer;
 import io.datakernel.stream.SimpleStreamProducer;
 import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.net.SocketStreamingConnection;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,14 +86,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 		if (compression) {
 			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 			StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-			connection.readStream(decompressor.getInput(), ignoreCompletionCallback());
+			connection.receiveStreamTo(decompressor.getInput(), ignoreCompletionCallback());
 			decompressor.getOutput().streamTo(deserializer.getInput());
 
 			serializer.getOutput().streamTo(compressor.getInput());
-			connection.writeStream(compressor.getOutput(), ignoreCompletionCallback());
+			connection.sendStreamFrom(compressor.getOutput(), ignoreCompletionCallback());
 		} else {
-			connection.readStream(deserializer.getInput(), ignoreCompletionCallback());
-			connection.writeStream(serializer.getOutput(), ignoreCompletionCallback());
+			connection.receiveStreamTo(deserializer.getInput(), ignoreCompletionCallback());
+			connection.sendStreamFrom(serializer.getOutput(), ignoreCompletionCallback());
 		}
 
 		deserializer.getOutput().streamTo(receiver);

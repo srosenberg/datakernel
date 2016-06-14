@@ -27,9 +27,9 @@ import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging.ReadCallback;
-import io.datakernel.stream.net.MessagingConnection;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
+import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,16 +65,16 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingConnection<FsCommand, FsResponse> messaging = new MessagingConnection<>(eventloop, asyncTcpSocket, serializer);
-		messaging.read(new ReadCallback<FsCommand>() {
+		final MessagingWithBinaryStreamingConnection<FsCommand, FsResponse> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
+		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
 			@Override
-			public void onRead(FsCommand msg) {
+			public void onReceive(FsCommand msg) {
 				logger.trace("received {}", msg);
 				doRead(messaging, msg);
 			}
 
 			@Override
-			public void onReadEndOfStream() {
+			public void onReceiveEndOfStream() {
 				logger.warn("unexpected end of stream");
 				messaging.close();
 			}
@@ -88,7 +88,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		return messaging;
 	}
 
-	private void doRead(MessagingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
+	private void doRead(MessagingWithBinaryStreamingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
 		MessagingHandler handler = handlers.get(item.getClass());
 		if (handler == null) {
 			messaging.close();
@@ -108,7 +108,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	}
 
 	protected interface MessagingHandler<I, O> {
-		void onMessage(MessagingConnection<I, O> messaging, I item);
+		void onMessage(MessagingWithBinaryStreamingConnection<I, O> messaging, I item);
 	}
 
 	private Map<Class, MessagingHandler> createHandlers() {
@@ -123,16 +123,16 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// handler classes
 	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
 		@Override
-		public void onMessage(final MessagingConnection<Upload, FsResponse> messaging, final Upload item) {
+		public void onMessage(final MessagingWithBinaryStreamingConnection<Upload, FsResponse> messaging, final Upload item) {
 			final Ok ok = new Ok();
-			messaging.write(ok, new CompletionCallback() {
+			messaging.send(ok, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.trace("send {}", ok);
 					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBuf>>(this) {
 						@Override
 						public void onResult(StreamConsumer<ByteBuf> result) {
-							messaging.readStream(result, new ForwardingCompletionCallback(this) {
+							messaging.receiveBinaryStreamTo(result, new ForwardingCompletionCallback(this) {
 								@Override
 								public void onComplete() {
 									logger.trace("read all bytes for {}", item.filePath);
@@ -153,20 +153,20 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
 		@Override
-		public void onMessage(final MessagingConnection<Download, FsResponse> messaging, final Download item) {
+		public void onMessage(final MessagingWithBinaryStreamingConnection<Download, FsResponse> messaging, final Download item) {
 			fileManager.size(item.filePath, new ResultCallback<Long>() {
 				@Override
 				public void onResult(final Long size) {
 					if (size < 0) {
 						messaging.writeAndClose(new Err("File not found"));
 					} else {
-						messaging.write(new Ready(size), new ForwardingCompletionCallback(this) {
+						messaging.send(new Ready(size), new ForwardingCompletionCallback(this) {
 							@Override
 							public void onComplete() {
 								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBuf>>(this) {
 									@Override
 									public void onResult(final StreamProducer<ByteBuf> result) {
-										messaging.writeStream(result, new SimpleCompletionCallback() {
+										messaging.sendBinaryStreamFrom(result, new SimpleCompletionCallback() {
 											@Override
 											protected void onCompleteOrException() {
 												messaging.close();
@@ -189,7 +189,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DeleteMessagingHandler implements MessagingHandler<Delete, FsResponse> {
 		@Override
-		public void onMessage(final MessagingConnection<Delete, FsResponse> messaging, final Delete item) {
+		public void onMessage(final MessagingWithBinaryStreamingConnection<Delete, FsResponse> messaging, final Delete item) {
 			delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -206,7 +206,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class ListFilesMessagingHandler implements MessagingHandler<ListFiles, FsResponse> {
 		@Override
-		public void onMessage(final MessagingConnection<ListFiles, FsResponse> messaging, ListFiles item) {
+		public void onMessage(final MessagingWithBinaryStreamingConnection<ListFiles, FsResponse> messaging, ListFiles item) {
 			list(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {

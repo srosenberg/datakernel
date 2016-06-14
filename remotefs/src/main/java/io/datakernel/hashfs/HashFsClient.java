@@ -36,8 +36,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.Messaging.ReadCallback;
-import io.datakernel.stream.net.MessagingConnection;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
+import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -132,13 +132,13 @@ public final class HashFsClient extends FsClient {
 		connect(replica.getAddress(), new ConnectCallback() {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-				messaging.write(new Announce(forDeletion, forUpload), new ForwardingCompletionCallback(callback) {
+				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+				messaging.send(new Announce(forDeletion, forUpload), new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
-						messaging.read(new ReadCallback<FsResponse>() {
+						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 							@Override
-							public void onRead(FsResponse msg) {
+							public void onReceive(FsResponse msg) {
 								logger.trace("received {}");
 								if (msg instanceof ListOfFiles) {
 									ListOfFiles listOfFiles = (ListOfFiles) msg;
@@ -155,7 +155,7 @@ public final class HashFsClient extends FsClient {
 							}
 
 							@Override
-							public void onReadEndOfStream() {
+							public void onReceiveEndOfStream() {
 								logger.warn("received unexpected end of stream");
 								messaging.close();
 								callback.onException(new RemoteFsException("Unexpected end of stream while trying to announce files"));
@@ -282,13 +282,13 @@ public final class HashFsClient extends FsClient {
 		connect(address, new ConnectCallback() {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				final MessagingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
-				messaging.write(new Alive(), new CompletionCallback() {
+				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+				messaging.send(new Alive(), new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						messaging.read(new ReadCallback<FsResponse>() {
+						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 							@Override
-							public void onRead(FsResponse msg) {
+							public void onReceive(FsResponse msg) {
 								logger.trace("received {}", msg);
 								if (msg instanceof HashFsResponses.ListOfServers) {
 									callback.onResult(((HashFsResponses.ListOfServers) msg).servers);
@@ -303,7 +303,7 @@ public final class HashFsClient extends FsClient {
 							}
 
 							@Override
-							public void onReadEndOfStream() {
+							public void onReceiveEndOfStream() {
 								messaging.close();
 								callback.onException(new RemoteFsException("Unexpected end of stream"));
 							}
