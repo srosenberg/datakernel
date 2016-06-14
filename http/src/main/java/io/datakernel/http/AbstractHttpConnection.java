@@ -28,7 +28,7 @@ import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
+abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 

@@ -95,7 +95,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		this.generalRequestsStats = new RpcRequestStats();
 		this.generalConnectsStats = new RpcConnectStats();
 		this.requestStatsPerClass = new HashMap<>();
-		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
+		this.connectsStatsPerAddress = new HashMap<>();
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {

@@ -81,7 +81,7 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		client.execute(request, 500, new ResultCallback<HttpResponse>() {
+		client.send(request, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(decodeAscii(result.getBody()));
@@ -129,7 +129,7 @@ public class TestHttpsClientServer {
 			}
 		});
 
-		client.execute(httpsRequest, 500, new ResultCallback<HttpResponse>() {
+		client.send(httpsRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callbackHttps.onResult(decodeAscii(result.getBody()));
@@ -142,7 +142,7 @@ public class TestHttpsClientServer {
 				waitAll.onException(e);
 			}
 		});
-		client.execute(httpRequest, 500, new ResultCallback<HttpResponse>() {
+		client.send(httpRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callbackHttp.onResult(decodeAscii(result.getBody()));

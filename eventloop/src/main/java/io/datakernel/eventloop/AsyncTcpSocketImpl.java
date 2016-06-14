@@ -47,8 +47,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private int ops = 0;
 	private boolean writing = false;
 
-	private long readTimeOut = DEFAULT_TCP_TIMEOUT;
-	private long writeTimeOut = DEFAULT_TCP_TIMEOUT;
+	private long readTimeout = DEFAULT_TCP_TIMEOUT;
+	private long writeTimeout = DEFAULT_TCP_TIMEOUT;
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
@@ -80,13 +80,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.socketEventHandler = eventHandler;
 	}
 
-	public AsyncTcpSocketImpl setReadTimeOut(long readTimeOut) {
-		this.readTimeOut = readTimeOut;
+	public AsyncTcpSocketImpl readTimeout(long readTimeout) {
+		this.readTimeout = readTimeout;
 		return this;
 	}
 
-	public AsyncTcpSocketImpl setWriteTimeOut(long writeTimeOut) {
-		this.writeTimeOut = writeTimeOut;
+	public AsyncTcpSocketImpl writeTimeout(long writeTimeout) {
+		this.writeTimeout = writeTimeout;
 		return this;
 	}
 
@@ -108,7 +108,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// timeouts management
 	void scheduleReadTimeOut() {
 		if (checkReadTimeout != null) checkReadTimeout.cancel();
-		checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeOut, new Runnable() {
+		checkReadTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + readTimeout, new Runnable() {
 			@Override
 			public void run() {
 				checkReadTimeOut();
@@ -118,7 +118,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	void scheduleWriteTimeOut() {
 		if (checkWriteTimeout != null) checkWriteTimeout.cancel();
-		checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeOut, new Runnable() {
+		checkWriteTimeout = eventloop.scheduleBackground(eventloop.currentTimeMillis() + writeTimeout, new Runnable() {
 			@Override
 			public void run() {
 				checkWriteTimeOut();

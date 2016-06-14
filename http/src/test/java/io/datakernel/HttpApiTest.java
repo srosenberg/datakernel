@@ -107,7 +107,7 @@ public class HttpApiTest {
 	public void test() throws IOException, ExecutionException, InterruptedException {
 		server.listen();
 		HttpRequest request = createRequest();
-		client.execute(request, 1000, new ResultCallback<HttpResponse>() {
+		client.send(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {

@@ -75,7 +75,7 @@ public class TestGzipProcessor {
 				.compressWithGzip();
 
 		server.listen();
-		client.execute(request, TIMEOUT, new ResultCallback<HttpResponse>() {
+		client.send(request, TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(decodeAscii(result.getBody()));

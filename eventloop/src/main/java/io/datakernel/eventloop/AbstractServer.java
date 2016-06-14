@@ -295,10 +295,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
 		prepareSocket(socketChannel);
-		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
-
-		asyncTcpSocket.setReadTimeOut(readTimeout);
-		asyncTcpSocket.setWriteTimeOut(writeTimeout);
+		AsyncTcpSocketImpl asyncTcpSocket =
+				new AsyncTcpSocketImpl(eventloop, socketChannel)
+						.readTimeout(readTimeout)
+						.writeTimeout(writeTimeout);
 
 		AsyncSslSocket asyncSslSocket = null;
 		if (isSslOn() && isAcceptedOnSecuredPort(asyncTcpSocket)) {

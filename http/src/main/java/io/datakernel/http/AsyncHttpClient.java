@@ -93,23 +93,10 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private int inetAddressIdx = 0;
 
-	/**
-	 * Creates a new instance of HttpClientImpl with default socket settings
-	 *
-	 * @param eventloop eventloop in which will handle this connection
-	 * @param dnsClient DNS client for resolving IP addresses for the specified host names
-	 */
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient) {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
-	/**
-	 * Creates a new instance of HttpClientImpl
-	 *
-	 * @param eventloop      eventloop in which will handle this connection
-	 * @param dnsClient      DNS client for resolving IP addresses for the specified host names
-	 * @param socketSettings settings for creating socket
-	 */
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
@@ -129,22 +116,22 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return this;
 	}
 
-	public AsyncHttpClient setKeepConnectionInPoolTime(long keepConnectionInPoolTime) {
-		this.keepConnectionInPoolTime = keepConnectionInPoolTime;
+	public AsyncHttpClient keepConnectionAlive(long time) {
+		this.keepConnectionInPoolTime = time;
 		return this;
 	}
 
-	public AsyncHttpClient setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
+	public AsyncHttpClient bindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
 		this.bindExceptionBlockTimeout = bindExceptionBlockTimeout;
 		return this;
 	}
 
-	public AsyncHttpClient setBlockLocalAddresses(boolean blockLocalAddresses) {
+	public AsyncHttpClient blockLocalAddresses(boolean blockLocalAddresses) {
 		this.blockLocalAddresses = blockLocalAddresses;
 		return this;
 	}
 
-	public AsyncHttpClient setMaxHttpMessageSize(int size) {
+	public AsyncHttpClient maxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}
@@ -268,7 +255,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
-	public void execute(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
+	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
 
@@ -377,7 +364,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
 		logger.trace("sendRequest Calling {}", request);
-		connection.request(request, timeoutTime, callback);
+		connection.send(request, timeoutTime, callback);
 	}
 
 	private void addPendingSocketConnect(InetSocketAddress address) {
@@ -433,9 +420,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return false;
 	}
 
-	/**
-	 * Closes this client's handler without callback
-	 */
 	public void close() {
 		checkState(eventloop.inEventloopThread());
 		if (scheduleExpiredConnectionCheck != null)
@@ -456,23 +440,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return eventloop;
 	}
 
-	/**
-	 * Starts this client's handler and handles completing of this action with callback
-	 *
-	 * @param callback for handling completing of start
-	 */
 	@Override
 	public void start(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
 		callback.onComplete();
 	}
 
-	/**
-	 * Stops this clients handler ,close all connections and handles completing of this
-	 * action with callback
-	 *
-	 * @param callback for handling completing of stop
-	 */
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());

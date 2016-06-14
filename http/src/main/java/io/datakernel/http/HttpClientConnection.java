@@ -119,12 +119,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.addHeader(header, value);
 	}
 
-	/**
-	 * After receiving Http Message it creates {@link HttpResponse}, calls callback with it and recycles
-	 * HTTP response.
-	 *
-	 * @param bodyBuf the received message
-	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
@@ -142,9 +136,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 	}
 
-	/**
-	 * After reading the end of stream it calls method onHttpMessage() for handling result and closes channel.
-	 */
 	@Override
 	public void onReadEndOfStream() {
 		assert eventloop.inEventloopThread();
@@ -158,9 +149,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		close();
 	}
 
-	/**
-	 * Resets response of this connection for keeping alive it and reusing for other requests.
-	 */
 	@Override
 	protected void reset() {
 		reading = END_OF_STREAM;
@@ -183,13 +171,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	/**
-	 * Sends the request, recycles it and closes connection after timeout
+	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
 	 * @param request  request for sending
 	 * @param timeout  time after which connection will be closed
 	 * @param callback callback for handling result
 	 */
-	public void request(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
+	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
 		request.recycleBufs();
