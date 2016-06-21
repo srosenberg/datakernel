@@ -38,7 +38,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
-import static io.datakernel.eventloop.AsyncTcpSocketImpl.DEFAULT_TCP_TIMEOUT;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
@@ -74,10 +73,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private SSLContext sslContext;
 	private ExecutorService executor;
 	private List<InetSocketAddress> secureListenAddresses;
-
-	// timeouts
-	private long writeTimeout = DEFAULT_TCP_TIMEOUT;
-	private long readTimeout = DEFAULT_TCP_TIMEOUT;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
@@ -149,16 +144,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	public S setListenSecurePort(SSLContext sslContext, ExecutorService executor, int port) {
 		return setListenSecureAddress(sslContext, executor, new InetSocketAddress(port));
-	}
-
-	public S setReadTimeout(long readTimeout) {
-		this.readTimeout = readTimeout;
-		return self();
-	}
-
-	public S setWriteTimeout(long writeTimeout) {
-		this.writeTimeout = writeTimeout;
-		return self();
 	}
 
 	/**
@@ -295,10 +280,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
 		prepareSocket(socketChannel);
-		AsyncTcpSocketImpl asyncTcpSocket =
-				new AsyncTcpSocketImpl(eventloop, socketChannel)
-						.readTimeout(readTimeout)
-						.writeTimeout(writeTimeout);
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+
+		socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
 
 		AsyncSslSocket asyncSslSocket = null;
 		if (isSslOn() && isAcceptedOnSecuredPort(asyncTcpSocket)) {

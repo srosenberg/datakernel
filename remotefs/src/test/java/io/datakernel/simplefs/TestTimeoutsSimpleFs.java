@@ -4,6 +4,7 @@ import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.RunnableWithException;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Rule;
@@ -61,8 +62,7 @@ public class TestTimeoutsSimpleFs {
 		final Eventloop serverEventloop = new Eventloop();
 		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
 		final SimpleFsServer server = new SimpleFsServer(serverEventloop, serverExecutor, storagePath)
-				.setReadTimeout(1)      // ensure timeout exception
-				.setWriteTimeout(1)
+				.socketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L).writeTimeout(1L))
 				.acceptOnce()
 				.setListenPort(7000);
 

@@ -34,7 +34,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 	private static final int MAX_MERGE_SIZE = 16 * 1024;
-	public static final int DEFAULT_TCP_TIMEOUT = 30 * 1000;
+
+	@SuppressWarnings("ThrowableInstanceNeverThrown")
+	public static final SimpleException TIMEOUT_EXCEPTION = new SimpleException("timed out");
+	public static final int NO_TIMEOUT = -1;
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
@@ -47,8 +50,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private int ops = 0;
 	private boolean writing = false;
 
-	private long readTimeout = DEFAULT_TCP_TIMEOUT;
-	private long writeTimeout = DEFAULT_TCP_TIMEOUT;
+	private long readTimeout = NO_TIMEOUT;
+	private long writeTimeout = NO_TIMEOUT;
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
@@ -129,13 +132,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	void checkReadTimeOut() {
 		if (checkReadTimeout == null) return;
 		checkReadTimeout = null;
-		closeWithError(new SimpleException("Read timed out"), true);
+		closeWithError(TIMEOUT_EXCEPTION, true);
 	}
 
 	void checkWriteTimeOut() {
 		if (checkWriteTimeout == null) return;
 		checkWriteTimeout = null;
-		closeWithError(new Exception("Write timed out"), false);
+		closeWithError(TIMEOUT_EXCEPTION, false);
 	}
 
 	// interests management
@@ -147,7 +150,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				key.interestOps(ops);
 			}
 		}
-
 	}
 
 	private void readInterest(boolean readInterest) {
@@ -161,7 +163,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// read cycle
 	@Override
 	public void read() {
-		scheduleReadTimeOut();
+		if (readTimeout != NO_TIMEOUT) {
+			scheduleReadTimeOut();
+		}
 		readInterest(true);
 	}
 
@@ -173,8 +177,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (checkReadTimeout != null) {
 			checkReadTimeout.cancel();
 			checkReadTimeout = null;
-			doRead();
 		}
+		doRead();
 		int newOps = ops & ~OP_POSTPONED;
 		ops = oldOps;
 		interests(newOps);
@@ -218,7 +222,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@Override
 	public void write(ByteBuf buf) {
 		assert !writeEndOfStream;
-		scheduleWriteTimeOut();
+		if (writeTimeout != NO_TIMEOUT) {
+			scheduleWriteTimeOut();
+		}
 		writeQueue.add(buf);
 		if (!writing) {
 			writing = true;

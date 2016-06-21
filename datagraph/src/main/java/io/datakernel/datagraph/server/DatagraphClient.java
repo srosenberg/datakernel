@@ -90,6 +90,9 @@ public final class DatagraphClient {
 		public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 			final MessagingWithBinaryStreamingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
+
+			socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+
 			messaging.send(commandDownload, new CompletionCallback() {
 				@Override
 				public void onComplete() {

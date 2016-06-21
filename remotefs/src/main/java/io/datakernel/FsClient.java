@@ -107,6 +107,7 @@ public abstract class FsClient {
 
 		@Override
 		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
 			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			final Upload upload = new Upload(fileName);
 			messaging.send(upload, new CompletionCallback() {

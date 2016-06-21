@@ -231,6 +231,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		eventloop.connect(address, socketSettings, new ConnectCallback() {
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
 						getSerializer(), protocolFactory);

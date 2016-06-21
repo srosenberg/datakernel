@@ -39,6 +39,8 @@ public abstract class AbstractConnector<S extends AbstractConnector<S, E>, E ext
 		eventloop.connect(address, settings, timeout, new ConnectCallback() {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+				settings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+
 				E eventHandler = createEventHandler(asyncTcpSocket);
 				if (secure) {
 					check(sslContext != null, "Can't establish secure connection");

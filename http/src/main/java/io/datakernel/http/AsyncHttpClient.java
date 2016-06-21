@@ -319,6 +319,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				removePendingSocketConnect(address);
+				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
 				AsyncSslSocket asyncSslSocket = null;
 				if (sslContext != null && isHttpsRequest(request)) {
 					SSLEngine ssl = sslContext.createSSLEngine();
