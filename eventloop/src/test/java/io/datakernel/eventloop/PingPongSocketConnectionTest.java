@@ -45,7 +45,6 @@ public class PingPongSocketConnectionTest {
 		});
 
 		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private class ServerConnection implements AsyncTcpSocket.EventHandler {
