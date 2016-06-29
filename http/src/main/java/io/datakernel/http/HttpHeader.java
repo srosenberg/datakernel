@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 

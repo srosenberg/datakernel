@@ -18,8 +18,8 @@ package io.datakernel.stream.net;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.asm.BufferSerializers;
@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
@@ -49,8 +49,8 @@ public final class SocketStreamingConnectionTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -101,7 +101,7 @@ public final class SocketStreamingConnectionTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -120,7 +120,7 @@ public final class SocketStreamingConnectionTest {
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				StreamForwarder<ByteBufN> forwarder = new StreamForwarder<>(eventloop);
 				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
 				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
@@ -153,7 +153,7 @@ public final class SocketStreamingConnectionTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -182,7 +182,7 @@ public final class SocketStreamingConnectionTest {
 			protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 
-				StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+				StreamForwarder<ByteBufN> forwarder = new StreamForwarder<>(eventloop);
 				connection.receiveStreamTo(forwarder.getInput(), ignoreCompletionCallback());
 				connection.sendStreamFrom(forwarder.getOutput(), ignoreCompletionCallback());
 
@@ -215,6 +215,6 @@ public final class SocketStreamingConnectionTest {
 
 		assertEquals(list.size(), 50);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

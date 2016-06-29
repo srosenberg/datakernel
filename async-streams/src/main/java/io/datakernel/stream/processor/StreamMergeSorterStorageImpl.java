@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
@@ -152,10 +152,9 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(streamDecompressor.getInput());
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(streamDecompressor.getInput());
 			}
 		});
-
 
 		return streamDeserializer.getOutput();
 	}

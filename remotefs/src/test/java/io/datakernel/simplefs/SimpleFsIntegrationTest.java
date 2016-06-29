@@ -19,7 +19,7 @@ package io.datakernel.simplefs;
 import com.google.common.collect.Lists;
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -47,7 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufPool.*;
 import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;

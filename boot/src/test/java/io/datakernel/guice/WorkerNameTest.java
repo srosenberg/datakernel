@@ -17,7 +17,7 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufPool;
 import io.datakernel.service.*;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 
 public class WorkerNameTest {

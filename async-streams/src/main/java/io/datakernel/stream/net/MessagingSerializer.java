@@ -18,11 +18,11 @@ package io.datakernel.stream.net;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 public interface MessagingSerializer<I, O> {
 	@Nullable
-	I tryDeserialize(ByteBuf buf) throws ParseException;
+	I tryDeserialize(ByteBufN buf) throws ParseException;
 
-	ByteBuf serialize(O item);
+	ByteBufN serialize(O item);
 }

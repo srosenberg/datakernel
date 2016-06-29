@@ -21,7 +21,7 @@ import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;

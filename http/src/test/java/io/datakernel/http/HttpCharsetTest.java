@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import org.junit.Test;
 
 import java.nio.charset.Charset;

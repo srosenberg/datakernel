@@ -21,7 +21,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.HashFsServer;
@@ -47,7 +47,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
 import static io.datakernel.logfs.LogManagerImpl.DETAILED_DATE_TIME_FORMATTER;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

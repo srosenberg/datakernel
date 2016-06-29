@@ -17,14 +17,14 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
 
-final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBufN> implements StreamDataReceiver<ByteBufN> {
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final CompletionCallback completionCallback;
 
@@ -37,7 +37,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	}
 
 	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
+	public StreamDataReceiver<ByteBufN> getDataReceiver() {
 		return this;
 	}
 
@@ -57,7 +57,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 	 * @param buf received item
 	 */
 	@Override
-	public void onData(ByteBuf buf) {
+	public void onData(ByteBufN buf) {
 		asyncTcpSocket.write(buf);
 		long tick = eventloop.getTick();
 		if (writeTick != 0 && tick != writeTick) {

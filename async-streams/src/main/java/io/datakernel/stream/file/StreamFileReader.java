@@ -18,8 +18,8 @@ package io.datakernel.stream.file;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
@@ -40,7 +40,7 @@ import static java.lang.Math.min;
  * This class allows you to read data from file non-blocking. It represents a {@link AbstractStreamProducer}
  * which streams data from file.
  */
-public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
+public final class StreamFileReader extends AbstractStreamProducer<ByteBufN> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 	private final AsyncFile asyncFile;
@@ -117,7 +117,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			return;
 		}
 
-		final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
+		final ByteBufN buf = ByteBufNPool.allocateAtLeast((int) min(bufferSize, length));
 
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override
@@ -140,7 +140,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					return;
 				} else {
 					position += result;
-					buf.flip();
 					send(buf);
 					if (length != Long.MAX_VALUE) {
 						length -= result;

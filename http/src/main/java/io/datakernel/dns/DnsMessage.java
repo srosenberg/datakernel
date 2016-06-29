@@ -16,8 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufPool;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

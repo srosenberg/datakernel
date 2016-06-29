@@ -17,14 +17,14 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import org.junit.Test;
 
 import java.util.Map;
 
-import static io.datakernel.bytebuf.ByteBufPool.getCreatedItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItems;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufPool.getCreatedItems;
+import static io.datakernel.bytebufnew.ByteBufPool.getPoolItems;
+import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;

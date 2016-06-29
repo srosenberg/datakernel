@@ -18,8 +18,8 @@ package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -43,7 +43,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 	private final AsyncTcpSocket asyncTcpSocket;
 	private final MessagingSerializer<I, O> serializer;
 
-	private ByteBuf readBuf;
+	private ByteBufN readBuf;
 	private boolean readEndOfStream;
 	private ReceiveMessageCallback<I> receiveMessageCallback;
 	private List<CompletionCallback> writeCallbacks = new ArrayList<>();
@@ -90,7 +90,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 				if (message == null) {
 					asyncTcpSocket.read();
 				} else {
-					if (!readBuf.hasRemaining()) {
+					if (!readBuf.canRead()) {
 						readBuf.recycle();
 						readBuf = null;
 					}
@@ -123,7 +123,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 		}
 
 		writeCallbacks.add(callback);
-		ByteBuf buf = serializer.serialize(msg);
+		ByteBufN buf = serializer.serialize(msg);
 		asyncTcpSocket.write(buf);
 	}
 
@@ -141,7 +141,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 		asyncTcpSocket.writeEndOfStream();
 	}
 
-	public void sendBinaryStreamFrom(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void sendBinaryStreamFrom(StreamProducer<ByteBufN> producer, final CompletionCallback callback) {
 		checkState(socketWriter == null && !writeEndOfStream);
 
 		if (closedException != null) {
@@ -153,7 +153,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 		producer.streamTo(socketWriter);
 	}
 
-	public void receiveBinaryStreamTo(StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
+	public void receiveBinaryStreamTo(StreamConsumer<ByteBufN> consumer, final CompletionCallback callback) {
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
@@ -205,16 +205,14 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 	}
 
 	@Override
-	public void onRead(ByteBuf buf) {
+	public void onRead(ByteBufN buf) {
 		logger.trace("onRead", this);
 		assert eventloop.inEventloopThread();
 		if (socketReader == null) {
 			if (readBuf == null) {
-				readBuf = ByteBufPool.allocate(Math.max(8192, buf.remaining()));
-				readBuf.limit(0);
+				readBuf = ByteBufNPool.allocateAtLeast(Math.max(8192, buf.remainingToWrite()));
 			}
-			readBuf = ByteBufPool.append(readBuf, buf);
-			buf.recycle();
+			readBuf = ByteBufNPool.concat(readBuf, buf);
 			tryReadMessage();
 			if (readBuf == null) {
 				asyncTcpSocket.read();

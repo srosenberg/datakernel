@@ -17,8 +17,8 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.SimpleException;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -41,7 +41,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
-	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
+	private final ArrayDeque<ByteBufN> writeQueue = new ArrayDeque<>();
 	private boolean readEndOfStream;
 	private boolean writeEndOfStream;
 	private EventHandler socketEventHandler;
@@ -185,12 +185,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doRead() {
-		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
+		ByteBufN buf = ByteBufNPool.allocateAtLeast(receiveBufferSize);
 		ByteBuffer buffer = buf.toByteBuffer();
 
 		int numRead;
 		try {
 			numRead = channel.read(buffer);
+			buffer.flip();
 			buf.setByteBuffer(buffer);
 		} catch (IOException e) {
 			buf.recycle();
@@ -213,14 +214,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return;
 		}
 
-		buf.flip();
-
 		socketEventHandler.onRead(buf);
 	}
 
 	// write cycle
 	@Override
-	public void write(ByteBuf buf) {
+	public void write(ByteBufN buf) {
 		assert !writeEndOfStream;
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
@@ -254,21 +253,20 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doWrite() throws IOException {
 		while (true) {
-			ByteBuf bufToSend = writeQueue.poll();
+			ByteBufN bufToSend = writeQueue.poll();
 			if (bufToSend == null)
 				break;
 
 			while (true) {
-				ByteBuf nextBuf = writeQueue.peek();
+				ByteBufN nextBuf = writeQueue.peek();
 				if (nextBuf == null)
 					break;
 
-				int bytesToCopy = nextBuf.remaining(); // bytes to append to bufToSend
-				if (bufToSend.position() + bufToSend.remaining() + bytesToCopy > bufToSend.array().length)
-					bytesToCopy += bufToSend.remaining(); // append will resize bufToSend
+				int bytesToCopy = nextBuf.remainingToRead(); // bytes to append to bufToSend
+				if (bufToSend.readPosition() + bufToSend.remainingToRead() + bytesToCopy > bufToSend.array().length)
+					bytesToCopy += bufToSend.remainingToRead(); // append will resize bufToSend
 				if (bytesToCopy < MAX_MERGE_SIZE) {
-					bufToSend = ByteBufPool.append(bufToSend, nextBuf);
-					nextBuf.recycle();
+					bufToSend = ByteBufNPool.concat(bufToSend, nextBuf);
 					writeQueue.poll();
 				} else {
 					break;
@@ -277,12 +275,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 			@SuppressWarnings("ConstantConditions")
 			ByteBuffer buffer = bufToSend.toByteBuffer();
+			buffer.flip();
+
 			channel.write(buffer);
 			bufToSend.setByteBuffer(buffer);
 
-			int remaining = bufToSend.remaining();
-
-			if (remaining > 0) {
+			if (bufToSend.canRead()) {
 				writeQueue.addFirst(bufToSend); // put the buf back to the queue, to send it the next time
 				break;
 			}
@@ -315,7 +313,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		if (key == null) return;
 		closeChannel();
 		key = null;
-		for (ByteBuf buf : writeQueue) {
+		for (ByteBufN buf : writeQueue) {
 			buf.recycle();
 		}
 		writeQueue.clear();

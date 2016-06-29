@@ -20,7 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -181,7 +181,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = callback;
 		writeHttpRequest(request);
 		request.recycleBufs();
-		scheduleTimeout(timeout);
+		scheduleTimeout(timeout); // FIXME connection closes before we set timeout
 	}
 
 	private void scheduleTimeout(final long timeoutTime) {

@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.providers;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -32,7 +32,7 @@ public class StreamProducerProviders {
 
 	}
 
-	public static StreamProducerProvider<ByteBuf> ofFile(Eventloop eventloop, ExecutorService executor, Path filePath) {
+	public static StreamProducerProvider<ByteBufN> ofFile(Eventloop eventloop, ExecutorService executor, Path filePath) {
 		return new OfFile(eventloop, executor, filePath);
 	}
 
@@ -40,7 +40,7 @@ public class StreamProducerProviders {
 		return new StreamProducerOfIterable<>(eventloop, iterable);
 	}
 
-	public static class OfFile implements StreamProducerProvider<ByteBuf> {
+	public static class OfFile implements StreamProducerProvider<ByteBufN> {
 
 		private final Eventloop eventloop;
 		private final ExecutorService executor;
@@ -53,7 +53,7 @@ public class StreamProducerProviders {
 		}
 
 		@Override
-		public StreamProducer<ByteBuf> getProducer() {
+		public StreamProducer<ByteBufN> getProducer() {
 			try {
 				return StreamFileReader.readFileFully(eventloop, executor, 256 * 1024, filePath);
 			} catch (IOException e) {

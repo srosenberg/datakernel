@@ -16,8 +16,8 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -39,7 +39,7 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements EventloopJmxMBean {
+public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBufN> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
@@ -74,7 +74,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private final int headerSize;
 
 		// TODO (dvolvach): queue of serialized buffers
-		private ByteBuf byteBuf;
+		private ByteBufN byteBuf;
 		private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
 		private int estimatedMessageSize;
 
@@ -122,15 +122,15 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void allocateBuffer() {
-			byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
+			byteBuf = ByteBufNPool.allocateAtLeast(max(defaultBufferSize, headerSize + estimatedMessageSize));
 			outputBuffer.set(byteBuf.array(), 0);
 		}
 
-		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			byteBuf.position(0);
+		private void flushBuffer(StreamDataReceiver<ByteBufN> receiver) {
+			byteBuf.readPosition(0);
 			int size = outputBuffer.position();
 			if (size != 0) {
-				byteBuf.limit(size);
+				byteBuf.writePosition(size);
 				jmxBytes += size;
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {

@@ -1,19 +1,23 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.net.SocketSettings;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
+	private static final Logger logger = LoggerFactory.getLogger(PingPongSocketConnectionTest.class);
+
 	private final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 	private final int ITERATIONS = 3;
 	private final String RESPONSE_MSG = "PONG";
@@ -52,7 +56,7 @@ public class PingPongSocketConnectionTest {
 		private final AsyncTcpSocket asyncTcpSocket;
 		int counter;
 
-		public ServerConnection(AsyncTcpSocket asyncTcpSocket) {
+		ServerConnection(AsyncTcpSocket asyncTcpSocket) {
 			this.asyncTcpSocket = asyncTcpSocket;
 			counter = 0;
 		}
@@ -69,12 +73,11 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onRead(ByteBuf buf) {
+		public void onRead(ByteBufN buf) {
 			assertEquals(REQUEST_MSG, decodeAscii(buf));
 			buf.recycle();
 			counter++;
 			asyncTcpSocket.write(wrapAscii(RESPONSE_MSG));
-
 		}
 
 		@Override
@@ -93,7 +96,7 @@ public class PingPongSocketConnectionTest {
 		private final AbstractServer server;
 		int counter;
 
-		public ClientConnection(AsyncTcpSocketImpl clientTcpSocket, AbstractServer server) {
+		ClientConnection(AsyncTcpSocketImpl clientTcpSocket, AbstractServer server) {
 			this.clientTcpSocket = clientTcpSocket;
 			this.server = server;
 			counter = 0;
@@ -105,7 +108,7 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onRead(ByteBuf buf) {
+		public void onRead(ByteBufN buf) {
 			assertEquals(RESPONSE_MSG, decodeAscii(buf));
 			if (++counter == ITERATIONS) {
 				clientTcpSocket.close();

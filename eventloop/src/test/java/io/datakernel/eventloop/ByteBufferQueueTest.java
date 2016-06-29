@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufQueue;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,7 +40,7 @@ public class ByteBufferQueueTest {
 		int pos = 0;
 		while (left > 0) {
 			int bufSize = random.nextInt(Math.min(10, left) + 1);
-			ByteBuf buf = ByteBuf.wrap(test, pos, bufSize);
+			ByteBufN buf = ByteBufN.wrap(test, pos, bufSize);
 			queue.add(buf);
 			left -= bufSize;
 			pos += bufSize;

@@ -1,7 +1,7 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.net.SocketSettings;

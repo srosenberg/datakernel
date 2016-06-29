@@ -3,12 +3,11 @@ package io.datakernel.stream.net;
 import com.google.common.base.Objects;
 import com.google.gson.Gson;
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -85,7 +84,7 @@ public class MessagingSerializersTest {
 	public void simpleTestOfGson() throws ParseException {
 		Req req = new Req("Hello", 1, 6.24);
 
-		ByteBuf buf = deserializer.serialize(req);
+		ByteBufN buf = deserializer.serialize(req);
 		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUTF8(buf));
 
 		Req newReq = serializer.tryDeserialize(buf);
@@ -101,12 +100,12 @@ public class MessagingSerializersTest {
 		assertEquals(res, newRes);
 		buf.recycle();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testSerializeSeveralMessages() throws ParseException {
-		ByteBuf readBuf = ByteBufStrings.wrapUTF8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
+		ByteBufN readBuf = ByteBufStrings.wrapUTF8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
 				"{\"text\":\"Hi\",\"num\":2,\"val\":6.24}\0" +
 				"{\"text\":\"Good morning\",\"num\":3,\"val\":9.36}\0" +
 				"{\"text\":\"Shalom\",\"n");
@@ -121,10 +120,10 @@ public class MessagingSerializersTest {
 		assertEquals(req3, new Req("Good morning", 3, 9.36));
 		assertNull(req4);
 
-		assertEquals(116, readBuf.position());
-		assertEquals(135, readBuf.limit());
+		assertEquals(116, readBuf.readPosition());
+		assertEquals(135, readBuf.writePosition());
 
 		readBuf.recycle();
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

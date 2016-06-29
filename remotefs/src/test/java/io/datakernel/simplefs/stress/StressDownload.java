@@ -2,7 +2,7 @@ package io.datakernel.simplefs.stress;
 
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;

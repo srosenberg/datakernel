@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufPool.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;

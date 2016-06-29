@@ -18,11 +18,12 @@ package io.datakernel.file;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.RunnableWithException;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
@@ -122,7 +123,7 @@ public final class AsyncFile {
 		eventloop.callConcurrently(executor, new Callable<Long>() {
 			@Override
 			public Long call() throws Exception {
-				java.io.File file = path.toFile();
+				File file = path.toFile();
 				if (!file.exists() || file.isDirectory()) {
 					return -1L;
 				} else {
@@ -195,21 +196,21 @@ public final class AsyncFile {
 	 * @param callback  which will be called after complete
 	 */
 	public static void readFile(Eventloop eventloop, ExecutorService executor,
-	                            Path path, final ResultCallback<ByteBuf> callback) {
+	                            Path path, final ResultCallback<ByteBufN> callback) {
 		open(eventloop, executor, path, new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			public void onResult(final AsyncFile file) {
-				file.readFully(new ForwardingResultCallback<ByteBuf>(callback) {
+				file.readFully(new ForwardingResultCallback<ByteBufN>(callback) {
 					@Override
-					public void onResult(ByteBuf buf) {
+					public void onResult(ByteBufN buf) {
 						file.close(ignoreCompletionCallback());
 						callback.onResult(buf);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					public void onException(Exception e) {
 						file.close(ignoreCompletionCallback());
-						callback.onException(exception);
+						callback.onException(e);
 					}
 				});
 			}
@@ -226,7 +227,7 @@ public final class AsyncFile {
 	 * @param callback  which will be called after complete
 	 */
 	public static void createNewAndWriteFile(Eventloop eventloop, ExecutorService executor,
-	                                         Path path, final ByteBuf buf, final CompletionCallback callback) {
+	                                         Path path, final ByteBufN buf, final CompletionCallback callback) {
 		open(eventloop, executor, path, new OpenOption[]{WRITE, CREATE_NEW}, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			public void onResult(AsyncFile file) {
@@ -255,7 +256,7 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 * @param callback callback which will be called after complete
 	 */
-	public void write(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
+	public void write(final ByteBufN buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
@@ -291,12 +292,13 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 * @param callback which will be called after complete
 	 */
-	public void read(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
+	public void read(final ByteBufN buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(final Integer result, Object attachment) {
+				byteBuffer.flip();
 				buf.setByteBuffer(byteBuffer);
 				eventloop.execute(new Runnable() {
 					@Override
@@ -320,14 +322,15 @@ public final class AsyncFile {
 		});
 	}
 
-	private void writeFully(final ByteBuf buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
+	private void writeFully(final ByteBufN buf, final long position, final Eventloop.ConcurrentOperationTracker tracker,
 	                        final AtomicBoolean cancelled, final CompletionCallback callback) {
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
+		byteBuffer.flip();
 		channel.write(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
 				buf.setByteBuffer(byteBuffer);
-				if (buf.remaining() == 0) {
+				if (buf.remainingToRead() == 0) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -365,7 +368,7 @@ public final class AsyncFile {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 * @param callback callback which will be called after complete
 	 */
-	public AsyncCancellable writeFully(ByteBuf byteBuf, long position, CompletionCallback callback) {
+	public AsyncCancellable writeFully(ByteBufN byteBuf, long position, CompletionCallback callback) {
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
 		writeFully(byteBuf, position, tracker, cancelled, callback);
@@ -377,15 +380,16 @@ public final class AsyncFile {
 		};
 	}
 
-	private void readFully(final ByteBuf buf, final long position,
+	private void readFully(final ByteBufN buf, final long position, final long size,
 	                       final Eventloop.ConcurrentOperationTracker tracker,
 	                       final AtomicBoolean cancelled, final CompletionCallback callback) {
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
 		channel.read(byteBuffer, position, null, new CompletionHandler<Integer, Object>() {
 			@Override
 			public void completed(Integer result, Object attachment) {
+				byteBuffer.flip();
 				buf.setByteBuffer(byteBuffer);
-				if (buf.remaining() == 0 || result == -1) {
+				if (buf.remainingToRead() == size || result == -1) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
@@ -398,7 +402,7 @@ public final class AsyncFile {
 						tracker.complete();
 						return;
 					}
-					readFully(buf, position, tracker, cancelled, callback);
+					readFully(buf, position, size, tracker, cancelled, callback);
 				}
 			}
 
@@ -423,7 +427,7 @@ public final class AsyncFile {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 * @param callback which will be called after complete
 	 */
-	public AsyncCancellable readFully(ByteBuf buf, long position, CompletionCallback callback) {
+	public AsyncCancellable readFully(ByteBufN buf, long position, CompletionCallback callback) {
 		long size;
 
 		try {
@@ -433,10 +437,9 @@ public final class AsyncFile {
 			return AsyncCallbacks.notCancellable();
 		}
 
-		buf.limit((int) size);
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
-		readFully(buf, position, tracker, cancelled, callback);
+		readFully(buf, position, size, tracker, cancelled, callback);
 		return new AsyncCancellable() {
 			@Override
 			public void cancel() {
@@ -450,7 +453,7 @@ public final class AsyncFile {
 	 *
 	 * @param callback which will be called after complete
 	 */
-	public void readFully(final ResultCallback<ByteBuf> callback) {
+	public void readFully(final ResultCallback<ByteBufN> callback) {
 		long size;
 
 		try {
@@ -460,19 +463,17 @@ public final class AsyncFile {
 			return;
 		}
 
-		final ByteBuf buf = ByteBufPool.allocate((int) size);
-		buf.limit((int) size);
+		final ByteBufN buf = ByteBufNPool.allocateAtLeast((int) size);
 		readFully(buf, 0, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
-				buf.flip();
 				callback.onResult(buf);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				buf.recycle();
-				callback.onException(exception);
+				callback.onException(e);
 			}
 		});
 	}

@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;

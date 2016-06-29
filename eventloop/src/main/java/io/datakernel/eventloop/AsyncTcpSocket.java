@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.net.InetSocketAddress;
 
@@ -24,7 +24,7 @@ public interface AsyncTcpSocket {
 	interface EventHandler {
 		void onRegistered();
 
-		void onRead(ByteBuf buf);
+		void onRead(ByteBufN buf);
 
 		void onReadEndOfStream();
 
@@ -37,7 +37,7 @@ public interface AsyncTcpSocket {
 
 	void read();
 
-	void write(ByteBuf buf);
+	void write(ByteBufN buf);
 
 	void writeEndOfStream();
 

@@ -1,13 +1,12 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.stream.net.MessagingSerializers.ByteBufPoolAppendable;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class ByteBufPoolAppendableTest {
@@ -17,25 +16,23 @@ public class ByteBufPoolAppendableTest {
 	public void testAppendSimple() {
 		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable();
 		appendable.append(HELLO_WORLD);
-		ByteBuf buf = appendable.get();
-		buf.flip();
-		assertEquals(0, buf.position());
-		assertEquals(13, buf.limit());
+		ByteBufN buf = appendable.get();
+		assertEquals(0, buf.readPosition());
+		assertEquals(13, buf.writePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testAppendWithResizing() throws ParseException {
 		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable(8);
 		appendable.append(HELLO_WORLD);
-		ByteBuf buf = appendable.get();
-		buf.flip();
-		assertEquals(0, buf.position());
-		assertEquals(13, buf.limit());
+		ByteBufN buf = appendable.get();
+		assertEquals(0, buf.readPosition());
+		assertEquals(13, buf.writePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

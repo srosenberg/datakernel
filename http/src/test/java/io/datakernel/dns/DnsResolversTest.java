@@ -18,7 +18,7 @@ package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.Eventloop.ConcurrentOperationTracker;
 import io.datakernel.time.SettableCurrentTimeProvider;
@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static org.junit.Assert.*;
 

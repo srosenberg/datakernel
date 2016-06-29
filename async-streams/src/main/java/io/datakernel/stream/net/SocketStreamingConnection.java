@@ -17,7 +17,7 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -50,8 +50,8 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.socketWriter = new SocketStreamConsumer(eventloop, asyncTcpSocket, new CompletionCallback() {
 			@Override
-			public void onException(Exception exception) {
-				socketReader.closeWithError(exception);
+			public void onException(Exception e) {
+				socketReader.closeWithError(e);
 				asyncTcpSocket.close();
 			}
 
@@ -61,8 +61,8 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 		});
 		this.socketReader = new SocketStreamProducer(eventloop, asyncTcpSocket, new CompletionCallback() {
 			@Override
-			public void onException(Exception exception) {
-				socketWriter.closeWithError(exception);
+			public void onException(Exception e) {
+				socketWriter.closeWithError(e);
 				asyncTcpSocket.close();
 			}
 
@@ -70,17 +70,17 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 			public void onComplete() {
 			}
 		});
-		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
-		new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);
+		socketReader.streamTo(StreamConsumers.<ByteBufN>idle(eventloop));
+		new StreamProducers.EndOfStream<ByteBufN>(eventloop).streamTo(socketWriter);
 	}
 
 	@Override
-	public void sendStreamFrom(StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void sendStreamFrom(StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 		producer.streamTo(socketWriter);
 	}
 
 	@Override
-	public void receiveStreamTo(StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+	public void receiveStreamTo(StreamConsumer<ByteBufN> consumer, CompletionCallback callback) {
 		socketReader.streamTo(consumer);
 	}
 
@@ -98,7 +98,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	 * Sends received bytes to StreamConsumer
 	 */
 	@Override
-	public void onRead(ByteBuf buf) {
+	public void onRead(ByteBufN buf) {
 		assert eventloop.inEventloopThread();
 		socketReader.onRead(buf);
 	}

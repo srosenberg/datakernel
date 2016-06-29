@@ -17,13 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {

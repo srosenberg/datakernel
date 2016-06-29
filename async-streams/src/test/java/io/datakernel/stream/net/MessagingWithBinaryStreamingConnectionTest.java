@@ -20,7 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumers;
@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.serializer.asm.BufferSerializers.longSerializer;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
@@ -49,8 +49,8 @@ public class MessagingWithBinaryStreamingConnectionTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -133,7 +133,7 @@ public class MessagingWithBinaryStreamingConnectionTest {
 
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -205,7 +205,7 @@ public class MessagingWithBinaryStreamingConnectionTest {
 		eventloop.run();
 		assertEquals(source, consumerToList.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -279,7 +279,7 @@ public class MessagingWithBinaryStreamingConnectionTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -383,7 +383,7 @@ public class MessagingWithBinaryStreamingConnectionTest {
 		assertEquals(source, consumerToList.getList());
 		assertTrue(ack[0]);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -459,7 +459,7 @@ public class MessagingWithBinaryStreamingConnectionTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }

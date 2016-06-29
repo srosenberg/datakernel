@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItemsString;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertArrayEquals;
@@ -75,9 +75,9 @@ public class UdpSocketHandlerTest {
 			@Override
 			public void onRead(UdpPacket packet) {
 				byte[] bytesReceived = packet.getBuf().array();
-				byte[] message = new byte[packet.getBuf().limit()];
+				byte[] message = new byte[packet.getBuf().remainingToRead()];
 
-				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().limit());
+				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().remainingToRead());
 				assertArrayEquals(bytesToSend, message);
 
 				packet.recycle();
@@ -95,7 +95,7 @@ public class UdpSocketHandlerTest {
 			}
 
 			void sendTestData(byte[] data, InetSocketAddress address) {
-				socket.send(new UdpPacket(ByteBuf.wrap(data), address));
+				socket.send(new UdpPacket(ByteBufN.wrap(data), address));
 			}
 		});
 		return socket;
@@ -103,8 +103,8 @@ public class UdpSocketHandlerTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -131,6 +131,6 @@ public class UdpSocketHandlerTest {
 
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 }

@@ -296,6 +296,8 @@ public class StreamProducers {
 			this.sendEndOfStream = sendEndOfStream;
 		}
 
+		private int i = 0;
+
 		@Override
 		protected void doProduce() {
 			for (; ; ) {
@@ -305,6 +307,7 @@ public class StreamProducers {
 					return;
 				T item = iterator.next();
 				send(item);
+				System.out.println("send " + i++ + "th item");
 			}
 			if (sendEndOfStream)
 				sendEndOfStream();

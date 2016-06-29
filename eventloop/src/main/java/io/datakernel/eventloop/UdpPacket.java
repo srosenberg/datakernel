@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.net.InetSocketAddress;
 
@@ -28,7 +28,7 @@ public final class UdpPacket {
 	/**
 	 * The data buffer to send
 	 */
-	private ByteBuf buf;
+	private ByteBufN buf;
 	/**
 	 * The address to which the packet should be sent or from which it
 	 * was received.
@@ -42,7 +42,7 @@ public final class UdpPacket {
 	 * @param inetSocketAddress the address to which the packet should be send or from which it
 	 *                          was received
 	 */
-	public UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
+	public UdpPacket(ByteBufN buf, InetSocketAddress inetSocketAddress) {
 		this.buf = buf;
 		this.inetSocketAddress = inetSocketAddress;
 	}
@@ -50,7 +50,7 @@ public final class UdpPacket {
 	/**
 	 * Returns the data buffer to send or which was received
 	 */
-	public ByteBuf getBuf() {
+	public ByteBufN getBuf() {
 		return buf;
 	}
 

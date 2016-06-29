@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufPool.*;
 import static io.datakernel.file.AsyncFile.open;
 import static io.datakernel.stream.file.StreamFileReader.readFileFully;
 import static java.nio.file.Files.*;

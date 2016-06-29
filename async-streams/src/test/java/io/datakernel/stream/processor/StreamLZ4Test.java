@@ -16,9 +16,9 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
+import io.datakernel.bytebufnew.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -31,31 +31,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class StreamLZ4Test {
-
-	private static ByteBuf createRandomByteBuf(Random random) {
+	private static ByteBufN createRandomByteBuf(Random random) {
 		int offset = random.nextInt(10);
 		int len = random.nextInt(100);
 		int tail = random.nextInt(10);
-		ByteBuf result = ByteBuf.allocate(offset + len + tail);
-		result.position(offset);
-		result.limit(offset + len);
+		ByteBufN result = ByteBufN.create(offset + len + tail);
 		int lenUnique = 1 + random.nextInt(len + 1);
+		result.writePosition(offset);
+		result.readPosition(offset);
 		for (int i = 0; i < len; i++) {
-			result.array()[offset + i] = (byte) (i % lenUnique);
+			result.put((byte) (i % lenUnique));
 		}
 		return result;
 	}
 
-	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
+	private static byte[] byteBufsToByteArray(List<ByteBufN> byteBufs) {
 		ByteBufQueue queue = new ByteBufQueue();
-		for (ByteBuf buf : byteBufs) {
-			queue.add(buf.slice(0, buf.remaining()));
+		for (ByteBufN buf : byteBufs) {
+			queue.add(buf.slice());
 		}
 		byte[] bytes = new byte[queue.remainingBytes()];
 		queue.drainTo(bytes, 0, bytes.length);
@@ -64,30 +63,29 @@ public class StreamLZ4Test {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
 	public void test() {
 		Eventloop eventloop = new Eventloop();
 
-		List<ByteBuf> buffers = new ArrayList<>();
+		List<ByteBufN> buffers = new ArrayList<>();
 		Random random = new Random(123456);
-		int buffersCount = 1000;
+		int buffersCount = 10000;
 		for (int i = 0; i < buffersCount; i++) {
-			ByteBuf buffer = createRandomByteBuf(random);
-			buffer.flip();
+			ByteBufN buffer = createRandomByteBuf(random);
 			buffers.add(buffer);
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamProducer<ByteBufN> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<ByteBufN> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(preBuf.getInput());
 		preBuf.getOutput().streamTo(compressor.getInput());
@@ -98,13 +96,13 @@ public class StreamLZ4Test {
 		eventloop.run();
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
-		for (ByteBuf buf : consumer.getList()) {
+		for (ByteBufN buf : consumer.getList()) {
 			buf.recycle();
 		}
 
 		assertArrayEquals(expected, actual);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
@@ -124,22 +122,21 @@ public class StreamLZ4Test {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = new Eventloop();
 
-		List<ByteBuf> buffers = new ArrayList<>();
+		List<ByteBufN> buffers = new ArrayList<>();
 		Random random = new Random(123456);
 		int buffersCount = 1000;
 		for (int i = 0; i < buffersCount; i++) {
-			ByteBuf buffer = createRandomByteBuf(random);
-			buffer.flip();
+			ByteBufN buffer = createRandomByteBuf(random);
 			buffers.add(buffer);
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamProducer<ByteBufN> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<ByteBufN> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(preBuf.getInput());
 		eventloop.run();
@@ -157,13 +154,13 @@ public class StreamLZ4Test {
 		eventloop.run();
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
-		for (ByteBuf buf : consumer.getList()) {
+		for (ByteBufN buf : consumer.getList()) {
 			buf.recycle();
 		}
 
 		assertArrayEquals(expected, actual);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
@@ -212,15 +209,14 @@ public class StreamLZ4Test {
 
 	private void doTest(Eventloop eventloop, StreamLZ4Compressor compressor) {
 		byte data[] = "1".getBytes();
-		ByteBuf buf = ByteBuf.allocate(data.length);
+		ByteBufN buf = ByteBufN.create(data.length);
 		buf.put(data);
-		buf.flip();
-		List<ByteBuf> buffers = new ArrayList<>();
+		List<ByteBufN> buffers = new ArrayList<>();
 		buffers.add(buf);
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamProducer<ByteBufN> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumers.ToList<ByteBufN> consumer = StreamConsumers.toList(eventloop);
 
 		source.streamTo(compressor.getInput());
 		compressor.getOutput().streamTo(decompressor.getInput());
@@ -230,13 +226,13 @@ public class StreamLZ4Test {
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
 		byte[] expected = byteBufsToByteArray(buffers);
-		for (ByteBuf b : consumer.getList()) {
+		for (ByteBufN b : consumer.getList()) {
 			b.recycle();
 		}
 		assertArrayEquals(actual, expected);
 
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }

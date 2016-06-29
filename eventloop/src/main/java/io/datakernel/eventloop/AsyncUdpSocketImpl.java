@@ -1,7 +1,7 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -71,19 +71,19 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	@Override
 	public void onReadReady() {
-		ByteBuf buf = null;
+		ByteBufN buf = null;
 		try {
 			while (isOpen()) {
-				buf = ByteBufPool.allocate(receiveBufferSize);
+				buf = ByteBufNPool.allocateAtLeast(receiveBufferSize);
 				ByteBuffer buffer = buf.toByteBuffer();
 				InetSocketAddress sourceAddress = (InetSocketAddress) channel.receive(buffer);
+				buffer.flip();
 				buf.setByteBuffer(buffer);
 
 				if (sourceAddress == null) {
 					break;
 				}
 
-				buf.flip();
 				eventHandler.onRead(new UdpPacket(buf, sourceAddress));
 				buf = null;
 			}
@@ -106,6 +106,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 		while (!writeQueue.isEmpty()) {
 			UdpPacket packet = writeQueue.peek();
 			ByteBuffer buffer = packet.getBuf().toByteBuffer();
+			buffer.flip();
 
 			int needToSend = buffer.remaining();
 			int sent;

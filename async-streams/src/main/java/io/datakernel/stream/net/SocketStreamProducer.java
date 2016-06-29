@@ -17,13 +17,13 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamProducer;
 
-final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
+final class SocketStreamProducer extends AbstractStreamProducer<ByteBufN> {
 	private final CompletionCallback completionCallback;
 	private final AsyncTcpSocket asyncTcpSocket;
 	protected final ByteBufQueue readQueue = new ByteBufQueue();
@@ -71,12 +71,12 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	@Override
 	protected void doProduce() {
 		while (isStatusReady() && readQueue.hasRemaining()) {
-			ByteBuf buf = readQueue.take();
+			ByteBufN buf = readQueue.take();
 			send(buf);
 		}
 		if (readEndOfStream) {
 			if (readQueue.hasRemaining()) {
-				ByteBuf buf = readQueue.takeRemaining();
+				ByteBufN buf = readQueue.takeRemaining();
 				send(buf);
 			}
 			sendEndOfStream();
@@ -85,7 +85,7 @@ final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 		}
 	}
 
-	public void onRead(ByteBuf buf) {
+	public void onRead(ByteBufN buf) {
 		readQueue.add(buf);
 		doProduce();
 	}

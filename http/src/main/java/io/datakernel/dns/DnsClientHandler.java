@@ -19,7 +19,7 @@ package io.datakernel.dns;
 import io.datakernel.async.ListenableResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackWithTimeout;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;

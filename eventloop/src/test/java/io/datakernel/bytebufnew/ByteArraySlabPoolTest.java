@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.bytebuf;
+package io.datakernel.bytebufnew;
 
 import io.datakernel.util.ConcurrentStack;
 import org.junit.Test;
@@ -25,30 +25,30 @@ import static org.junit.Assert.assertTrue;
 public class ByteArraySlabPoolTest {
 
 	private void checkAllocate(int size, int expectedSize, int[] poolSizes) {
-		ByteBufPool.clear();
+		ByteBufNPool.clear();
 
-		ByteBuf bytes = ByteBufPool.allocate(size);
+		ByteBufN bytes = ByteBufNPool.allocateAtLeast(size);
 		assertEquals(expectedSize, bytes.array().length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			assertTrue(ByteBufPool.getPool()[i].isEmpty());
+			assertTrue(ByteBufNPool.getPool()[i].isEmpty());
 		}
 		bytes.recycle();
 
-		assertTrue(poolSizes.length <= ByteBufPool.getPool().length);
+		assertTrue(poolSizes.length <= ByteBufNPool.getPool().length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			ConcurrentStack<ByteBuf> slab = ByteBufPool.getPool()[i];
+			ConcurrentStack<ByteBufN> slab = ByteBufNPool.getPool()[i];
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());
-				assertEquals(poolSizes[i], slab.peek().capacity());
+				assertEquals(poolSizes[i], slab.peek().limit);
 			}
 		}
 	}
 
 	@Test
 	public void testAllocate() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(16, 64);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(16, 64);
 
 		checkAllocate(0, 0, new int[]{0, 0, 0, 0, 0});
 		checkAllocate(1, 1, new int[]{0, 0, 0, 0, 0});
@@ -68,12 +68,12 @@ public class ByteArraySlabPoolTest {
 	}
 
 	private void checkReallocate(int size1, int size2, boolean equals) {
-		ByteBufPool.clear();
+		ByteBufNPool.clear();
 
-		ByteBuf bytes1 = ByteBufPool.allocate(size1);
+		ByteBufN bytes1 = ByteBufNPool.allocateAtLeast(size1);
 		assertTrue(size1 <= bytes1.array().length);
 
-		ByteBuf bytes2 = ByteBufPool.reallocate(bytes1, size2);
+		ByteBufN bytes2 = ByteBufNPool.reallocateAtLeast(bytes1, size2);
 		assertTrue(size2 <= bytes2.array().length);
 
 		assertEquals(equals, bytes1 == bytes2);
@@ -81,8 +81,8 @@ public class ByteArraySlabPoolTest {
 
 	@Test
 	public void testReallocate() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(16, 64);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(16, 64);
 
 		checkReallocate(0, 0, true);
 		checkReallocate(0, 1, false);

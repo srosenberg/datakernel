@@ -18,7 +18,7 @@ package io.datakernel.file;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,6 +26,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -44,16 +45,16 @@ public class AsyncFileTest {
 
 	@Test
 	public void testReadFully() throws Exception {
-		final java.io.File tempFile = temporaryFolder.newFile("hello-2.html");
+		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = new Eventloop();
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile result) {
 				logger.info("Opened file.");
-				result.readFully(new ResultCallback<ByteBuf>() {
+				result.readFully(new ResultCallback<ByteBufN>() {
 					@Override
-					public void onResult(final ByteBuf result) {
+					public void onResult(final ByteBufN result) {
 						final Path destPath = Paths.get(tempFile.getAbsolutePath());
 						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new ResultCallback<AsyncFile>() {
 							@Override

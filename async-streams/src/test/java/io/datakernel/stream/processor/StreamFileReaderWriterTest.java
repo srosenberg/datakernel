@@ -17,9 +17,9 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
+import io.datakernel.bytebufnew.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.*;
@@ -45,7 +45,7 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static java.lang.Math.min;
 import static java.nio.file.StandardOpenOption.READ;
@@ -71,7 +71,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -86,7 +86,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -98,22 +98,22 @@ public class StreamFileReaderWriterTest {
 		StreamFileReader reader = StreamFileReader.readFileFully(eventloop, executor,
 				1, Paths.get("test_data/in.dat"));
 
-		List<ByteBuf> list = new ArrayList<>();
-		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop, list);
+		List<ByteBufN> list = new ArrayList<>();
+		StreamConsumers.ToList<ByteBufN> consumer = StreamConsumers.toList(eventloop, list);
 
 		reader.streamTo(consumer);
 		eventloop.run();
 
 		ByteBufQueue byteQueue = new ByteBufQueue();
-		for (ByteBuf buf : list) {
+		for (ByteBufN buf : list) {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		ByteBufN buf = ByteBufN.create(byteQueue.remainingBytes());
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -125,9 +125,9 @@ public class StreamFileReaderWriterTest {
 		StreamFileReader reader = StreamFileReader.readFileFully(eventloop, executor,
 				1, Paths.get("test_data/in.dat"));
 
-		final List<ByteBuf> list = new ArrayList<>();
+		final List<ByteBufN> list = new ArrayList<>();
 
-		class MockConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+		class MockConsumer extends AbstractStreamConsumer<ByteBufN> implements StreamDataReceiver<ByteBufN> {
 			protected MockConsumer(Eventloop eventloop) {
 				super(eventloop);
 			}
@@ -149,12 +149,12 @@ public class StreamFileReaderWriterTest {
 			}
 
 			@Override
-			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			public StreamDataReceiver<ByteBufN> getDataReceiver() {
 				return this;
 			}
 
 			@Override
-			public void onData(ByteBuf item) {
+			public void onData(ByteBufN item) {
 				list.add(item);
 				suspend();
 				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
@@ -166,21 +166,21 @@ public class StreamFileReaderWriterTest {
 			}
 		}
 
-		StreamConsumer<ByteBuf> consumer = new MockConsumer(eventloop);
+		StreamConsumer<ByteBufN> consumer = new MockConsumer(eventloop);
 
 		reader.streamTo(consumer);
 		eventloop.run();
 
 		ByteBufQueue byteQueue = new ByteBufQueue();
-		for (ByteBuf buf : list) {
+		for (ByteBufN buf : list) {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		ByteBufN buf = ByteBufN.create(byteQueue.remainingBytes());
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -190,7 +190,7 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+		StreamProducer<ByteBufN> producer = StreamProducers.ofValue(eventloop, ByteBufN.wrap(bytes));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
@@ -199,7 +199,7 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
 		assertArrayEquals(bytes, fileBytes);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -209,23 +209,23 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes)),
-				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
+		StreamProducer<ByteBufN> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, ByteBufN.wrap(bytes)),
+				StreamProducers.<ByteBufN>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
 		producer.streamTo(writer);
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
 	public void testStreamReaderRecycle() throws IOException {
-		final TestStreamConsumers.TestConsumerToList<ByteBuf> writer = new TestStreamConsumers.TestConsumerToList<ByteBuf>(eventloop) {
+		final TestStreamConsumers.TestConsumerToList<ByteBufN> writer = new TestStreamConsumers.TestConsumerToList<ByteBufN>(eventloop) {
 			@Override
-			public void onData(ByteBuf item) {
+			public void onData(ByteBufN item) {
 				super.onData(item);
 				item.recycle();
 			}
@@ -236,13 +236,13 @@ public class StreamFileReaderWriterTest {
 
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 
 		eventloop = new Eventloop();
 		executor = Executors.newCachedThreadPool();
@@ -251,7 +251,7 @@ public class StreamFileReaderWriterTest {
 	}
 
 	// override send(ByteBuf item) with error
-	public final static class StreamFileReaderWithError extends AbstractStreamProducer<ByteBuf> {
+	public final static class StreamFileReaderWithError extends AbstractStreamProducer<ByteBufN> {
 		private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 		private final ExecutorService executor;
@@ -330,7 +330,7 @@ public class StreamFileReaderWriterTest {
 				return;
 			}
 
-			final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
+			final ByteBufN buf = ByteBufNPool.allocateAtLeast((int) min(bufferSize, length));
 
 			asyncFile.read(buf, position, new ResultCallback<Integer>() {
 				@Override
@@ -366,8 +366,7 @@ public class StreamFileReaderWriterTest {
 		}
 
 		@Override
-		protected void send(ByteBuf item) {
-			item.flip();
+		protected void send(ByteBufN item) {
 			if (item.toString().equals("1")) {
 				item.recycle();
 				closeWithError(new Exception("Intentionally closed with exception"));

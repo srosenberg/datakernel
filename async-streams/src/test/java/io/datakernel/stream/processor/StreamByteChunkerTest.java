@@ -17,8 +17,8 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Before;
@@ -28,22 +28,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.*;
 
 public class StreamByteChunkerTest {
-
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	private static ByteBuf createRandomByteBuf(Random random) {
+	private static ByteBufN createRandomByteBuf(Random random) {
 		int len = random.nextInt(100);
-		ByteBuf result = ByteBuf.allocate(len);
-		result.position(0);
-		result.limit(len);
+		ByteBufN result = ByteBufN.create(len);
+		result.readPosition(0);
+		result.writePosition(len);
 		int lenUnique = 1 + random.nextInt(len + 1);
 		for (int i = 0; i < len; i++) {
 			result.array()[i] = (byte) (i % lenUnique);
@@ -51,17 +50,16 @@ public class StreamByteChunkerTest {
 		return result;
 	}
 
-	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
+	private static byte[] byteBufsToByteArray(List<ByteBufN> byteBufs) {
 		int size = 0;
-		for (ByteBuf byteBuf : byteBufs) {
-			size += byteBuf.remaining();
+		for (ByteBufN byteBuf : byteBufs) {
+			size += byteBuf.remainingToRead();
 		}
 		byte[] result = new byte[size];
 		int pos = 0;
-		for (ByteBuf byteBuf : byteBufs) {
-			System.arraycopy(byteBuf.array(), byteBuf.position(),
-					result, pos, byteBuf.remaining());
-			pos += byteBuf.remaining();
+		for (ByteBufN byteBuf : byteBufs) {
+			System.arraycopy(byteBuf.array(), byteBuf.readPosition(), result, pos, byteBuf.remainingToRead());
+			pos += byteBuf.remainingToRead();
 		}
 		return result;
 	}
@@ -70,20 +68,20 @@ public class StreamByteChunkerTest {
 	public void testResizer() throws Exception {
 		final Eventloop eventloop = new Eventloop();
 
-		List<ByteBuf> buffers = new ArrayList<>();
+		List<ByteBufN> buffers = new ArrayList<>();
 		Random random = new Random(123456);
 		int buffersCount = 1000;
 		int totalLen = 0;
 		for (int i = 0; i < buffersCount; i++) {
-			ByteBuf buffer = createRandomByteBuf(random);
+			ByteBufN buffer = createRandomByteBuf(random);
 			buffers.add(buffer);
-			totalLen += buffer.remaining();
+			totalLen += buffer.remainingToRead();
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		int bufSize = 128;
 
-		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamProducer<ByteBufN> source = StreamProducers.ofIterable(eventloop, buffers);
 		StreamByteChunker resizer = new StreamByteChunker(eventloop, bufSize / 2, bufSize);
 		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
 
@@ -92,37 +90,37 @@ public class StreamByteChunkerTest {
 
 		eventloop.run();
 
-		List<ByteBuf> receivedBuffers = streamFixedSizeConsumer.getBuffers();
+		List<ByteBufN> receivedBuffers = streamFixedSizeConsumer.getBuffers();
 		byte[] received = byteBufsToByteArray(receivedBuffers);
 		assertArrayEquals(received, expected);
 
 		int actualLen = 0;
 		for (int i = 0; i < receivedBuffers.size() - 1; i++) {
-			ByteBuf buf = receivedBuffers.get(i);
-			actualLen += buf.remaining();
-			int receivedSize = buf.remaining();
+			ByteBufN buf = receivedBuffers.get(i);
+			actualLen += buf.remainingToRead();
+			int receivedSize = buf.remainingToRead();
 			assertTrue(receivedSize >= bufSize / 2 && receivedSize <= bufSize);
 			buf.recycle();
 		}
-		actualLen += receivedBuffers.get(receivedBuffers.size() - 1).remaining();
+		actualLen += receivedBuffers.get(receivedBuffers.size() - 1).remainingToRead();
 		receivedBuffers.get(receivedBuffers.size() - 1).recycle();
 
 		assertEquals(totalLen, actualLen);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private static class StreamFixedSizeConsumer implements StreamConsumer<ByteBuf>, StreamDataReceiver<ByteBuf> {
+	private static class StreamFixedSizeConsumer implements StreamConsumer<ByteBufN>, StreamDataReceiver<ByteBufN> {
 
-		private List<ByteBuf> buffers = new ArrayList<>();
+		private List<ByteBufN> buffers = new ArrayList<>();
 		private List<CompletionCallback> callbacks = new ArrayList<>();
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+		public StreamDataReceiver<ByteBufN> getDataReceiver() {
 			return this;
 		}
 
 		@Override
-		public void streamFrom(StreamProducer<ByteBuf> upstreamProducer) {
+		public void streamFrom(StreamProducer<ByteBufN> upstreamProducer) {
 
 		}
 
@@ -149,11 +147,11 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void onData(ByteBuf item) {
+		public void onData(ByteBufN item) {
 			buffers.add(item);
 		}
 
-		public List<ByteBuf> getBuffers() {
+		public List<ByteBufN> getBuffers() {
 			return buffers;
 		}
 	}

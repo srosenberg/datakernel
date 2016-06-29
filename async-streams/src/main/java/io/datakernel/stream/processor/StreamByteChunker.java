@@ -16,13 +16,13 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -34,20 +34,20 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+		public StreamDataReceiver<ByteBufN> getDataReceiver() {
 			return outputProducer;
 		}
 	}
 
-	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBufN> {
 		private final int minChunkSize;
 		private final int maxChunkSize;
-		private ByteBuf internalBuf;
+		private ByteBufN internalBuf;
 
 		public OutputProducer(int minChunkSize, int maxChunkSize) {
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
-			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+			this.internalBuf = ByteBufNPool.allocateAtLeast(maxChunkSize);
 		}
 
 		@Override
@@ -61,29 +61,27 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		}
 
 		@Override
-		public void onData(ByteBuf buf) {
-			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
-				if (internalBuf.position() == 0) {
-					int chunkSize = Math.min(maxChunkSize, buf.remaining());
-					send(buf.slice(buf.position(), chunkSize));
-					buf.advance(chunkSize);
+		public void onData(ByteBufN buf) {
+			while (internalBuf.writePosition() + buf.remainingToRead() >= minChunkSize) {
+				if (internalBuf.writePosition() == 0) {
+					int chunkSize = Math.min(maxChunkSize, buf.remainingToRead());
+					send(buf.slice(chunkSize));
+					buf.readPosition(buf.readPosition() + chunkSize);
 				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
-					internalBuf.flip();
+					buf.drainTo(internalBuf, minChunkSize - internalBuf.writePosition());
 					send(internalBuf);
-					internalBuf = ByteBufPool.allocate(maxChunkSize);
+					internalBuf = ByteBufNPool.allocateAtLeast(maxChunkSize);
 				}
 			}
 
-			buf.drainTo(internalBuf, buf.remaining());
-			assert internalBuf.position() < minChunkSize;
+			buf.drainTo(internalBuf, buf.remainingToRead());
+			assert internalBuf.writePosition() < minChunkSize;
 
 			buf.recycle();
 		}
 
 		private void flushAndClose() {
-			internalBuf.flip();
-			if (internalBuf.hasRemaining()) {
+			if (internalBuf.canRead()) {
 				outputProducer.send(internalBuf);
 			} else {
 				internalBuf.recycle();

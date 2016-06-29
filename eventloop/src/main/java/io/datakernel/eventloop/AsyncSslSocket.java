@@ -16,9 +16,9 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
+import io.datakernel.bytebufnew.ByteBufQueue;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
@@ -39,7 +39,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
-	private ByteBuf net2engine;
+	private ByteBufN net2engine;
 	private final ByteBufQueue app2engineQueue = new ByteBufQueue();
 
 	private boolean open = true;
@@ -67,16 +67,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void onRead(ByteBuf buf) {
+	public void onRead(ByteBufN buf) {
 		if (!isOpen()) return;
 		if (net2engine == null) {
 			net2engine = buf;
 		} else {
-			if (net2engine.position() + buf.remaining() > net2engine.capacity()) {
-				net2engine = ByteBufPool.resize(net2engine, net2engine.remaining() + buf.remaining());
-			}
-			net2engine = ByteBufPool.append(net2engine, buf);
-			buf.recycle();
+			net2engine = ByteBufNPool.concat(net2engine, buf);
 		}
 		sync();
 	}
@@ -134,7 +130,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void write(ByteBuf buf) {
+	public void write(ByteBufN buf) {
 		if (!isOpen()) return;
 		app2engineQueue.add(buf);
 		writeInterest = true;
@@ -179,53 +175,49 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	private SSLEngineResult tryToWriteToApp() throws SSLException {
-		ByteBuf targetBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
-		targetBuf.limit(targetBuf.array().length);
-		ByteBuffer sourceBuffer = net2engine.toByteBuffer();
-		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
+		ByteBufN dstBuf = ByteBufNPool.allocateAtLeast(engine.getSession().getPacketBufferSize());
+		ByteBuffer srcBuffer = net2engine.toByteBuffer();
+		ByteBuffer dstBuffer = dstBuf.toByteBuffer();
 
-		SSLEngineResult result = engine.unwrap(sourceBuffer, targetBuffer);
+		SSLEngineResult result = engine.unwrap(srcBuffer, dstBuffer);
 
-		net2engine.setByteBuffer(sourceBuffer);
-		if (!net2engine.hasRemaining()) {
+		net2engine.setByteBuffer(srcBuffer);
+		if (!net2engine.canRead()) {
 			net2engine.recycle();
 			net2engine = null;
 		}
 
-		targetBuffer.flip();
-		targetBuf.setByteBuffer(targetBuffer);
-		if (targetBuf.hasRemaining()) {
-			downstreamEventHandler.onRead(targetBuf);
+		dstBuf.setByteBuffer(dstBuffer);
+		if (dstBuf.canRead()) {
+			downstreamEventHandler.onRead(dstBuf);
 		} else {
-			targetBuf.recycle();
+			dstBuf.recycle();
 		}
 
 		return result;
 	}
 
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
-		ByteBuf sourceBuf = app2engineQueue.takeRemaining();
+		ByteBufN sourceBuf = app2engineQueue.takeRemaining();
 
-		ByteBuf targetBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
-		targetBuf.limit(targetBuf.array().length);
-		ByteBuffer sourceBuffer = sourceBuf.toByteBuffer();
-		ByteBuffer targetBuffer = targetBuf.toByteBuffer();
+		ByteBufN dstBuf = ByteBufNPool.allocateAtLeast(engine.getSession().getPacketBufferSize());
+		ByteBuffer srcBuffer = sourceBuf.toByteBuffer();
+		ByteBuffer dstBuffer = dstBuf.toByteBuffer();
 
-		SSLEngineResult result = engine.wrap(sourceBuffer, targetBuffer);
+		SSLEngineResult result = engine.wrap(srcBuffer, dstBuffer);
 
-		sourceBuf.setByteBuffer(sourceBuffer);
-		if (sourceBuf.hasRemaining()) {
+		sourceBuf.setByteBuffer(srcBuffer);
+		if (sourceBuf.canRead()) {
 			app2engineQueue.add(sourceBuf);
 		} else {
 			sourceBuf.recycle();
 		}
 
-		targetBuffer.flip();
-		targetBuf.setByteBuffer(targetBuffer);
-		if (targetBuf.hasRemaining()) {
-			upstream.write(targetBuf);
+		dstBuf.setByteBuffer(dstBuffer);
+		if (dstBuf.canRead()) {
+			upstream.write(dstBuf);
 		} else {
-			targetBuf.recycle();
+			dstBuf.recycle();
 		}
 		return result;
 	}

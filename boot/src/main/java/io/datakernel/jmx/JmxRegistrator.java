@@ -18,7 +18,7 @@ package io.datakernel.jmx;
 
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.List;

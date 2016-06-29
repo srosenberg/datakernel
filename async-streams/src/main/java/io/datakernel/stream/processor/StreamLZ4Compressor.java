@@ -16,8 +16,8 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -27,7 +27,7 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
@@ -59,12 +59,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+		public StreamDataReceiver<ByteBufN> getDataReceiver() {
 			return outputProducer;
 		}
 	}
 
-	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBufN> {
 		private final LZ4Compressor compressor;
 		private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
 
@@ -85,13 +85,13 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		}
 
 		@Override
-		public void onData(ByteBuf buf) {
+		public void onData(ByteBufN buf) {
 			jmxBufs++;
-			jmxBytesInput += buf.remaining();
+			jmxBytesInput += buf.remainingToRead();
 
-			ByteBuf outputBuffer = compressBlock(compressor, checksum,
-					buf.array(), buf.position(), buf.remaining());
-			jmxBytesOutput += outputBuffer.remaining();
+			ByteBufN outputBuffer = compressBlock(compressor, checksum,
+					buf.array(), buf.readPosition(), buf.remainingToRead());
+			jmxBytesOutput += outputBuffer.remainingToRead();
 
 			send(outputBuffer);
 
@@ -169,12 +169,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		buf[off] = (byte) (i >>> 24);
 	}
 
-	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
-	                                    byte[] buffer, int off, int len) {
+	public static ByteBufN compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
+	                                     byte[] buffer, int off, int len) {
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
-		ByteBuf outputBuf = ByteBufPool.allocate(outputBufMaxSize);
+		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(outputBufMaxSize);
 		byte[] outputBytes = outputBuf.array();
 		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 
@@ -202,15 +202,15 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.limit(HEADER_LENGTH + compressedLength);
+		outputBuf.writePosition(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
 
-	public static ByteBuf createEndOfStreamBlock() {
+	public static ByteBufN createEndOfStreamBlock() {
 		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
 
-		ByteBuf outputBuf = ByteBufPool.allocate(HEADER_LENGTH);
+		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(HEADER_LENGTH);
 		byte[] outputBytes = outputBuf.array();
 		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 
@@ -220,7 +220,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.limit(HEADER_LENGTH);
+		outputBuf.writePosition(HEADER_LENGTH);
 		return outputBuf;
 	}
 

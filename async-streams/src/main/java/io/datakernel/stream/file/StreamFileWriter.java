@@ -18,7 +18,7 @@ package io.datakernel.stream.file;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -40,11 +40,11 @@ import static java.nio.file.StandardOpenOption.*;
  * This class allows you to write data from file non-blocking. It represents consumer which receives
  * data and writes it to file.
  */
-public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+public final class StreamFileWriter extends AbstractStreamConsumer<ByteBufN> implements StreamDataReceiver<ByteBufN> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
 	public static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING};
 
-	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();
+	private final ArrayDeque<ByteBufN> queue = new ArrayDeque<>();
 	private final AsyncFile asyncFile;
 
 	private long position;
@@ -97,7 +97,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
+	public StreamDataReceiver<ByteBufN> getDataReceiver() {
 		return this;
 	}
 
@@ -106,8 +106,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		if (getConsumerStatus() == CLOSED_WITH_ERROR)
 			return;
 
-		final ByteBuf buf = queue.poll();
-		final int length = buf.remaining();
+		final ByteBufN buf = queue.poll();
+		final int length = buf.remainingToRead();
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -169,7 +169,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void doCleanup(boolean forceOnClose, CompletionCallback callback) {
-		for (ByteBuf buf : queue) {
+		for (ByteBufN buf : queue) {
 			buf.recycle();
 		}
 		queue.clear();
@@ -187,7 +187,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public void onData(ByteBuf buf) {
+	public void onData(ByteBufN buf) {
 		queue.offer(buf);
 		if (queue.size() > 1) {
 			suspend();
