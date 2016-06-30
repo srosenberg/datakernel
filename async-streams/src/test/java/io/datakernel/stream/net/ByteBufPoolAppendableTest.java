@@ -17,8 +17,8 @@ public class ByteBufPoolAppendableTest {
 		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable();
 		appendable.append(HELLO_WORLD);
 		ByteBufN buf = appendable.get();
-		assertEquals(0, buf.readPosition());
-		assertEquals(13, buf.writePosition());
+		assertEquals(0, buf.getReadPosition());
+		assertEquals(13, buf.getWritePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -29,8 +29,8 @@ public class ByteBufPoolAppendableTest {
 		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable(8);
 		appendable.append(HELLO_WORLD);
 		ByteBufN buf = appendable.get();
-		assertEquals(0, buf.readPosition());
-		assertEquals(13, buf.writePosition());
+		assertEquals(0, buf.getReadPosition());
+		assertEquals(13, buf.getWritePosition());
 		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
 		buf.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());

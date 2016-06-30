@@ -62,20 +62,20 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		public void onData(ByteBufN buf) {
-			while (internalBuf.writePosition() + buf.remainingToRead() >= minChunkSize) {
-				if (internalBuf.writePosition() == 0) {
+			while (internalBuf.getWritePosition() + buf.remainingToRead() >= minChunkSize) {
+				if (internalBuf.getWritePosition() == 0) {
 					int chunkSize = Math.min(maxChunkSize, buf.remainingToRead());
 					send(buf.slice(chunkSize));
-					buf.readPosition(buf.readPosition() + chunkSize);
+					buf.setReadPosition(buf.getReadPosition() + chunkSize);
 				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.writePosition());
+					buf.drainTo(internalBuf, minChunkSize - internalBuf.getWritePosition());
 					send(internalBuf);
 					internalBuf = ByteBufNPool.allocateAtLeast(maxChunkSize);
 				}
 			}
 
 			buf.drainTo(internalBuf, buf.remainingToRead());
-			assert internalBuf.writePosition() < minChunkSize;
+			assert internalBuf.getWritePosition() < minChunkSize;
 
 			buf.recycle();
 		}

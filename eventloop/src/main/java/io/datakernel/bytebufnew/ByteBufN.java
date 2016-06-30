@@ -1,12 +1,10 @@
 package io.datakernel.bytebufnew;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 public class ByteBufN {
 	static final class ByteBufNSlice extends ByteBufN {
 		private ByteBufN root;
-		private boolean viewRecycled = false;
 
 		private ByteBufNSlice(ByteBufN buf, int rPos, int wPos, int limit) {
 			super(buf.array, rPos, wPos, limit);
@@ -25,7 +23,7 @@ public class ByteBufN {
 
 		@Override
 		boolean isRecycled() {
-			return viewRecycled || root.isRecycled();
+			return root.isRecycled();
 		}
 	}
 
@@ -84,9 +82,6 @@ public class ByteBufN {
 
 	// recycling
 	public void recycle() {
-		if (isRecycled()) {
-			System.out.println(Arrays.toString(array));
-		}
 		assert !isRecycled();
 		if (refs > 0 && --refs == 0) {
 			assert --refs == -1;
@@ -122,8 +117,8 @@ public class ByteBufN {
 		assert !isRecycled();
 		assert this.array == buffer.array();
 		assert buffer.arrayOffset() == 0;
-		readPosition(buffer.position());
-		writePosition(buffer.limit());
+		setReadPosition(buffer.position());
+		setWritePosition(buffer.limit());
 	}
 
 	// getters
@@ -148,31 +143,36 @@ public class ByteBufN {
 
 	public boolean canRead() {
 		assert !isRecycled();
-		return rPos < wPos;
+		return rPos != wPos;
 	}
 
-	public int readPosition() {
+	public int getReadPosition() {
 		assert !isRecycled();
 		return rPos;
 	}
 
-	public int writePosition() {
+	public int getWritePosition() {
 		assert !isRecycled();
 		return wPos;
 	}
 
-	public void advance(int size) {
+	public void skip(int size) {
 		assert !isRecycled();
-		assert wPos + size <= limit;
-		wPos += size;
+		assert rPos + size <= limit;
+		rPos += size;
 	}
 
 	public byte get() {
 		assert !isRecycled();
-		assert wPos < limit;
-		return array[wPos++];
+		assert rPos < wPos;
+		return array[rPos++];
 	}
 
+	/**
+	 * Get byte from underlying array
+	 * @param index absolute position in underlying array
+	 * @return byte at specified position in underlying array
+	 */
 	public byte at(int index) {
 		assert !isRecycled();
 		assert index <= limit;
@@ -205,10 +205,16 @@ public class ByteBufN {
 	}
 
 	// editing
-	public void set(int pos, byte b) {
+
+	/**
+	 * Set byte in underlying array
+	 * @param index absolute position at underlying array
+	 * @param b byte to be set
+	 */
+	public void set(int index, byte b) {
 		assert !isRecycled();
-		assert pos >= rPos && pos < limit && pos >= wPos;
-		array[pos] = b;
+		assert index >= rPos && index < limit && index >= wPos;
+		array[index] = b;
 	}
 
 	public void put(byte b) {
@@ -234,13 +240,13 @@ public class ByteBufN {
 		wPos += length;
 	}
 
-	public void readPosition(int pos) {
+	public void setReadPosition(int pos) {
 		assert !isRecycled();
 		assert pos >= rPos && pos <= wPos;
 		this.rPos = pos;
 	}
 
-	public void writePosition(int pos) {
+	public void setWritePosition(int pos) {
 		assert !isRecycled();
 		assert pos >= rPos && pos <= limit;
 		this.wPos = pos;
@@ -285,7 +291,6 @@ public class ByteBufN {
 
 	@Override
 	public String toString() {
-		if (isRecycled()) return "recycled";
 		char[] chars = new char[remainingToRead() < 256 ? remainingToRead() : 256];
 		for (int i = 0; i < chars.length; i++) {
 			byte b = array[rPos + i];

@@ -40,28 +40,28 @@ public class ByteBufNTest {
 	@Test
 	public void testEditing() {
 		ByteBufN buf = ByteBufN.create(256);
-		assertEquals(0, buf.readPosition());
+		assertEquals(0, buf.getReadPosition());
 
 		buf.put((byte) 'H');
-		assertEquals(1, buf.writePosition());
+		assertEquals(1, buf.getWritePosition());
 		assertEquals('H', buf.at(0));
 
 		buf.put(new byte[]{'e', 'l', 'l', 'o'});
 		buf.put(new byte[]{';', ' ', ',', ' ', '.', ' ', '!', ' '}, 2, 4);
-		assertEquals(7, buf.writePosition());
+		assertEquals(7, buf.getWritePosition());
 
 		ByteBufN worldBuf = ByteBufN.wrap(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
 		buf.put(worldBuf);
 
-		assertEquals(worldBuf.limit, worldBuf.readPosition());
+		assertEquals(worldBuf.limit, worldBuf.getReadPosition());
 		assertFalse(worldBuf.canWrite());
-		assertEquals(13, buf.writePosition());
+		assertEquals(13, buf.getWritePosition());
 
 		ByteBufN slice = buf.slice();
 		ByteBufN newBuf = ByteBufN.create(slice.limit);
 		slice.drainTo(newBuf, 10);
-		assertEquals(10, slice.readPosition());
-		assertEquals(10, newBuf.writePosition());
+		assertEquals(10, slice.getReadPosition());
+		assertEquals(10, newBuf.getWritePosition());
 
 		slice.drainTo(newBuf, 3);
 
@@ -79,7 +79,7 @@ public class ByteBufNTest {
 		buffer.put("! Next test message!".getBytes());
 		buffer.flip();
 		buf.setByteBuffer(buffer);
-		assertEquals(32, buf.writePosition());
+		assertEquals(32, buf.getWritePosition());
 
 		assertEquals("Test message! Next test message!", buf.slice().toString());
 	}
@@ -102,7 +102,7 @@ public class ByteBufNTest {
 		}
 
 		buf = ByteBufNPool.allocateAtLeast(300);
-		buf.writePosition(BYTES.length);
+		buf.setWritePosition(BYTES.length);
 		byte[] bytes = new byte[BYTES.length];
 		buf.drainTo(bytes, 0, bytes.length);
 		assertArrayEquals(bytes, BYTES);
@@ -177,5 +177,24 @@ public class ByteBufNTest {
 		buf.recycle();
 		secondBuf.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testSkip() {
+		ByteBufN buf = ByteBufN.create(5);
+		buf.put(new byte[]{'a', 'b', 'c', 'd', 'e'});
+
+		buf.skip(2);
+		assertEquals('c', buf.peek());
+	}
+
+	@Test
+	public void testGet() {
+		ByteBufN buf = ByteBufN.create(3);
+		buf.put(new byte[]{'a', 'b', 'c'});
+
+		assertEquals('a', buf.get());
+		assertEquals('b', buf.get());
+		assertEquals('c', buf.get());
 	}
 }

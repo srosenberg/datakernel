@@ -51,7 +51,7 @@ public class ByteBufNPool {
 	public static ByteBufN concat(ByteBufN buf1, ByteBufN buf2) {
 		assert !buf1.isRecycled() && !buf2.isRecycled();
 		if (buf1.remainingToWrite() < buf2.remainingToRead()) {
-			ByteBufN newBuf = allocateAtLeast(buf1.writePosition() + buf2.remainingToRead());
+			ByteBufN newBuf = allocateAtLeast(buf1.getWritePosition() + buf2.remainingToRead());
 			newBuf.put(buf1);
 			buf1.recycle();
 			buf1 = newBuf;

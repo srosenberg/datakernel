@@ -93,8 +93,8 @@ public final class ByteBufQueue {
 			first = next(first);
 			return buf;
 		}
-		ByteBufN result = buf.slice(buf.readPosition(), maxSize);
-		buf.advance(maxSize);
+		ByteBufN result = buf.slice(buf.getReadPosition(), maxSize);
+		buf.skip(maxSize);
 		return result;
 	}
 
@@ -113,8 +113,8 @@ public final class ByteBufQueue {
 			first = next(first);
 			return buf;
 		} else if (exactSize < buf.remainingToRead()) {
-			ByteBufN result = buf.slice(buf.readPosition(), exactSize);
-			buf.advance(exactSize);
+			ByteBufN result = buf.slice(buf.getReadPosition(), exactSize);
+			buf.skip(exactSize);
 			return result;
 		}
 		ByteBufN result = ByteBufNPool.allocateAtLeast(exactSize);
@@ -248,10 +248,10 @@ public final class ByteBufQueue {
 			ByteBufN buf = bufs[first];
 			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				buf.advance(s);
+				buf.skip(s);
 				return maxSize;
 			} else {
-				buf.readPosition(buf.writePosition());
+				buf.setReadPosition(buf.getWritePosition());
 				doPoll();
 				s -= remaining;
 			}
@@ -274,12 +274,12 @@ public final class ByteBufQueue {
 			ByteBufN buf = bufs[first];
 			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, s);
-				buf.readPosition(buf.readPosition() + s);
+				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, s);
+				buf.setReadPosition(buf.getReadPosition() + s);
 				return maxSize;
 			} else {
-				arraycopy(buf.array(), buf.readPosition(), dest, destOffset, remaining);
-				buf.readPosition(buf.writePosition());
+				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, remaining);
+				buf.setReadPosition(buf.getWritePosition());
 				doPoll();
 				s -= remaining;
 				destOffset += remaining;
@@ -297,8 +297,8 @@ public final class ByteBufQueue {
 	 * @return number of drained bytes.
 	 */
 	public int drainTo(ByteBufN dest, int maxSize) {
-		int actualSize = drainTo(dest.array(), dest.writePosition(), maxSize);
-		dest.advance(actualSize);
+		int actualSize = drainTo(dest.array(), dest.getWritePosition(), maxSize);
+		dest.skip(actualSize);
 		return actualSize;
 	}
 

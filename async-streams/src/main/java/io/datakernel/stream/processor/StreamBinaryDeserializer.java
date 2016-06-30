@@ -121,7 +121,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						break;
 
 					byte[] b = nextBuf.array();
-					int off = nextBuf.readPosition();
+					int off = nextBuf.getReadPosition();
 					int len = nextBuf.remainingToRead();
 					while (isStatusReady() && len > 0) {
 						if (dataSize == 0) {
@@ -189,7 +189,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							bufferPos = 0;
 							dataSize = 0;
 						}
-						nextBuf.readPosition(off);
+						nextBuf.setReadPosition(off);
 						++jmxItems;
 						downstreamDataReceiver.onData(item);
 					}
@@ -198,7 +198,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						return;
 
 					if (len != 0) {
-						nextBuf.readPosition(off);
+						nextBuf.setReadPosition(off);
 						return;
 					}
 
@@ -228,7 +228,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 
 		private void growBuf(int newSize) {
-			buf.writePosition(bufferPos); // TODO check?? buf.limit(bufferPos)
+			buf.setWritePosition(bufferPos); // TODO check?? buf.limit(bufferPos)
 			buf = ByteBufNPool.reallocateAtLeast(buf, newSize);
 			buffer = buf.array();
 		}

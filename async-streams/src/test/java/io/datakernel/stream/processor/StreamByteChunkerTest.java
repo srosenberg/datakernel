@@ -41,8 +41,8 @@ public class StreamByteChunkerTest {
 	private static ByteBufN createRandomByteBuf(Random random) {
 		int len = random.nextInt(100);
 		ByteBufN result = ByteBufN.create(len);
-		result.readPosition(0);
-		result.writePosition(len);
+		result.setReadPosition(0);
+		result.setWritePosition(len);
 		int lenUnique = 1 + random.nextInt(len + 1);
 		for (int i = 0; i < len; i++) {
 			result.array()[i] = (byte) (i % lenUnique);
@@ -58,7 +58,7 @@ public class StreamByteChunkerTest {
 		byte[] result = new byte[size];
 		int pos = 0;
 		for (ByteBufN byteBuf : byteBufs) {
-			System.arraycopy(byteBuf.array(), byteBuf.readPosition(), result, pos, byteBuf.remainingToRead());
+			System.arraycopy(byteBuf.array(), byteBuf.getReadPosition(), result, pos, byteBuf.remainingToRead());
 			pos += byteBuf.remainingToRead();
 		}
 		return result;

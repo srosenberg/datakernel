@@ -17,16 +17,16 @@ public class MessagingSerializers {
 			@Override
 			public I tryDeserialize(ByteBufN buf) throws ParseException {
 				int delim = -1;
-				for (int i = buf.readPosition(); i < buf.writePosition(); i++) {
+				for (int i = buf.getReadPosition(); i < buf.getWritePosition(); i++) {
 					if (buf.array()[i] == '\0') {
 						delim = i;
 						break;
 					}
 				}
 				if (delim != -1) {
-					int len = delim - buf.readPosition();
-					I item = in.fromJson(ByteBufStrings.decodeUTF8(buf.array(), buf.readPosition(), len), inputClass);
-					buf.readPosition(delim + 1); // skipping msg + delimiter
+					int len = delim - buf.getReadPosition();
+					I item = in.fromJson(ByteBufStrings.decodeUTF8(buf.array(), buf.getReadPosition(), len), inputClass);
+					buf.setReadPosition(delim + 1); // skipping msg + delimiter
 					return item;
 				}
 				return null;
@@ -57,11 +57,11 @@ public class MessagingSerializers {
 			while (container.remainingToWrite() < csq.length() * 3) {
 				container = ByteBufNPool.reallocateAtLeast(container, container.limit * 2);
 			}
-			int pos = container.writePosition();
+			int pos = container.getWritePosition();
 			for (int i = 0; i < csq.length(); i++) {
 				pos = writeUtfChar(container.array(), pos, csq.charAt(i));
 			}
-			container.writePosition(pos);
+			container.setWritePosition(pos);
 			return this;
 		}
 
@@ -75,8 +75,8 @@ public class MessagingSerializers {
 			if (container.remainingToWrite() < 3) {
 				container = ByteBufNPool.reallocateAtLeast(container, container.limit * 2);
 			}
-			int pos = writeUtfChar(container.array(), container.writePosition(), c);
-			container.writePosition(pos);
+			int pos = writeUtfChar(container.array(), container.getWritePosition(), c);
+			container.setWritePosition(pos);
 			return this;
 		}
 
