@@ -62,20 +62,25 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		public void onData(ByteBufN buf) {
-			while (internalBuf.getWritePosition() + buf.remainingToRead() >= minChunkSize) {
-				if (internalBuf.getWritePosition() == 0) {
+			System.out.println(hashCode() + " received " + buf.remainingToRead());
+			while (internalBuf.writePosition() + buf.remainingToRead() >= minChunkSize) {
+				if (internalBuf.writePosition() == 0) {
 					int chunkSize = Math.min(maxChunkSize, buf.remainingToRead());
-					send(buf.slice(chunkSize));
-					buf.setReadPosition(buf.getReadPosition() + chunkSize);
+					ByteBufN slice = buf.slice(chunkSize);
+					System.out.println(hashCode() + " send slice " + slice.remainingToRead());
+					send(slice);
+					buf.readPosition(buf.readPosition() + chunkSize);
 				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.getWritePosition());
+					buf.drainTo(internalBuf, minChunkSize - internalBuf.writePosition());
+					System.out.println(hashCode() + " send internal buf " + internalBuf.remainingToRead());
 					send(internalBuf);
 					internalBuf = ByteBufNPool.allocateAtLeast(maxChunkSize);
 				}
 			}
 
+			System.out.println(hashCode() + " drained to buffer " + buf.remainingToRead());
 			buf.drainTo(internalBuf, buf.remainingToRead());
-			assert internalBuf.getWritePosition() < minChunkSize;
+			assert internalBuf.writePosition() < minChunkSize;
 
 			buf.recycle();
 		}

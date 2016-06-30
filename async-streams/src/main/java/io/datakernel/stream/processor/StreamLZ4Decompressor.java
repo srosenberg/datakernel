@@ -36,11 +36,15 @@ import static java.lang.Math.min;
 import static java.lang.String.format;
 
 public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> implements EventloopJmxMBean {
-	private final InputConsumer inputConsumer;
-	private final OutputProducer outputProducer;
+	private final static class Header {
+		private int originalLen;
+		private int compressedLen;
+		private int compressionMethod;
+		private int check;
+		private boolean finished;
+	}
 
 	private final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.sendEndOfStream();
@@ -88,6 +92,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		public void onData(ByteBufN buf) {
 			jmxBufsInput++;
 			jmxBytesInput += buf.remainingToRead();
+			System.out.println("received " + buf.remainingToRead() + ", state: " + headerBuf.remainingToRead() + ", " + inputBuf.remainingToRead());
 			try {
 				if (header.finished) {
 					throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf));
@@ -97,26 +102,26 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				e.printStackTrace();
 				inputConsumer.closeWithError(e);
 			} finally {
+				System.out.println("Recycling buf: " + buf.remainingToRead());
 				buf.recycle();
 			}
 		}
 
 		private void consumeInputByteBuffer(ByteBufN buf) throws ParseException {
+			int oldPos = buf.remainingToRead();
 			while (buf.canRead() && getProducerStatus().isOpen()) {
 				if (isReadingHeader()) {
 					// read message header:
-					if (headerBuf.getWritePosition() == 0 && buf.remainingToRead() >= HEADER_LENGTH) {
-						readHeader(header, buf.array(), buf.getReadPosition());
-						buf.setReadPosition(buf.getReadPosition() + HEADER_LENGTH);
-						headerBuf.setWritePosition(HEADER_LENGTH);
+					if (headerBuf.writePosition() == 0 && buf.remainingToRead() >= HEADER_LENGTH) {
+						readHeader(header, buf.array(), buf.readPosition());
+						buf.readPosition(buf.readPosition() + HEADER_LENGTH);
+						headerBuf.writePosition(HEADER_LENGTH);
 					} else {
 						buf.drainTo(headerBuf, min(headerBuf.remainingToWrite(), buf.remainingToRead()));
-						if (isReadingHeader())
-							break;
+						if (isReadingHeader()) break;
 						readHeader(header, headerBuf.array(), 0);
 					}
 					assert !isReadingHeader();
-					inputBuf.setReadPosition(0);
 				}
 
 				if (header.finished) {
@@ -127,20 +132,26 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				// read message body:
 				assert !isReadingHeader();
 				ByteBufN outputBuf;
-				if (inputBuf.getReadPosition() == 0 && buf.remainingToRead() >= header.compressedLen) {
-					outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.getReadPosition());
-					buf.setReadPosition(buf.getReadPosition() + header.compressedLen);
+				if (!inputBuf.canRead() && buf.remainingToRead() >= header.compressedLen) {
+					outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.readPosition());
+					System.out.println("decompressed from " + oldPos + " to " + outputBuf.remainingToRead());
+					buf.readPosition(buf.readPosition() + header.compressedLen);
 				} else {
 					inputBuf = ByteBufNPool.reallocateAtLeast(inputBuf, header.compressedLen);
-					buf.drainTo(inputBuf, min(inputBuf.remainingToWrite(), buf.remainingToRead()));
-					if (inputBuf.canRead())
-						break;
+					int remainingToProcessBytes = header.compressedLen - inputBuf.remainingToRead();
+					int size = min(remainingToProcessBytes, buf.remainingToRead());
+					buf.drainTo(inputBuf, size);
+					if (inputBuf.remainingToRead() < header.compressedLen) break;
 					outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), 0);
+					System.out.println("decompressed from " + (oldPos - buf.remainingToRead()) + " to " + outputBuf.remainingToRead());
 				}
+				System.out.println("remaining to decompress " + buf.remainingToRead());
 				inputStreamPosition += HEADER_LENGTH + header.compressedLen;
 				jmxBufsOutput++;
 				jmxBytesOutput += outputBuf.remainingToRead();
+
 				downstreamDataReceiver.onData(outputBuf);
+				inputBuf.rewind();
 				headerBuf.rewind();
 				assert isReadingHeader();
 			}
@@ -170,15 +181,10 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		}
 	}
 
-	private final Header header = new Header();
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private final static class Header {
-		private int originalLen;
-		private int compressedLen;
-		private int compressionMethod;
-		private int check;
-		private boolean finished;
-	}
+	private final Header header = new Header();
 
 	public StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		super(eventloop);
@@ -193,7 +199,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 	private static ByteBufN readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 	                                 byte[] buf, int off) throws ParseException {
 		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(header.originalLen);
-		outputBuf.setWritePosition(header.originalLen); // TODO ????
+		outputBuf.writePosition(header.originalLen);
 		switch (header.compressionMethod) {
 			case COMPRESSION_METHOD_RAW:
 				System.arraycopy(buf, off, outputBuf.array(), 0, header.originalLen);

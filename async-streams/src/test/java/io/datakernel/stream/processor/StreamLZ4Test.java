@@ -39,12 +39,12 @@ import static org.junit.Assert.assertEquals;
 public class StreamLZ4Test {
 	private static ByteBufN createRandomByteBuf(Random random) {
 		int offset = random.nextInt(10);
-		int len = random.nextInt(100);
 		int tail = random.nextInt(10);
+		int len = random.nextInt(100);
 		ByteBufN result = ByteBufN.create(offset + len + tail);
 		int lenUnique = 1 + random.nextInt(len + 1);
-		result.setWritePosition(offset);
-		result.setReadPosition(offset);
+		result.writePosition(offset);
+		result.readPosition(offset);
 		for (int i = 0; i < len; i++) {
 			result.put((byte) (i % lenUnique));
 		}
@@ -73,10 +73,9 @@ public class StreamLZ4Test {
 
 		List<ByteBufN> buffers = new ArrayList<>();
 		Random random = new Random(123456);
-		int buffersCount = 10000;
+		int buffersCount = 1000;
 		for (int i = 0; i < buffersCount; i++) {
-			ByteBufN buffer = createRandomByteBuf(random);
-			buffers.add(buffer);
+			buffers.add(createRandomByteBuf(random));
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 

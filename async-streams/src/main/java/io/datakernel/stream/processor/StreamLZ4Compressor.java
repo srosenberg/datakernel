@@ -38,6 +38,9 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 					+ 4     // decompressed length
 					+ 4;    // checksum
 
+	static {
+		System.err.println(HEADER_LENGTH);
+	}
 	static final int COMPRESSION_LEVEL_BASE = 10;
 
 	static final int COMPRESSION_METHOD_RAW = 0x10;
@@ -89,10 +92,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 			jmxBufs++;
 			jmxBytesInput += buf.remainingToRead();
 
+			int prevLen = buf.remainingToRead();
 			ByteBufN outputBuffer = compressBlock(compressor, checksum,
-					buf.array(), buf.getReadPosition(), buf.remainingToRead());
+					buf.array(), buf.readPosition(), buf.remainingToRead());
 			jmxBytesOutput += outputBuffer.remainingToRead();
 
+			System.out.println("compressed from " + prevLen + " to " + outputBuffer.remainingToRead());
 			send(outputBuffer);
 
 			buf.recycle();
@@ -176,7 +181,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
 		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(outputBufMaxSize);
 		byte[] outputBytes = outputBuf.array();
-		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
+		outputBuf.put(MAGIC);
 
 		checksum.reset();
 		checksum.update(buffer, off, len);
@@ -202,7 +207,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.setWritePosition(HEADER_LENGTH + compressedLength);
+		outputBuf.writePosition(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
@@ -220,7 +225,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.setWritePosition(HEADER_LENGTH);
+		outputBuf.writePosition(HEADER_LENGTH);
 		return outputBuf;
 	}
 
