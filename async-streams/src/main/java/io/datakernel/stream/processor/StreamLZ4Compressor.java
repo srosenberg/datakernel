@@ -38,9 +38,6 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 					+ 4     // decompressed length
 					+ 4;    // checksum
 
-	static {
-		System.err.println(HEADER_LENGTH);
-	}
 	static final int COMPRESSION_LEVEL_BASE = 10;
 
 	static final int COMPRESSION_METHOD_RAW = 0x10;
@@ -90,72 +87,38 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		@Override
 		public void onData(ByteBufN buf) {
 			jmxBufs++;
-			jmxBytesInput += buf.remainingToRead();
 
-			int prevLen = buf.remainingToRead();
-			ByteBufN outputBuffer = compressBlock(compressor, checksum,
-					buf.array(), buf.readPosition(), buf.remainingToRead());
+			jmxBytesInput += buf.remainingToRead();
+			ByteBufN outputBuffer = compressBlock(compressor, checksum, buf.array(), buf.getReadPosition(), buf.remainingToRead());
 			jmxBytesOutput += outputBuffer.remainingToRead();
 
-			System.out.println("compressed from " + prevLen + " to " + outputBuffer.remainingToRead());
 			send(outputBuffer);
-
 			buf.recycle();
 		}
 	}
 
-	/**
-	 * Returns new instance of StreamLZ4Compressor without compression.
-	 *
-	 * @param eventloop event loop in which compressor will run
-	 */
-	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, null);
-	}
-
-	/**
-	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#fastCompressor()}.
-	 * for data compression.
-	 *
-	 * @param eventloop event loop in which compressor will run
-	 */
-	public static StreamLZ4Compressor fastCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().fastCompressor());
-	}
-
-	/**
-	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#highCompressor()}.
-	 * for data compression.
-	 *
-	 * @param eventloop event loop in which compressor will run
-	 */
-	public static StreamLZ4Compressor highCompressor(Eventloop eventloop) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor());
-	}
-
-	/**
-	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#highCompressor(int)}
-	 * for data compression.
-	 *
-	 * @param eventloop        event loop in which compressor will run
-	 * @param compressionLevel compression level in the same manner as the {@link LZ4Factory#highCompressor(int)}
-	 */
-	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
-		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
-	}
-
-	/**
-	 * Returns new instance of this compressor. Large blocks require more memory at compression
-	 * and decompression time but should improve the compression ratio.
-	 *
-	 * @param eventloop  event loop in which compressor will run
-	 * @param compressor compressor which will use; can be {@code null} for transmission without compression
-	 */
+	// creators
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(compressor);
 
+	}
+
+	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, null);
+	}
+
+	public static StreamLZ4Compressor fastCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().fastCompressor());
+	}
+
+	public static StreamLZ4Compressor highCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor());
+	}
+
+	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
 	private static int compressionLevel(int blockSize) {
@@ -174,29 +137,29 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		buf[off] = (byte) (i >>> 24);
 	}
 
-	public static ByteBufN compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
-	                                     byte[] buffer, int off, int len) {
+	private static ByteBufN compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, byte[] bytes, int off, int len) {
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
 		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(outputBufMaxSize);
-		byte[] outputBytes = outputBuf.array();
 		outputBuf.put(MAGIC);
 
+		byte[] outputBytes = outputBuf.array();
+
 		checksum.reset();
-		checksum.update(buffer, off, len);
+		checksum.update(bytes, off, len);
 		int check = checksum.getValue();
 
 		int compressedLength = len;
 		if (compressor != null) {
-			compressedLength = compressor.compress(buffer, off, len, outputBytes, HEADER_LENGTH);
+			compressedLength = compressor.compress(bytes, off, len, outputBytes, HEADER_LENGTH);
 		}
 
 		int compressMethod;
 		if (compressor == null || compressedLength >= len) {
 			compressMethod = COMPRESSION_METHOD_RAW;
 			compressedLength = len;
-			System.arraycopy(buffer, off, outputBytes, HEADER_LENGTH, len);
+			System.arraycopy(bytes, off, outputBytes, HEADER_LENGTH, len);
 		} else {
 			compressMethod = COMPRESSION_METHOD_LZ4;
 		}
@@ -207,12 +170,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.writePosition(HEADER_LENGTH + compressedLength);
+		outputBuf.setWritePosition(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
 
-	public static ByteBufN createEndOfStreamBlock() {
+	private static ByteBufN createEndOfStreamBlock() {
 		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
 
 		ByteBufN outputBuf = ByteBufNPool.allocateAtLeast(HEADER_LENGTH);
@@ -223,12 +186,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 1);
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 5);
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
-		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.writePosition(HEADER_LENGTH);
+		outputBuf.setWritePosition(HEADER_LENGTH);
 		return outputBuf;
 	}
 
+	// jmx
 	@JmxAttribute
 	public long getBytesInput() {
 		return outputProducer.jmxBytesInput;
@@ -244,7 +207,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		return outputProducer.jmxBufs;
 	}
 
-	@SuppressWarnings("AssertWithSideEffects")
+	// miscellaneous
 	@Override
 	public String toString() {
 		return '{' + super.toString() +
@@ -253,5 +216,4 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 				" bufs:" + outputProducer.jmxBufs +
 				'}';
 	}
-
 }

@@ -32,8 +32,6 @@ public class ByteBufN {
 	private int rPos;
 	private int wPos;
 
-	public final int limit;
-
 	int refs;
 
 	// creators
@@ -42,7 +40,6 @@ public class ByteBufN {
 		this.array = array;
 		this.rPos = rPos;
 		this.wPos = wPos;
-		this.limit = limit;
 	}
 
 	public static ByteBufN empty() {
@@ -60,6 +57,33 @@ public class ByteBufN {
 	public static ByteBufN wrap(byte[] bytes, int offset, int length) {
 		int limit = offset + length;
 		return new ByteBufN(bytes, offset, limit, limit);
+	}
+
+	// getters & setters
+	public int getReadPosition() {
+		assert !isRecycled();
+		return rPos;
+	}
+
+	public int getWritePosition() {
+		assert !isRecycled();
+		return wPos;
+	}
+
+	public int getLimit() {
+		return array.length;
+	}
+
+	public void setReadPosition(int pos) {
+		assert !isRecycled();
+		assert pos >= rPos && pos <= wPos;
+		this.rPos = pos;
+	}
+
+	public void setWritePosition(int pos) {
+		assert !isRecycled();
+		assert pos >= rPos && pos <= array.length;
+		this.wPos = pos;
 	}
 
 	// slicing
@@ -93,27 +117,33 @@ public class ByteBufN {
 		return refs == -1;
 	}
 
-	public boolean isRecycleNeeded() {
-		return refs > 0;
-	}
-
 	void reset() {
 		assert isRecycled();
 		refs = 1;
 		rewind();
 	}
 
-	// byte buffers
-	// assume ByteBuffer is being passed in 'read mode' pos=0; lim=wPos
-	public ByteBuffer toByteBuffer() {
+	public void rewind() {
 		assert !isRecycled();
-		ByteBuffer buffer = ByteBuffer.wrap(array, rPos, limit - rPos);
+		wPos = 0;
+		rPos = 0;
+	}
+
+	private boolean isRecycleNeeded() {
+		return refs > 0;
+	}
+
+	// byte buffers
+	public ByteBuffer toByteBuffer() {
+		// assume ByteBuffer is being passed in 'read mode' pos=0; lim=wPos
+		assert !isRecycled();
+		ByteBuffer buffer = ByteBuffer.wrap(array, rPos, array.length - rPos);
 		buffer.position(wPos);
 		return buffer;
 	}
 
-	// assume ByteBuffer is being passed in 'read mode' pos=0, lim=wPos
 	public void setByteBuffer(ByteBuffer buffer) {
+		// assume ByteBuffer is being passed in 'read mode' pos=0, lim=wPos
 		assert !isRecycled();
 		assert this.array == buffer.array();
 		assert buffer.arrayOffset() == 0;
@@ -128,7 +158,7 @@ public class ByteBufN {
 
 	public int remainingToWrite() {
 		assert !isRecycled();
-		return limit - wPos;
+		return array.length - wPos;
 	}
 
 	public int remainingToRead() {
@@ -138,7 +168,7 @@ public class ByteBufN {
 
 	public boolean canWrite() {
 		assert !isRecycled();
-		return wPos != limit;
+		return wPos != array.length;
 	}
 
 	public boolean canRead() {
@@ -146,19 +176,15 @@ public class ByteBufN {
 		return rPos != wPos;
 	}
 
-	public int getReadPosition() {
+	public void advance(int size) {
 		assert !isRecycled();
-		return rPos;
-	}
-
-	public int getWritePosition() {
-		assert !isRecycled();
-		return wPos;
+		assert wPos + size <= array.length;
+		wPos += size;
 	}
 
 	public void skip(int size) {
 		assert !isRecycled();
-		assert rPos + size <= limit;
+		assert rPos + size <= array.length;
 		rPos += size;
 	}
 
@@ -168,14 +194,9 @@ public class ByteBufN {
 		return array[rPos++];
 	}
 
-	/**
-	 * Get byte from underlying array
-	 * @param index absolute position in underlying array
-	 * @return byte at specified position in underlying array
-	 */
 	public byte at(int index) {
 		assert !isRecycled();
-		assert index <= limit;
+		assert index <= array.length;
 		return array[index];
 	}
 
@@ -205,15 +226,9 @@ public class ByteBufN {
 	}
 
 	// editing
-
-	/**
-	 * Set byte in underlying array
-	 * @param index absolute position at underlying array
-	 * @param b byte to be set
-	 */
 	public void set(int index, byte b) {
 		assert !isRecycled();
-		assert index >= rPos && index < limit && index >= wPos;
+		assert index >= rPos && index < array.length && index >= wPos;
 		array[index] = b;
 	}
 
@@ -233,28 +248,11 @@ public class ByteBufN {
 
 	public void put(byte[] bytes, int off, int lim) {
 		assert !isRecycled();
-		assert wPos + (lim - off) <= limit;
+		assert wPos + (lim - off) <= array.length;
 		assert bytes.length >= lim;
 		int length = lim - off;
 		System.arraycopy(bytes, off, array, wPos, length);
 		wPos += length;
-	}
-
-	public void setReadPosition(int pos) {
-		assert !isRecycled();
-		assert pos >= rPos && pos <= wPos;
-		this.rPos = pos;
-	}
-
-	public void setWritePosition(int pos) {
-		assert !isRecycled();
-		assert pos >= rPos && pos <= limit;
-		this.wPos = pos;
-	}
-
-	public void rewind() {
-		wPos = 0;
-		rPos = 0;
 	}
 
 	// miscellaneous

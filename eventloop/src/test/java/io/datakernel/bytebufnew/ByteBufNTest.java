@@ -5,6 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.*;
@@ -53,12 +54,12 @@ public class ByteBufNTest {
 		ByteBufN worldBuf = ByteBufN.wrap(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
 		buf.put(worldBuf);
 
-		assertEquals(worldBuf.limit, worldBuf.getReadPosition());
+		assertEquals(worldBuf.getLimit(), worldBuf.getReadPosition());
 		assertFalse(worldBuf.canWrite());
 		assertEquals(13, buf.getWritePosition());
 
 		ByteBufN slice = buf.slice();
-		ByteBufN newBuf = ByteBufN.create(slice.limit);
+		ByteBufN newBuf = ByteBufN.create(slice.getLimit());
 		slice.drainTo(newBuf, 10);
 		assertEquals(10, slice.getReadPosition());
 		assertEquals(10, newBuf.getWritePosition());
@@ -88,8 +89,8 @@ public class ByteBufNTest {
 	public void testPoolAndRecycleMechanism() {
 		int size = 500;
 		ByteBufN buf = ByteBufNPool.allocateAtLeast(size);
-		assertNotEquals(size, buf.limit); // {expected to create 2^N sized bufs only, 500 not in {a}|a == 2^N } => size != limit
-		assertEquals(512, buf.limit);
+		assertNotEquals(size, buf.getLimit()); // {expected to create 2^N sized bufs only, 500 not in {a}|a == 2^N } => size != limit
+		assertEquals(512, buf.getLimit());
 
 		buf.put(BYTES);
 
@@ -180,12 +181,19 @@ public class ByteBufNTest {
 	}
 
 	@Test
-	public void testSkip() {
+	public void testSkipAndAdvance() {
 		ByteBufN buf = ByteBufN.create(5);
-		buf.put(new byte[]{'a', 'b', 'c', 'd', 'e'});
-
+		buf.put(new byte[]{'a', 'b', 'c'});
 		buf.skip(2);
-		assertEquals('c', buf.peek());
+		assertEquals('c', buf.get());
+		buf.array[3] = 'd';
+		buf.array[4] = 'e';
+		assertFalse(buf.canRead());
+		buf.advance(2);
+		assertTrue(buf.canRead());
+		byte[] bytes = new byte[2];
+		buf.drainTo(bytes, 0, 2);
+		assertTrue(Arrays.equals(new byte[]{'d', 'e'}, bytes));
 	}
 
 	@Test

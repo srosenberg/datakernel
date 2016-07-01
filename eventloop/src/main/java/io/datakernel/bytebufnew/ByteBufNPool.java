@@ -39,19 +39,21 @@ public class ByteBufNPool {
 
 	public static ByteBufN reallocateAtLeast(ByteBufN buf, int newSize) {
 		assert !(buf instanceof ByteBufN.ByteBufNSlice);
-		if (buf.limit >= newSize && (buf.limit <= minSize || numberOfLeadingZeros(buf.limit - 1) == numberOfLeadingZeros(newSize - 1))) {
+		int limit = buf.getLimit();
+		if (limit >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
 			return buf;
+		} else {
+			ByteBufN newBuf = allocateAtLeast(newSize);
+			newBuf.put(buf);
+			buf.recycle();
+			return newBuf;
 		}
-		ByteBufN newBuf = allocateAtLeast(newSize);
-		newBuf.put(buf);
-		buf.recycle();
-		return newBuf;
 	}
 
 	public static ByteBufN concat(ByteBufN buf1, ByteBufN buf2) {
 		assert !buf1.isRecycled() && !buf2.isRecycled();
 		if (buf1.remainingToWrite() < buf2.remainingToRead()) {
-			ByteBufN newBuf = allocateAtLeast(buf1.getWritePosition() + buf2.remainingToRead());
+			ByteBufN newBuf = allocateAtLeast(buf1.remainingToRead() + buf2.remainingToRead());
 			newBuf.put(buf1);
 			buf1.recycle();
 			buf1 = newBuf;
@@ -63,8 +65,7 @@ public class ByteBufNPool {
 
 	public static void recycle(ByteBufN buf) {
 		assert buf.array.length >= minSize && buf.array.length <= maxSize;
-		int index = 32 - numberOfLeadingZeros(buf.array.length - 1);
-		ConcurrentStack<ByteBufN> queue = slabs[index];
+		ConcurrentStack<ByteBufN> queue = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
 		assert !queue.contains(buf) : "duplicate recycle array";
 		queue.push(buf);
 	}

@@ -55,7 +55,7 @@ public class MessagingSerializers {
 		@Override
 		public Appendable append(CharSequence csq) {
 			while (container.remainingToWrite() < csq.length() * 3) {
-				container = ByteBufNPool.reallocateAtLeast(container, container.limit * 2);
+				container = ByteBufNPool.reallocateAtLeast(container, container.getLimit() * 2);
 			}
 			int pos = container.getWritePosition();
 			for (int i = 0; i < csq.length(); i++) {
@@ -73,7 +73,7 @@ public class MessagingSerializers {
 		@Override
 		public Appendable append(char c) {
 			if (container.remainingToWrite() < 3) {
-				container = ByteBufNPool.reallocateAtLeast(container, container.limit * 2);
+				container = ByteBufNPool.reallocateAtLeast(container, container.getLimit() * 2);
 			}
 			int pos = writeUtfChar(container.array(), container.getWritePosition(), c);
 			container.setWritePosition(pos);

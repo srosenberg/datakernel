@@ -248,7 +248,7 @@ public final class ByteBufQueue {
 			ByteBufN buf = bufs[first];
 			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				buf.skip(s);
+				buf.advance(s);
 				return maxSize;
 			} else {
 				buf.setReadPosition(buf.getWritePosition());
@@ -275,7 +275,7 @@ public final class ByteBufQueue {
 			int remaining = buf.remainingToRead();
 			if (s < remaining) {
 				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, s);
-				buf.setReadPosition(buf.getReadPosition() + s);
+				buf.skip(s);
 				return maxSize;
 			} else {
 				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, remaining);
@@ -298,7 +298,7 @@ public final class ByteBufQueue {
 	 */
 	public int drainTo(ByteBufN dest, int maxSize) {
 		int actualSize = drainTo(dest.array(), dest.getWritePosition(), maxSize);
-		dest.skip(actualSize);
+		dest.advance(actualSize);
 		return actualSize;
 	}
 

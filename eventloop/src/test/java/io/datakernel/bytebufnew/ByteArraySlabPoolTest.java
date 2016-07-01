@@ -40,7 +40,7 @@ public class ByteArraySlabPoolTest {
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());
-				assertEquals(poolSizes[i], slab.peek().limit);
+				assertEquals(poolSizes[i], slab.peek().getLimit());
 			}
 		}
 	}

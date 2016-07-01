@@ -46,7 +46,7 @@ public final class ByteBufStrings {
 
 	public static void putAscii(ByteBufN buf, String string) {
 		encodeAscii(buf.array(), buf.getWritePosition(), string);
-		buf.skip(string.length());
+		buf.advance(string.length());
 	}
 
 	public static ByteBufN wrapAscii(String string) {
@@ -55,7 +55,7 @@ public final class ByteBufStrings {
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
 		}
-		buf.skip(string.length());
+		buf.advance(string.length());
 		return buf;
 	}
 
@@ -224,13 +224,13 @@ public final class ByteBufStrings {
 
 	public static void putUTF8(ByteBufN buf, String string) {
 		int size = encodeUTF8(buf.array(), buf.getReadPosition(), string);
-		buf.skip(size);
+		buf.advance(size);
 	}
 
 	public static ByteBufN wrapUTF8(String string) {
 		ByteBufN byteBuffer = ByteBufNPool.allocateAtLeast(string.length() * 3);
-		int len = encodeUTF8(byteBuffer.array(), 0, string);
-		byteBuffer.skip(len);
+		int size = encodeUTF8(byteBuffer.array(), 0, string);
+		byteBuffer.advance(size);
 		return byteBuffer;
 	}
 
@@ -294,7 +294,7 @@ public final class ByteBufStrings {
 
 	public static void putDecimal(ByteBufN buf, int value) {
 		int digits = encodeDecimal(buf.array(), buf.getReadPosition(), value);
-		buf.skip(digits);
+		buf.advance(digits);
 	}
 
 	public static ByteBufN wrapDecimal(int value) {
