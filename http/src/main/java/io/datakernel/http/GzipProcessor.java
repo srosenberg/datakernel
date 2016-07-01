@@ -28,7 +28,7 @@ import java.util.zip.GZIPOutputStream;
 class GzipProcessor {
 	static ByteBufN fromGzip(ByteBufN raw) throws ParseException {
 		try {
-			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.getWritePosition()));
+			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.remainingToRead()));
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			int nRead;
 			byte[] data = new byte[256];
@@ -49,7 +49,7 @@ class GzipProcessor {
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
-			gzip.write(raw.array(), raw.getReadPosition(), raw.getWritePosition());
+			gzip.write(raw.array(), raw.getReadPosition(), raw.remainingToRead());
 			gzip.close();
 			byte[] compressed = out.toByteArray();
 			out.close();

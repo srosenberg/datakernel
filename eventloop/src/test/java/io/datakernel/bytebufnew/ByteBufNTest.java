@@ -70,19 +70,27 @@ public class ByteBufNTest {
 	}
 
 	@Test
-	public void testByteBuffer() {
-		ByteBufN buf = ByteBufN.create(32);
-		buf.put(BYTES);
+	public void transformsToByteBufferInReadMode() {
+		ByteBufN buf = ByteBufN.create(8);
+		buf.setWritePosition(5);
+		buf.setReadPosition(2);
 
-		ByteBuffer buffer = buf.toByteBuffer();
-		assertEquals(12, buffer.position());
-		assertEquals(32, buffer.capacity());
-		buffer.put("! Next test message!".getBytes());
-		buffer.flip();
-		buf.setByteBuffer(buffer);
-		assertEquals(32, buf.getWritePosition());
+		ByteBuffer buffer = buf.toByteBufferInReadMode();
 
-		assertEquals("Test message! Next test message!", buf.slice().toString());
+		assertEquals(2, buffer.position());
+		assertEquals(5, buffer.limit());
+	}
+
+	@Test
+	public void transformsToByteBufferInWriteMode() {
+		ByteBufN buf = ByteBufN.create(8);
+		buf.setWritePosition(5);
+		buf.setReadPosition(2);
+
+		ByteBuffer buffer = buf.toByteBufferInWriteMode();
+
+		assertEquals(5, buffer.position());
+		assertEquals(8, buffer.limit());
 	}
 
 	@Test
@@ -143,10 +151,11 @@ public class ByteBufNTest {
 		MockConsumer consumer = new MockConsumer();
 		for (int i = 0; i < 100; i++) {
 			ByteBufN buf = ByteBufNPool.allocateAtLeast(32);
-			ByteBuffer buffer = buf.toByteBuffer();
+			ByteBuffer buffer = buf.toByteBufferInWriteMode();
 			buffer.put(("Test message " + i).getBytes());
 			buffer.flip();
-			buf.setByteBuffer(buffer);
+			buf.setWritePosition(buffer.limit());
+			buf.setReadPosition(buffer.position());
 			consumer.consume(buf.slice());
 			buf.recycle();
 		}

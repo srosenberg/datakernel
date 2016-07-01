@@ -186,13 +186,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void doRead() {
 		ByteBufN buf = ByteBufNPool.allocateAtLeast(receiveBufferSize);
-		ByteBuffer buffer = buf.toByteBuffer();
+		ByteBuffer buffer = buf.toByteBufferInWriteMode();
 
 		int numRead;
 		try {
 			numRead = channel.read(buffer);
-			buffer.flip();
-			buf.setByteBuffer(buffer);
+			buf.setWritePosition(buffer.position());
 		} catch (IOException e) {
 			buf.recycle();
 			closeWithError(e, false);
@@ -274,11 +273,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			}
 
 			@SuppressWarnings("ConstantConditions")
-			ByteBuffer buffer = bufToSend.toByteBuffer();
-			buffer.flip();
+			ByteBuffer buffer = bufToSend.toByteBufferInReadMode();
 
 			channel.write(buffer);
-			bufToSend.setByteBuffer(buffer);
+			bufToSend.setReadPosition(buffer.position());
 
 			if (bufToSend.canRead()) {
 				writeQueue.addFirst(bufToSend); // put the buf back to the queue, to send it the next time

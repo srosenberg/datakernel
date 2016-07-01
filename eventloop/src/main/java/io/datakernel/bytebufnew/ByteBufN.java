@@ -139,22 +139,32 @@ public class ByteBufN {
 	}
 
 	// byte buffers
-	public ByteBuffer toByteBuffer() {
-		// assume ByteBuffer is being passed in 'read mode' pos=0; lim=wPos
+	public ByteBuffer toByteBufferInReadMode() {
 		assert !isRecycled();
-		ByteBuffer buffer = ByteBuffer.wrap(array, rPos, array.length - rPos);
-		buffer.position(wPos);
-		return buffer;
+		return ByteBuffer.wrap(array, rPos, wPos - rPos);
 	}
 
-	public void setByteBuffer(ByteBuffer buffer) {
-		// assume ByteBuffer is being passed in 'read mode' pos=0, lim=wPos
+	public ByteBuffer toByteBufferInWriteMode() {
 		assert !isRecycled();
-		assert this.array == buffer.array();
-		assert buffer.arrayOffset() == 0;
-		setReadPosition(buffer.position());
-		setWritePosition(buffer.limit());
+		return ByteBuffer.wrap(array, wPos, array.length - wPos);
 	}
+
+//	public ByteBuffer toByteBuffer() {
+//		// assume ByteBuffer is being passed in 'read mode' pos=0; lim=wPos
+//		assert !isRecycled();
+//		ByteBuffer buffer = ByteBuffer.wrap(array, rPos, array.length - rPos);
+//		buffer.position(wPos);
+//		return buffer;
+//	}
+//
+//	public void setByteBuffer(ByteBuffer buffer) {
+//		// assume ByteBuffer is being passed in 'read mode' pos=0, lim=wPos
+//		assert !isRecycled();
+//		assert this.array == buffer.array();
+//		assert buffer.arrayOffset() == 0;
+//		setReadPosition(buffer.position());
+//		setWritePosition(buffer.limit());
+//	}
 
 	// getters
 	public byte[] array() {

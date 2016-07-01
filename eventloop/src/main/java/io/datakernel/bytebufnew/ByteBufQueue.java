@@ -118,7 +118,7 @@ public final class ByteBufQueue {
 			return result;
 		}
 		ByteBufN result = ByteBufNPool.allocateAtLeast(exactSize);
-		drainTo(result.array(), 0, exactSize);
+		drainTo(result, exactSize);
 		return result;
 	}
 
