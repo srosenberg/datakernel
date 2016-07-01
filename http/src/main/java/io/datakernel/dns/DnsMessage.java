@@ -16,8 +16,8 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -73,11 +73,11 @@ public final class DnsMessage {
 	 * @param ipv6       if it is true, it is IPv6, else IPv4
 	 * @return ByteBuf with DnsMessage
 	 */
-	public static ByteBuf newQuery(String domainName, boolean ipv6) {
-		ByteBuf byteBuf = ByteBufPool.allocate(MAX_SIZE);
+	public static ByteBufN newQuery(String domainName, boolean ipv6) {
+		ByteBufN byteBuf = ByteBufNPool.allocateAtLeast(MAX_SIZE);
 		DnsMessage m = new DnsMessage(byteBuf.array());
 		m.generateRequest(domainName, ipv6);
-		byteBuf.limit(m.idx);
+		byteBuf.setWritePosition(m.idx);
 		return byteBuf;
 	}
 

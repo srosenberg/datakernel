@@ -18,8 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Before;
@@ -32,7 +32,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
@@ -44,8 +44,8 @@ public class HttpTolerantApplicationTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
@@ -64,8 +64,8 @@ public class HttpTolerantApplicationTest {
 	}
 
 	private static void write(Socket socket, String string) throws IOException {
-		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
-		socket.getOutputStream().write(buf.array(), buf.position(), buf.remaining());
+		ByteBufN buf = ByteBufN.wrap(encodeAscii(string));
+		socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
 	}
 
 	private static void readAndAssert(InputStream is, String expected) throws IOException {
@@ -96,7 +96,7 @@ public class HttpTolerantApplicationTest {
 		server.closeFuture().await();
 		thread.join();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	private static ServerSocket socketServer(int port, final String testResponse) throws IOException {
@@ -162,7 +162,7 @@ public class HttpTolerantApplicationTest {
 		}
 		assertEquals("text/html; charset=UTF-8", resultObserver.get());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 }

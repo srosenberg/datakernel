@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -115,8 +115,8 @@ public final class MediaTypes {
 		return mimes.getOrCreate(bytes, offset, length, lowerCaseHashCode);
 	}
 
-	static void render(MediaType mime, ByteBuf buf) {
-		int len = render(mime, buf.array(), buf.position());
+	static void render(MediaType mime, ByteBufN buf) {
+		int len = render(mime, buf.array(), buf.getWritePosition());
 		buf.advance(len);
 	}
 

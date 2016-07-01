@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -90,9 +90,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		onClosed();
 	}
 
-	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
+	private static HttpMethod getHttpMethodFromMap(ByteBufN line) {
 		int hashCode = 1;
-		for (int i = line.position(); i != line.limit(); i++) {
+		for (int i = line.getReadPosition(); i != line.getWritePosition(); i++) {
 			byte b = line.at(i);
 			if (b == SP) {
 				for (int p = 0; p < MAX_PROBINGS; p++) {
@@ -100,8 +100,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					HttpMethod method = METHODS[slot];
 					if (method == null)
 						break;
-					if (method.compareTo(line.array(), line.position(), i - line.position())) {
-						line.advance(method.bytes.length + 1);
+					if (method.compareTo(line.array(), line.getReadPosition(), i - line.getReadPosition())) {
+						line.skip(method.bytes.length + 1);
 						return method;
 					}
 				}
@@ -112,14 +112,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return null;
 	}
 
-	private static HttpMethod getHttpMethod(ByteBuf line) {
-		if (line.position() == 0) {
-			if (line.remaining() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
-				line.advance(4);
+	private static HttpMethod getHttpMethod(ByteBufN line) {
+		if (line.getReadPosition() == 0) {
+			if (line.remainingToRead() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
+				line.skip(4);
 				return GET;
 			}
-			if (line.remaining() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
-				line.advance(5);
+			if (line.remainingToRead() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
+				line.skip(5);
 				return POST;
 			}
 		}
@@ -132,7 +132,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param line received line of header.
 	 */
 	@Override
-	protected void onFirstLine(ByteBuf line) throws ParseException {
+	protected void onFirstLine(ByteBufN line) throws ParseException {
 		assert eventloop.inEventloopThread();
 
 		HttpMethod method = getHttpMethod(line);
@@ -142,7 +142,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		request = HttpRequest.create(method);
 
 		int i;
-		for (i = 0; i != line.remaining(); i++) {
+		for (i = 0; i != line.remainingToRead(); i++) {
 			byte b = line.peek(i);
 			if (b == SP)
 				break;
@@ -163,7 +163,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param value  value of received header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, final ByteBufN value) throws ParseException {
 		super.onHeader(header, value);
 		request.addHeader(header, value);
 	}
@@ -172,7 +172,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpResponse.write();
+		ByteBufN buf = httpResponse.write();
 		httpResponse.recycleBufs();
 		asyncTcpSocket.write(buf);
 	}
@@ -186,7 +186,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param bodyBuf the received message
 	 */
 	@Override
-	protected void onHttpMessage(ByteBuf bodyBuf) {
+	protected void onHttpMessage(ByteBufN bodyBuf) {
 		reading = NOTHING;
 		request.body(bodyBuf);
 		request.remoteAddress(remoteAddress);
@@ -262,7 +262,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
-		ByteBuf message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
+		ByteBufN message = ByteBufN.wrap(INTERNAL_ERROR_MESSAGE);
 		return HttpResponse.create(e.getCode()).noCache().body(message);
 	}
 

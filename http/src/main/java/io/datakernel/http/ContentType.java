@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
@@ -89,9 +89,9 @@ public final class ContentType {
 		}
 	}
 
-	static void render(ContentType type, ByteBuf buf) {
-		int pos = render(type, buf.array(), buf.position());
-		buf.position(pos);
+	static void render(ContentType type, ByteBufN buf) {
+		int pos = render(type, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int render(ContentType type, byte[] container, int pos) {

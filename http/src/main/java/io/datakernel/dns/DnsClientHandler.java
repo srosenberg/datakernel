@@ -19,7 +19,7 @@ package io.datakernel.dns;
 import io.datakernel.async.ListenableResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackWithTimeout;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncUdpSocket;
 import io.datakernel.eventloop.AsyncUdpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
@@ -141,7 +141,7 @@ public class DnsClientHandler implements AsyncUdpSocket {
 			return;
 		}
 
-		ByteBuf query = DnsMessage.newQuery(domainName, ipv6);
+		ByteBufN query = DnsMessage.newQuery(domainName, ipv6);
 
 		ListenableResultCallback<DnsQueryResult> callbackList = new ListenableResultCallback<>();
 		callbackList.addListener(callbackWithTimeout);

@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.DynamicMBeanFactory;
@@ -84,7 +84,7 @@ public class HttpThrottlingServer {
 	}
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
-//		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
+//		final ByteBufNPool byteBufferPool = new ByteBufNPool(16, 65536);
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
@@ -134,8 +134,8 @@ public class HttpThrottlingServer {
 		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();
 		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), true),
 				new ObjectName(Eventloop.class.getPackage().getName() + ":type=Eventloop"));
-		mbeanServer.registerMBean(ByteBufPool.getStats(),
-				new ObjectName(ByteBufPool.class.getPackage().getName() + ":type=ByteBufPool"));
+		mbeanServer.registerMBean(ByteBufNPool.getStats(),
+				new ObjectName(ByteBufNPool.class.getPackage().getName() + ":type=ByteBufNPool"));
 		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), true),
 				new ObjectName(ThrottlingController.class.getPackage().getName() + ":type=ThrottlingController"));
 		server.start();

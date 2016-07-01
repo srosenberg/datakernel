@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import org.junit.Test;
 
 import java.nio.charset.Charset;
@@ -70,12 +70,11 @@ public class HttpCharsetTest {
 	@Test
 	public void testRenderAcceptCharset() {
 		String expected = "iso-8859-1, UTF-16; q=0.8";
-		ByteBuf buf = ByteBuf.allocate(expected.length());
+		ByteBufN buf = ByteBufN.create(expected.length());
 		List<AcceptCharset> chs = new ArrayList<>();
 		chs.add(AcceptCharset.of(StandardCharsets.ISO_8859_1));
 		chs.add(AcceptCharset.of(StandardCharsets.UTF_16, 80));
 		AcceptCharset.render(chs, buf);
-		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
 	}

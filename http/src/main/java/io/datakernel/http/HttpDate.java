@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import static io.datakernel.util.ByteBufStrings.*;
 
@@ -118,9 +118,9 @@ final class HttpDate {
 		}
 	}
 
-	static void render(long timestamp, ByteBuf buf) {
-		int pos = render(timestamp, buf.array(), buf.position());
-		buf.position(pos);
+	static void render(long timestamp, ByteBufN buf) {
+		int pos = render(timestamp, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int render(long timestamp, byte[] bytes, int pos) {

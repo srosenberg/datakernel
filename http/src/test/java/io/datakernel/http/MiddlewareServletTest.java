@@ -17,13 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {
@@ -64,7 +64,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -110,7 +110,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -142,7 +142,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -150,7 +150,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -178,7 +178,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -215,7 +215,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -223,7 +223,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Shall not be executed: " + request.getPath());
+				ByteBufN msg = ByteBufStrings.wrapUTF8("Shall not be executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};

@@ -293,7 +293,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void putDecimal(ByteBufN buf, int value) {
-		int digits = encodeDecimal(buf.array(), buf.getReadPosition(), value);
+		int digits = encodeDecimal(buf.array(), buf.getWritePosition(), value);
 		buf.advance(digits);
 	}
 

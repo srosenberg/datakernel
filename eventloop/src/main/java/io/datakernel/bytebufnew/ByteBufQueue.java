@@ -113,7 +113,7 @@ public final class ByteBufQueue {
 			first = next(first);
 			return buf;
 		} else if (exactSize < buf.remainingToRead()) {
-			ByteBufN result = buf.slice(buf.getReadPosition(), exactSize);
+			ByteBufN result = buf.slice(buf.getReadPosition(), buf.getReadPosition() + exactSize);
 			buf.skip(exactSize);
 			return result;
 		}

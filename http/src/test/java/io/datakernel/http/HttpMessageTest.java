@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
@@ -32,13 +32,13 @@ import static org.junit.Assert.*;
 
 public class HttpMessageTest {
 	public void assertHttpResponseEquals(String expected, HttpResponse result) {
-		ByteBuf buf = result.write();
+		ByteBufN buf = result.write();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 	}
 
 	public void assertHttpRequestEquals(String expected, HttpRequest request) {
-		ByteBuf buf = request.write();
+		ByteBufN buf = request.write();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 	}
@@ -76,9 +76,8 @@ public class HttpMessageTest {
 				HttpRequest.get("http://test.com/index.html").cookies(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
-		ByteBuf buf = ByteBufPool.allocate(100);
+		ByteBufN buf = ByteBufNPool.allocateAtLeast(100);
 		buf.put("/abc".getBytes(), 0, 4);
-		buf.flip();
 		request.setBody(buf);
 		assertHttpRequestEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 4\r\n\r\n/abc", request);
 		buf.recycle();

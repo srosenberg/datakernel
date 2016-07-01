@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,9 +26,9 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 class GzipProcessor {
-	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
+	static ByteBufN fromGzip(ByteBufN raw) throws ParseException {
 		try {
-			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.position(), raw.limit()));
+			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.getWritePosition()));
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			int nRead;
 			byte[] data = new byte[256];
@@ -39,22 +39,22 @@ class GzipProcessor {
 			gzip.close();
 			out.close();
 			raw.recycle();
-			return ByteBuf.wrap(bytes);
+			return ByteBufN.wrap(bytes);
 		} catch (IOException e) {
 			throw new ParseException("Can't decode", e);
 		}
 	}
 
-	static ByteBuf toGzip(ByteBuf raw) throws ParseException {
+	static ByteBufN toGzip(ByteBufN raw) throws ParseException {
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
-			gzip.write(raw.array(), raw.position(), raw.limit());
+			gzip.write(raw.array(), raw.getReadPosition(), raw.getWritePosition());
 			gzip.close();
 			byte[] compressed = out.toByteArray();
 			out.close();
 			raw.recycle();
-			return ByteBuf.wrap(compressed);
+			return ByteBufN.wrap(compressed);
 		} catch (IOException e) {
 			throw new ParseException("Can't encode", e);
 		}

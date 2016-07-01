@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
@@ -27,7 +27,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
@@ -45,7 +45,7 @@ public class TestGzipProcessor {
 
 	@Test
 	public void testEncodeDecode() throws ParseException {
-		ByteBuf actual = fromGzip(toGzip(wrapAscii(TEST_PHRASE)));
+		ByteBufN actual = fromGzip(toGzip(wrapAscii(TEST_PHRASE)));
 		assertEquals(TEST_PHRASE, decodeAscii(actual));
 		actual.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());

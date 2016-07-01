@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -81,9 +81,8 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderMime() {
 		String expected = "application/json";
-		ByteBuf buf = ByteBuf.allocate(expected.length());
+		ByteBufN buf = ByteBufN.create(expected.length());
 		MediaTypes.render(JSON, buf);
-		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
 	}
@@ -91,10 +90,9 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderContentType() {
 		String expected = "text/html; charset=utf-8";
-		ByteBuf buf = ByteBuf.allocate(expected.length());
+		ByteBufN buf = ByteBufN.create(expected.length());
 		ContentType type = ContentType.of(HTML, StandardCharsets.UTF_8);
 		ContentType.render(type, buf);
-		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
 	}
@@ -102,7 +100,7 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderAcceptContentType() {
 		String expected = "text/html, application/xhtml+xml, application/xml; q=0.9, image/webp, */*; q=0.8";
-		ByteBuf buf = ByteBuf.allocate(expected.length());
+		ByteBufN buf = ByteBufN.create(expected.length());
 		List<AcceptMediaType> acts = new ArrayList<>();
 		acts.add(AcceptMediaType.of(HTML));
 		acts.add(AcceptMediaType.of(XHTML_APP));
@@ -110,7 +108,6 @@ public class ContentTypeTest {
 		acts.add(AcceptMediaType.of(WEBP));
 		acts.add(AcceptMediaType.of(MediaTypes.ANY, 80));
 		AcceptMediaType.render(acts, buf);
-		buf.flip();
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
 	}

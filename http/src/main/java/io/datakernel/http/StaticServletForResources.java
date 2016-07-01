@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 
 import java.io.ByteArrayOutputStream;
@@ -68,22 +68,22 @@ public final class StaticServletForResources extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(final String name, final ResultCallback<ByteBuf> callback) {
+	protected final void doServeAsync(final String name, final ResultCallback<ByteBufN> callback) {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes != ERROR_BYTES) {
-				callback.onResult(ByteBuf.wrap(bytes));
+				callback.onResult(ByteBufN.wrap(bytes));
 			} else {
 				callback.onResult(null);
 			}
 		} else {
-			eventloop.callConcurrently(executor, new Callable<ByteBuf>() {
+			eventloop.callConcurrently(executor, new Callable<ByteBufN>() {
 				@Override
-				public ByteBuf call() throws Exception {
+				public ByteBufN call() throws Exception {
 					try {
 						byte[] bytes = loadResource(root, name);
 						cache.put(name, bytes);
-						return ByteBuf.wrap(bytes);
+						return ByteBufN.wrap(bytes);
 					} catch (IOException e) {
 						cache.put(name, ERROR_BYTES);
 						if (e instanceof FileNotFoundException) {

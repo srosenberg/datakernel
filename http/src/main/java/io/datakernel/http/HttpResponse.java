@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.util.ByteBufStrings;
 
 import java.util.*;
@@ -66,7 +66,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	// common builder methods
-	public HttpResponse header(HttpHeader header, ByteBuf value) {
+	public HttpResponse header(HttpHeader header, ByteBufN value) {
 		setHeader(header, value);
 		return this;
 	}
@@ -81,13 +81,13 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse body(ByteBuf body) {
+	public HttpResponse body(ByteBufN body) {
 		setBody(body);
 		return this;
 	}
 
 	public HttpResponse body(byte[] array) {
-		return body(ByteBuf.wrap(array));
+		return body(ByteBufN.wrap(array));
 	}
 
 	// specific builder methods
@@ -187,7 +187,7 @@ public final class HttpResponse extends HttpMessage {
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
 
-	private static void writeCodeMessageEx(ByteBuf buf, int code) {
+	private static void writeCodeMessageEx(ByteBufN buf, int code) {
 		buf.put(HTTP11_BYTES);
 		putDecimal(buf, code);
 		if (code >= 400) {
@@ -206,7 +206,7 @@ public final class HttpResponse extends HttpMessage {
 	private static final byte[] CODE_503_BYTES = encodeAscii("HTTP/1.1 503 Service Unavailable");
 	private static final int LONGEST_FIRST_LINE_SIZE = CODE_503_BYTES.length;
 
-	private static void writeCodeMessage(ByteBuf buf, int code) {
+	private static void writeCodeMessage(ByteBufN buf, int code) {
 		byte[] result;
 		switch (code) {
 			case 200:
@@ -237,15 +237,15 @@ public final class HttpResponse extends HttpMessage {
 		buf.put(result);
 	}
 
-	private static final Map<Integer, ByteBuf> DEFAULT_CODE_BODIES;
+	private static final Map<Integer, ByteBufN> DEFAULT_CODE_BODIES;
 
 	static {
 		DEFAULT_CODE_BODIES = new HashMap<>();
-		DEFAULT_CODE_BODIES.put(400, ByteBuf.wrap(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
-		DEFAULT_CODE_BODIES.put(403, ByteBuf.wrap(encodeAscii("You don't have permission to access the requested directory.")));
-		DEFAULT_CODE_BODIES.put(404, ByteBuf.wrap(encodeAscii("The requested URL was not found on this server.")));
-		DEFAULT_CODE_BODIES.put(500, ByteBuf.wrap(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
-		DEFAULT_CODE_BODIES.put(503, ByteBuf.wrap(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
+		DEFAULT_CODE_BODIES.put(400, ByteBufN.wrap(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
+		DEFAULT_CODE_BODIES.put(403, ByteBufN.wrap(encodeAscii("You don't have permission to access the requested directory.")));
+		DEFAULT_CODE_BODIES.put(404, ByteBufN.wrap(encodeAscii("The requested URL was not found on this server.")));
+		DEFAULT_CODE_BODIES.put(500, ByteBufN.wrap(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
+		DEFAULT_CODE_BODIES.put(503, ByteBufN.wrap(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
 	}
 
 	/**
@@ -253,21 +253,19 @@ public final class HttpResponse extends HttpMessage {
 	 *
 	 * @return HttpResponse as ByteBuf
 	 */
-	ByteBuf write() {
+	ByteBufN write() {
 		assert !recycled;
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
-		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
-		ByteBuf buf = ByteBufPool.allocate(estimateSize);
+		ByteBufN buf = ByteBufNPool.allocateAtLeast(estimateSize);
 
 		writeCodeMessage(buf, code);
 
 		writeHeaders(buf);
 		writeBody(buf);
-
-		buf.flip();
 
 		return buf;
 	}

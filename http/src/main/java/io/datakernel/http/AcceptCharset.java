@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
@@ -121,9 +121,9 @@ public final class AcceptCharset {
 		}
 	}
 
-	static void render(List<AcceptCharset> charsets, ByteBuf buf) {
-		int pos = render(charsets, buf.array(), buf.position());
-		buf.position(pos);
+	static void render(List<AcceptCharset> charsets, ByteBufN buf) {
+		int pos = render(charsets, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int render(List<AcceptCharset> charsets, byte[] bytes, int pos) {

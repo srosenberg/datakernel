@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.ByteBufStrings;
@@ -172,7 +172,7 @@ public final class HttpRequestsGenerator {
 			@Override
 			public void onResult(HttpResponse result) {
 				if (options.displayResponse()) {
-					ByteBuf body = result.getBody();
+					ByteBufN body = result.getBody();
 					if (body == null) {
 						System.out.println("Response empty");
 					} else {

@@ -129,7 +129,7 @@ public class ByteBufN {
 		rPos = 0;
 	}
 
-	private boolean isRecycleNeeded() {
+	public boolean isRecycleNeeded() {
 		return refs > 0;
 	}
 

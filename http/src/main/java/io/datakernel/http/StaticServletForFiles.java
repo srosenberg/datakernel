@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 
@@ -44,7 +44,7 @@ public final class StaticServletForFiles extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(String name, final ResultCallback<ByteBuf> callback) {
+	protected final void doServeAsync(String name, final ResultCallback<ByteBufN> callback) {
 		Path path = storage.resolve(name).normalize();
 
 		if (!path.startsWith(storage)) {

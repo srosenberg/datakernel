@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -48,9 +48,9 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		return type;
 	}
 
-	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
+	protected abstract void doServeAsync(String name, ResultCallback<ByteBufN> callback);
 
-	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
+	protected HttpResponse createHttpResponse(ByteBufN buf, String path) {
 		return HttpResponse.create(200)
 				.body(buf)
 				.contentType(getContentType(path));
@@ -66,9 +66,9 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			path = path.substring(1); // removing initial '/'
 		}
 		final String finalPath = path;
-		doServeAsync(path, new ResultCallback<ByteBuf>() {
+		doServeAsync(path, new ResultCallback<ByteBufN>() {
 			@Override
-			public void onResult(@Nullable ByteBuf buf) {
+			public void onResult(@Nullable ByteBufN buf) {
 				if (buf == null)
 					callback.onHttpError(new HttpServletError(404, finalPath));
 				else

@@ -19,8 +19,8 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -32,7 +32,7 @@ import org.junit.Test;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -46,8 +46,8 @@ public class AsyncHttpClientTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -85,7 +85,7 @@ public class AsyncHttpClientTest {
 
 		assertEquals(decodeUTF8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test(expected = TimeoutException.class)
@@ -236,7 +236,7 @@ public class AsyncHttpClientTest {
 					}
 
 					@Override
-					public void onRead(ByteBuf buf) {
+					public void onRead(ByteBufN buf) {
 						buf.recycle();
 						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
 					}

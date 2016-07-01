@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -37,7 +37,7 @@ public enum HttpMethod {
 		this.bytes = encodeAscii(this.name());
 	}
 
-	public void write(ByteBuf buf) {
+	public void write(ByteBufN buf) {
 		buf.put(bytes);
 	}
 

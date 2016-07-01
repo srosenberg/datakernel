@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.util.Date;
 import java.util.List;
@@ -180,7 +180,7 @@ public final class HttpHeaders {
 
 		public abstract int estimateSize();
 
-		public abstract void writeTo(ByteBuf buf);
+		public abstract void writeTo(ByteBufN buf);
 
 		public HttpHeader getKey() {
 			return key;
@@ -205,7 +205,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			buf.put(array, offset, size);
 		}
 
@@ -229,7 +229,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			ContentType.render(type, buf);
 		}
 
@@ -257,7 +257,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			AcceptMediaType.render(types, buf);
 		}
 	}
@@ -281,7 +281,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			HttpCookie.renderSimple(cookies, buf);
 		}
 	}
@@ -309,7 +309,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			HttpCookie.renderFull(cookies, buf);
 		}
 	}
@@ -332,7 +332,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			AcceptCharset.render(charsets, buf);
 		}
 	}
@@ -351,7 +351,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			long timestamp = date.getTime();
 			HttpDate.render(date.getTime(), buf);
 		}
@@ -371,7 +371,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			putDecimal(buf, value);
 		}
 
@@ -395,7 +395,7 @@ public final class HttpHeaders {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
+		public void writeTo(ByteBufN buf) {
 			putAscii(buf, string);
 		}
 

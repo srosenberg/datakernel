@@ -20,7 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -68,20 +68,20 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onFirstLine(ByteBuf line) throws ParseException {
+	protected void onFirstLine(ByteBufN line) throws ParseException {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
 			throw new ParseException("Invalid response");
 
 		int sp1;
 		if (line.peek(6) == SP) {
-			sp1 = line.position() + 7;
+			sp1 = line.getReadPosition() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			sp1 = line.position() + 9;
+			sp1 = line.getReadPosition() + 9;
 		} else
-			throw new ParseException("Invalid response: " + new String(line.array(), line.position(), line.remaining()));
+			throw new ParseException("Invalid response: " + new String(line.array(), line.getReadPosition(), line.remainingToRead()));
 
 		int sp2;
-		for (sp2 = sp1; sp2 < line.limit(); sp2++) {
+		for (sp2 = sp1; sp2 < line.getWritePosition(); sp2++) {
 			if (line.at(sp2) == SP) {
 				break;
 			}
@@ -114,13 +114,13 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param value  value of header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, ByteBufN value) throws ParseException {
 		super.onHeader(header, value);
 		response.addHeader(header, value);
 	}
 
 	@Override
-	protected void onHttpMessage(ByteBuf bodyBuf) {
+	protected void onHttpMessage(ByteBufN bodyBuf) {
 		assert !isClosed();
 		response.body(bodyBuf);
 		ResultCallback<HttpResponse> callback = this.callback;

@@ -20,7 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -38,7 +38,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItemsString;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static org.junit.Assert.assertEquals;
 
@@ -52,8 +52,8 @@ public class RpcBinaryProtocolTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -119,7 +119,7 @@ public class RpcBinaryProtocolTest {
 			assertEquals("Hello, " + testMessage + "!", results.get(i));
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -178,6 +178,6 @@ public class RpcBinaryProtocolTest {
 			assertEquals(testMessage, data);
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 }

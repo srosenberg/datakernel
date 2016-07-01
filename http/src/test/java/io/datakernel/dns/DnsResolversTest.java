@@ -18,7 +18,7 @@ package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.Eventloop.ConcurrentOperationTracker;
 import io.datakernel.time.SettableCurrentTimeProvider;
@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static org.junit.Assert.*;
 
@@ -136,8 +136,8 @@ public class DnsResolversTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 
 		eventloop = new Eventloop();
 
@@ -159,7 +159,7 @@ public class DnsResolversTest {
 
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@SafeVarargs
@@ -186,7 +186,7 @@ public class DnsResolversTest {
 
 		Set<InetAddress> nativeResultList = newHashSet(nativeResult);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Ignore
@@ -201,7 +201,7 @@ public class DnsResolversTest {
 
 		assertNull(nativeDnsResolverCallback.result);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Ignore
@@ -225,7 +225,7 @@ public class DnsResolversTest {
 
 		primaryEventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	private void resolveInAnotherThreadWithDelay(final NativeDnsResolver nativeDnsResolver, final String domainName,
@@ -272,7 +272,7 @@ public class DnsResolversTest {
 		assertNotNull(callback.result);
 		assertNull(callback.exception);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -286,7 +286,7 @@ public class DnsResolversTest {
 		assertTrue(callback.exception instanceof DnsException);
 		assertNull(callback.result);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -322,7 +322,7 @@ public class DnsResolversTest {
 		nativeResolver.resolve4(domainName, new DnsResolveCallback());
 		eventloopWithTimeProvider.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -333,6 +333,6 @@ public class DnsResolversTest {
 		nativeDnsResolver.resolve4(domainName, new DnsResolveCallback());
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 }

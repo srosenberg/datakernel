@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.bytebufnew.ByteBufQueue;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -142,13 +142,13 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	 *
 	 * @param bodyBuf the received message
 	 */
-	protected abstract void onHttpMessage(ByteBuf bodyBuf);
+	protected abstract void onHttpMessage(ByteBufN bodyBuf);
 
-	private ByteBuf takeHeader() {
+	private ByteBufN takeHeader() {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
-			ByteBuf buf = readQueue.peekBuf(i);
-			for (int p = buf.position(); p < buf.limit(); p++) {
+			ByteBufN buf = readQueue.peekBuf(i);
+			for (int p = buf.getReadPosition(); p < buf.getWritePosition(); p++) {
 				if (buf.at(p) == LF) {
 
 					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
@@ -157,23 +157,23 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 						continue;
 					}
 
-					ByteBuf line = readQueue.takeExactSize(offset + p - buf.position() + 1);
-					if (line.remaining() >= 2 && line.peek(line.remaining() - 2) == CR) {
-						line.limit(line.limit() - 2);
+					ByteBufN line = readQueue.takeExactSize(offset + p - buf.getReadPosition() + 1);
+					if (line.remainingToRead() >= 2 && line.peek(line.remainingToRead() - 2) == CR) {
+						line.setWritePosition(line.getWritePosition() - 2);
 					} else {
-						line.limit(line.limit() - 1);
+						line.setWritePosition(line.getWritePosition() - 1);
 					}
 					return line;
 				}
 			}
-			offset += buf.remaining();
+			offset += buf.remainingToRead();
 		}
 		return null;
 	}
 
-	private boolean isMultilineHeader(ByteBuf buf, int p) {
+	private boolean isMultilineHeader(ByteBufN buf, int p) {
 		// ensure CRLF
-		if (p + 1 < buf.limit() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+		if (p + 1 < buf.getWritePosition() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
 			if (p > 0 && buf.at(p - 1) == CR) {
 				if (p > 1 && buf.at(p - 2) == LF) {
 					return false;
@@ -186,17 +186,17 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		return false;
 	}
 
-	private void preprocessMultiLine(ByteBuf buf, int pos) {
-		buf.array()[pos] = SP;
+	private void preprocessMultiLine(ByteBufN buf, int pos) {
+		buf.set(pos, SP);
 		if (buf.at(pos - 1) == CR) {
-			buf.array()[pos - 1] = SP;
+			buf.set(pos - 1, SP);
 		}
 	}
 
-	private void onHeader(ByteBuf line) throws ParseException {
-		int pos = line.position();
+	private void onHeader(ByteBufN line) throws ParseException {
+		int pos = line.getReadPosition();
 		int hashCode = 1;
-		while (pos < line.limit()) {
+		while (pos < line.getWritePosition()) {
 			byte b = line.at(pos);
 			if (b == ':')
 				break;
@@ -205,15 +205,15 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			hashCode = 31 * hashCode + b;
 			pos++;
 		}
-		check(pos != line.limit(), HEADER_NAME_ABSENT);
-		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.position(), pos - line.position(), hashCode);
+		check(pos != line.getWritePosition(), HEADER_NAME_ABSENT);
+		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.getReadPosition(), pos - line.getReadPosition(), hashCode);
 		pos++;
 
 		// RFC 2616, section 19.3 Tolerant Applications
-		while (pos < line.limit() && (line.at(pos) == SP || line.at(pos) == HT)) {
+		while (pos < line.getWritePosition() && (line.at(pos) == SP || line.at(pos) == HT)) {
 			pos++;
 		}
-		line.position(pos);
+		line.setReadPosition(pos);
 		onHeader(httpHeader, line);
 	}
 
@@ -222,34 +222,34 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	 *
 	 * @param line received line of header.
 	 */
-	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
+	protected abstract void onFirstLine(ByteBufN line) throws ParseException;
 
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, final ByteBufN value) throws ParseException {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		if (header == CONTENT_LENGTH) {
-			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.position(), value.remaining());
+			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.getReadPosition(), value.remainingToRead());
 
 			if (contentLength > maxHttpMessageSize) {
 				value.recycle();
 				throw TOO_BIG_HTTP_MESSAGE;
 			}
 		} else if (header == CONNECTION) {
-			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.position(), value.remaining());
+			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.getReadPosition(), value.remainingToRead());
 		} else if (header == TRANSFER_ENCODING) {
-			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.position(), value.remaining());
+			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.getReadPosition(), value.remainingToRead());
 		} else if (header == CONTENT_ENCODING) {
-			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.position(), value.remaining());
+			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.getReadPosition(), value.remainingToRead());
 		} else if (header == ACCEPT_ENCODING) {
 			shouldGzip = contains(value, CONTENT_ENCODING_GZIP);
 		}
 	}
 
-	private boolean contains(ByteBuf value, byte[] bytes) {
-		int pos = value.position();
-		while (pos < value.limit()) {
-			if (value.array()[pos] == bytes[0] && value.remaining() >= bytes.length) {
+	private boolean contains(ByteBufN value, byte[] bytes) {
+		int pos = value.getReadPosition();
+		while (pos < value.getWritePosition()) {
+			if (value.array()[pos] == bytes[0] && value.remainingToRead() >= bytes.length) {
 				if (equalsLowerCaseAscii(bytes, value.array(), pos, bytes.length)) {
 					return true;
 				} else {
@@ -349,7 +349,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	@Override
-	public void onRead(ByteBuf buf) {
+	public void onRead(ByteBufN buf) {
 		assert eventloop.inEventloopThread();
 		assert !isClosed();
 		if (buf != null) readQueue.add(buf);
@@ -378,13 +378,13 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			while (true) {
 				assert !isClosed();
 				assert reading == FIRSTLINE || reading == HEADERS;
-				ByteBuf headerBuf = takeHeader();
+				ByteBufN headerBuf = takeHeader();
 				if (headerBuf == null) { // states that more bytes are being required
 					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
 					return;
 				}
 
-				if (!headerBuf.hasRemaining()) {
+				if (!headerBuf.canRead()) {
 					headerBuf.recycle();
 
 					if (reading == FIRSTLINE)

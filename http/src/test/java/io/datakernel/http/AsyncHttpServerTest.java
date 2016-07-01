@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import org.junit.Assert;
 import org.junit.Before;
@@ -29,7 +29,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -42,8 +42,8 @@ public class AsyncHttpServerTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop) {
@@ -88,11 +88,11 @@ public class AsyncHttpServerTest {
 	}
 
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
-		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
+		ByteBufN buf = ByteBufN.wrap(encodeAscii(string));
 		Random random = new Random();
-		while (buf.hasRemaining()) {
-			int count = min(1 + random.nextInt(5), buf.remaining());
-			socket.getOutputStream().write(buf.array(), buf.position(), count);
+		while (buf.canRead()) {
+			int count = min(1 + random.nextInt(5), buf.remainingToRead());
+			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), count);
 			buf.advance(count);
 		}
 	}
@@ -141,7 +141,7 @@ public class AsyncHttpServerTest {
 		doTestKeepAlive(eventloop, asyncHttpServer(eventloop));
 		doTestKeepAlive(eventloop, delayedHttpServer(eventloop));
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -164,7 +164,7 @@ public class AsyncHttpServerTest {
 		server.closeFuture().await();
 		thread.join();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -189,7 +189,7 @@ public class AsyncHttpServerTest {
 		server.closeFuture().await();
 		thread.join();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	@Test
@@ -200,7 +200,7 @@ public class AsyncHttpServerTest {
 		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining(eventloop, delayedHttpServer(eventloop));
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufNPool.getCreatedItems(), ByteBufNPool.getPoolItems());
 	}
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server) throws Exception {
@@ -231,8 +231,8 @@ public class AsyncHttpServerTest {
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		final Eventloop eventloop = new Eventloop();
-		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
-				.body(ByteBuf.wrap(encodeAscii("Test big HTTP message body"))).write();
+		final ByteBufN buf = HttpRequest.post("http://127.0.0.1:" + port)
+				.body(ByteBufN.wrap(encodeAscii("Test big HTTP message body"))).write();
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
@@ -254,7 +254,7 @@ public class AsyncHttpServerTest {
 
 		try (Socket socket = new Socket()) {
 			socket.connect(new InetSocketAddress(port));
-			socket.getOutputStream().write(buf.array(), buf.position(), buf.remaining());
+			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
 			buf.recycle();
 			Thread.sleep(100);
 		}

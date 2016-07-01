@@ -17,14 +17,14 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import org.junit.Test;
 
 import java.util.Map;
 
-import static io.datakernel.bytebufnew.ByteBufPool.getCreatedItems;
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItems;
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.getCreatedItems;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItems;
+import static io.datakernel.bytebufnew.ByteBufNPool.getPoolItemsString;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
@@ -33,7 +33,7 @@ import static org.junit.Assert.assertEquals;
 public class TestPostParseParams {
 	@Test
 	public void testParameters() throws ParseException {
-		ByteBuf body = wrapAscii("hello=world&value=1234");
+		ByteBufN body = wrapAscii("hello=world&value=1234");
 
 		HttpRequest request = HttpRequest.post("http://127.0.0.1")
 				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))

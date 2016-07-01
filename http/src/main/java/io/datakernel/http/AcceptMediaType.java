@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.util.ByteBufStrings;
 
 import java.util.ArrayList;
@@ -106,9 +106,9 @@ public final class AcceptMediaType {
 		}
 	}
 
-	static void render(List<AcceptMediaType> types, ByteBuf buf) {
-		int pos = render(types, buf.array(), buf.position());
-		buf.position(pos);
+	static void render(List<AcceptMediaType> types, ByteBufN buf) {
+		int pos = render(types, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int render(List<AcceptMediaType> types, byte[] container, int pos) {

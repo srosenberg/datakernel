@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import java.util.Date;
 import java.util.List;
@@ -69,8 +69,8 @@ public final class HttpCookie {
 		parse(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws ParseException {
-		parse(buf.array(), buf.position(), buf.limit(), cookies);
+	static void parse(ByteBufN buf, List<HttpCookie> cookies) throws ParseException {
+		parse(buf.array(), buf.getReadPosition(), buf.getWritePosition(), cookies);
 	}
 
 	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
@@ -114,9 +114,9 @@ public final class HttpCookie {
 		}
 	}
 
-	static void renderSimple(List<HttpCookie> cookies, ByteBuf buf) {
-		int pos = renderSimple(cookies, buf.array(), buf.position());
-		buf.position(pos);
+	static void renderSimple(List<HttpCookie> cookies, ByteBufN buf) {
+		int pos = renderSimple(cookies, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int renderSimple(List<HttpCookie> cookies, byte[] bytes, int pos) {
@@ -186,7 +186,7 @@ public final class HttpCookie {
 		}
 	}
 
-	static void renderFull(List<HttpCookie> cookies, ByteBuf buf) {
+	static void renderFull(List<HttpCookie> cookies, ByteBufN buf) {
 		for (int i = 0; i < cookies.size(); i++) {
 			cookies.get(i).renderFull(buf);
 			if (i < cookies.size() - 1) {
@@ -196,7 +196,7 @@ public final class HttpCookie {
 		}
 	}
 
-	void renderFull(ByteBuf buf) {
+	void renderFull(ByteBufN buf) {
 		putAscii(buf, name);
 		putAscii(buf, "=\"");
 		if (value != null) {

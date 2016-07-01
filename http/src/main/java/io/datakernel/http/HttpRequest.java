@@ -17,8 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 
 import java.net.InetAddress;
 import java.util.*;
@@ -61,7 +61,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// common builder methods
-	public HttpRequest header(HttpHeader header, ByteBuf value) {
+	public HttpRequest header(HttpHeader header, ByteBufN value) {
 		setHeader(header, value);
 		return this;
 	}
@@ -77,10 +77,10 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest body(byte[] array) {
-		return body(ByteBuf.wrap(array));
+		return body(ByteBufN.wrap(array));
 	}
 
-	public HttpRequest body(ByteBuf body) {
+	public HttpRequest body(ByteBufN body) {
 		setBody(body);
 		return this;
 	}
@@ -225,7 +225,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.position() != body.limit()) {
+				&& body.getReadPosition() != body.getWritePosition()) {
 			if (bodyParameters == null) {
 				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
 			}
@@ -318,7 +318,7 @@ public final class HttpRequest extends HttpMessage {
 		urlParameters.put(key, value);
 	}
 
-	ByteBuf write() {
+	ByteBufN write() {
 		assert !recycled;
 		if (body != null || method != GET) {
 			if (gzip) {
@@ -328,13 +328,13 @@ public final class HttpRequest extends HttpMessage {
 					throw new AssertionError("Can't encode http request body");
 				}
 			}
-			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
 				+ url.getPathAndQuery().length())
 				+ HTTP_1_1_SIZE;
-		ByteBuf buf = ByteBufPool.allocate(estimatedSize);
+		ByteBufN buf = ByteBufNPool.allocateAtLeast(estimatedSize);
 
 		method.write(buf);
 		buf.put(SP);
@@ -345,7 +345,6 @@ public final class HttpRequest extends HttpMessage {
 
 		writeBody(buf);
 
-		buf.flip();
 		return buf;
 	}
 

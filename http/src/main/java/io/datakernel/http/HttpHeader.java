@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 
@@ -38,7 +38,7 @@ public class HttpHeader extends CaseInsensitiveTokenMap.Token {
 		return length;
 	}
 
-	void writeTo(ByteBuf buf) {
+	void writeTo(ByteBufN buf) {
 		buf.put(bytes, offset, length);
 	}
 
