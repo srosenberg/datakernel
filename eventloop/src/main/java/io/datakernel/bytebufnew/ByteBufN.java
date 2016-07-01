@@ -25,6 +25,11 @@ public class ByteBufN {
 		boolean isRecycled() {
 			return root.isRecycled();
 		}
+
+		@Override
+		public boolean isRecycleNeeded() {
+			return root.isRecycleNeeded();
+		}
 	}
 
 	protected final byte[] array;

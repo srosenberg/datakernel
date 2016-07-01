@@ -93,7 +93,7 @@ public class AsyncHttpServerTest {
 		while (buf.canRead()) {
 			int count = min(1 + random.nextInt(5), buf.remainingToRead());
 			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), count);
-			buf.advance(count);
+			buf.skip(count);
 		}
 	}
 
