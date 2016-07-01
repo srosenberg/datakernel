@@ -26,7 +26,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
@@ -34,7 +34,7 @@ import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
-	private final ExecutorService executor;
+	private final Executor executor;
 	private final AsyncTcpSocket upstream;
 
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
@@ -42,12 +42,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private ByteBufN net2engine;
 	private final ByteBufQueue app2engineQueue = new ByteBufQueue();
 
-	private boolean open = true;
+	private Status status = Status.OPEN;
 	private boolean readInterest = false;
 	private boolean writeInterest = false;
 	private boolean syncPosted = false;
+	private boolean writeEndOfStream = false;
 
-	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, ExecutorService executor) {
+	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
 		this.eventloop = eventloop;
 		this.engine = engine;
 		this.executor = executor;
@@ -56,7 +57,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onRegistered() {
-		open = true;
+		status = Status.OPEN;
 		downstreamEventHandler.onRegistered();
 		try {
 			engine.beginHandshake();
@@ -81,14 +82,22 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	public void onReadEndOfStream() {
 		try {
 			engine.closeInbound();
-			downstreamEventHandler.onReadEndOfStream();
+			status = Status.CLOSED;
 		} catch (SSLException e) {
-			handleSSLException(e, false);
+			status = Status.CLOSED_WITH_ERROR;
+			downstreamEventHandler.onClosedWithError(e);
+			engine.closeOutbound();
+			sync();
 		}
 	}
 
 	@Override
 	public void onWrite() {
+		if (status == Status.CLOSING) {
+			upstream.close();
+			status = Status.CLOSED;
+			return;
+		}
 		if (!isOpen()) return;
 		if (app2engineQueue.isEmpty() && writeInterest) {
 			writeInterest = false;
@@ -99,7 +108,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	@Override
 	public void onClosedWithError(Exception e) {
 		if (!isOpen()) return;
-		open = false;
+		status = Status.CLOSED_WITH_ERROR;
 		downstreamEventHandler.onClosedWithError(e);
 	}
 
@@ -131,6 +140,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void write(ByteBufN buf) {
+		assert !writeEndOfStream;
+
 		if (!isOpen()) return;
 		app2engineQueue.add(buf);
 		writeInterest = true;
@@ -139,14 +150,19 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void writeEndOfStream() {
-		// TODO
+		assert !writeEndOfStream;
+
+		writeEndOfStream = true;
+		postSync();
 	}
 
 	@Override
 	public void close() {
 		if (!isOpen()) return;
-		open = false;
-		upstream.close();
+		app2engineQueue.clear();
+		engine.closeOutbound();
+		status = Status.CLOSING;
+		postSync();
 	}
 
 	@Override
@@ -155,12 +171,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	public boolean isOpen() {
-		return open;
+		return status == Status.OPEN;
 	}
 
 	private void handleSSLException(final SSLException e, boolean post) {
 		if (!isOpen())
 			return;
+		status = Status.CLOSED_WITH_ERROR;
 		upstream.close();
 		if (post) {
 			eventloop.post(new Runnable() {
@@ -179,7 +196,14 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		ByteBuffer srcBuffer = net2engine.toByteBufferInReadMode();
 		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
 
-		SSLEngineResult result = engine.unwrap(srcBuffer, dstBuffer);
+		SSLEngineResult result;
+		try {
+			result = engine.unwrap(srcBuffer, dstBuffer);
+		} catch (SSLException e) {
+			net2engine.recycle();
+			targetBuf.recycle();
+			throw e;
+		}
 
 		net2engine.setReadPosition(srcBuffer.position());
 		if (!net2engine.canRead()) {
@@ -199,12 +223,19 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
 		ByteBufN sourceBuf = app2engineQueue.takeRemaining();
-
+		
 		ByteBufN dstBuf = ByteBufNPool.allocateAtLeast(engine.getSession().getPacketBufferSize());
 		ByteBuffer srcBuffer = sourceBuf.toByteBufferInReadMode();
 		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
 
-		SSLEngineResult result = engine.wrap(srcBuffer, dstBuffer);
+		SSLEngineResult result;
+		try {
+			result = engine.wrap(srcBuffer, dstBuffer);
+		} catch (SSLException e) {
+			app2engineQueue.clear();
+			targetBuf.recycle();
+			throw e;
+		}
 
 		sourceBuf.setReadPosition(srcBuffer.position());
 		if (sourceBuf.canRead()) {
@@ -256,9 +287,23 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWriteToNet();
+				if (engine.isOutboundDone()) {
+					break;
+				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				if (net2engine != null) {
 					result = tryToWriteToApp();
+
+					// receive close_notify from other side (closing was initiated by this side)
+					if (engine.isInboundDone()) {
+						assert engine.isOutboundDone();
+
+						status = Status.CLOSED;
+						upstream.close();
+						downstreamEventHandler.onReadEndOfStream();
+						return;
+					}
+
 					if (result.getStatus() == BUFFER_UNDERFLOW) {
 						readInterest = true;
 						break;
@@ -271,17 +316,29 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				executeTasks();
 				return;
 			} else if (handshakeStatus == NOT_HANDSHAKING) {
+				// read data from net
 				if (readInterest && net2engine != null) {
 					do {
 						result = tryToWriteToApp();
 					} while (net2engine != null && result.getStatus() != BUFFER_UNDERFLOW);
 				}
-				if (writeInterest && app2engineQueue.hasRemaining()) {
-					do {
-						result = tryToWriteToNet();
-					} while (app2engineQueue.hasRemaining());
+				if (engine.isInboundDone()) { // receive close_notify (closing was initiated by other side)
+					downstreamEventHandler.onReadEndOfStream();
+					engine.closeOutbound();
+					status = Status.CLOSING;
+				} else {
+					// write data to net
+					if (writeInterest && app2engineQueue.hasRemaining()) {
+						do {
+							result = tryToWriteToNet();
+						} while (app2engineQueue.hasRemaining());
+					}
+					if (writeEndOfStream) {
+						engine.closeOutbound();
+					} else {
+						break;
+					}
 				}
-				break;
 			} else {
 				break;
 			}
@@ -290,5 +347,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
 			upstream.read();
 		}
+	}
+
+	private enum Status {
+		OPEN,
+		CLOSING,
+		CLOSED,
+		CLOSED_WITH_ERROR;
 	}
 }
