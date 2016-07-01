@@ -21,7 +21,7 @@ import io.datakernel.FsServer;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -38,7 +38,7 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 	}
 
 	@Override
-	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
+	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBufN>> callback) {
 		fileManager.save(fileName, new ForwardingResultCallback<StreamFileWriter>(callback) {
 			@Override
 			public void onResult(StreamFileWriter result) {
@@ -48,7 +48,7 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 	}
 
 	@Override
-	public void download(String fileName, long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
+	public void download(String fileName, long startPosition, final ResultCallback<StreamProducer<ByteBufN>> callback) {
 		fileManager.get(fileName, startPosition, new ForwardingResultCallback<StreamFileReader>(callback) {
 			@Override
 			public void onResult(StreamFileReader result) {

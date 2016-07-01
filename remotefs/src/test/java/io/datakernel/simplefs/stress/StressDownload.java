@@ -2,7 +2,7 @@ package io.datakernel.simplefs.stress;
 
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -52,7 +52,7 @@ public class StressDownload {
 				@Override
 				public void onResult(StreamTransformerWithCounter result) {
 					try {
-						StreamConsumer<ByteBuf> consumer = create(eventloop,
+						StreamConsumer<ByteBufN> consumer = create(eventloop,
 								open(eventloop, executor,
 										CLIENT_STORAGE.resolve(file),
 										CREATE_OPTIONS));

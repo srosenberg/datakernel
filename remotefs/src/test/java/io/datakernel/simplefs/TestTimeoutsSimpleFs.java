@@ -1,7 +1,7 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.net.SocketSettings;
@@ -49,7 +49,7 @@ public class TestTimeoutsSimpleFs {
 
 		CompletionCallbackFuture callback = new CompletionCallbackFuture();
 
-		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrap(BIG_FILE)), callback);
+		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBufN.wrap(BIG_FILE)), callback);
 
 		eventloop.run();
 		executorService.shutdown();

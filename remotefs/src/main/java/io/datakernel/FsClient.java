@@ -21,7 +21,7 @@ import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;
@@ -57,7 +57,7 @@ public abstract class FsClient {
 	}
 
 	// api
-	public abstract void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	public abstract void upload(String destinationFileName, StreamProducer<ByteBufN> producer, CompletionCallback callback);
 
 	public abstract void download(String sourceFileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback);
 
@@ -66,7 +66,7 @@ public abstract class FsClient {
 	public abstract void delete(String fileName, CompletionCallback callback);
 
 	// transport code
-	protected final void doUpload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	protected final void doUpload(InetSocketAddress address, String fileName, StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 		connect(address, new UploadConnectCallback(fileName, callback, producer));
 	}
 
@@ -97,9 +97,9 @@ public abstract class FsClient {
 	private class UploadConnectCallback implements ConnectCallback {
 		private final String fileName;
 		private final CompletionCallback callback;
-		private final StreamProducer<ByteBuf> producer;
+		private final StreamProducer<ByteBufN> producer;
 
-		UploadConnectCallback(String fileName, CompletionCallback callback, StreamProducer<ByteBuf> producer) {
+		UploadConnectCallback(String fileName, CompletionCallback callback, StreamProducer<ByteBufN> producer) {
 			this.fileName = fileName;
 			this.callback = callback;
 			this.producer = producer;

@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import io.datakernel.FsCommands.*;
 import io.datakernel.FsResponses.*;
 import io.datakernel.async.*;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
@@ -54,9 +54,9 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	}
 
 	// abstract core methods
-	protected abstract void upload(String filePath, ResultCallback<StreamConsumer<ByteBuf>> callback);
+	protected abstract void upload(String filePath, ResultCallback<StreamConsumer<ByteBufN>> callback);
 
-	protected abstract void download(String filePath, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
+	protected abstract void download(String filePath, long startPosition, ResultCallback<StreamProducer<ByteBufN>> callback);
 
 	protected abstract void delete(String filePath, CompletionCallback callback);
 
@@ -129,9 +129,9 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 				@Override
 				public void onComplete() {
 					logger.trace("send {}", ok);
-					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBuf>>(this) {
+					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBufN>>(this) {
 						@Override
-						public void onResult(StreamConsumer<ByteBuf> result) {
+						public void onResult(StreamConsumer<ByteBufN> result) {
 							messaging.receiveBinaryStreamTo(result, new ForwardingCompletionCallback(this) {
 								@Override
 								public void onComplete() {
@@ -163,9 +163,9 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 						messaging.send(new Ready(size), new ForwardingCompletionCallback(this) {
 							@Override
 							public void onComplete() {
-								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBuf>>(this) {
+								download(item.filePath, item.startPosition, new ForwardingResultCallback<StreamProducer<ByteBufN>>(this) {
 									@Override
-									public void onResult(final StreamProducer<ByteBuf> result) {
+									public void onResult(final StreamProducer<ByteBufN> result) {
 										messaging.sendBinaryStreamFrom(result, new SimpleCompletionCallback() {
 											@Override
 											protected void onCompleteOrException() {

@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
 import io.datakernel.async.*;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -50,7 +50,7 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	// core
 	@Override
-	protected final void upload(final String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
+	protected final void upload(final String fileName, final ResultCallback<StreamConsumer<ByteBufN>> callback) {
 		if (localReplica.canUpload(fileName)) {
 			localReplica.onUploadStart(fileName);
 			fileManager.save(fileName, new ResultCallback<StreamFileWriter>() {
@@ -79,7 +79,7 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	}
 
 	@Override
-	protected final void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
+	protected final void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBufN>> callback) {
 		if (localReplica.canDownload(fileName)) {
 			localReplica.onDownloadStart(fileName);
 			fileManager.get(fileName, startPosition, new ResultCallback<StreamFileReader>() {
