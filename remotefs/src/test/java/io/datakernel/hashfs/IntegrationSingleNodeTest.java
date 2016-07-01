@@ -19,7 +19,7 @@ package io.datakernel.hashfs;
 import io.datakernel.FsClient;
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -45,8 +45,8 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebufnew.ByteBuf.wrap;
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufN.wrap;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -129,7 +129,7 @@ public class IntegrationSingleNodeTest {
 		ExecutorService executor = newCachedThreadPool();
 		final HashFsServer server = createServer(eventloop, executor);
 		final HashFsClient client = createClient(eventloop);
-		final StreamProducer<ByteBuf> producer = new ClosingWithError<>(eventloop, new SimpleException("Test Exception"));
+		final StreamProducer<ByteBufN> producer = new ClosingWithError<>(eventloop, new SimpleException("Test Exception"));
 		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 
 		server.listen();
@@ -323,7 +323,7 @@ public class IntegrationSingleNodeTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private ResultCallback<StreamTransformerWithCounter> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBuf> consumer) {
+	private ResultCallback<StreamTransformerWithCounter> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBufN> consumer) {
 		return new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
 			public void onResult(StreamTransformerWithCounter result) {
@@ -332,7 +332,7 @@ public class IntegrationSingleNodeTest {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		};
 	}

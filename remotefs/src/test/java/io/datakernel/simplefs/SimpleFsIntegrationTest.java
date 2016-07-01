@@ -19,7 +19,7 @@ package io.datakernel.simplefs;
 import com.google.common.collect.Lists;
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -47,7 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebufnew.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
@@ -110,7 +110,7 @@ public class SimpleFsIntegrationTest {
 
 		server.listen();
 		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(CONTENT));
+			StreamProducer<ByteBufN> producer = StreamProducers.ofValue(eventloop, ByteBufN.wrap(CONTENT));
 			client.upload("file" + i, producer, callback);
 		}
 
@@ -176,14 +176,14 @@ public class SimpleFsIntegrationTest {
 		SimpleFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer =
+		StreamProducer<ByteBufN> producer =
 				StreamProducers.concat(eventloop,
 						StreamProducers.ofIterable(eventloop, asList(
 								ByteBufStrings.wrapUTF8("Test1"),
 								ByteBufStrings.wrapUTF8(" Test2"),
 								ByteBufStrings.wrapUTF8(" Test3"))),
-						StreamProducers.ofValue(eventloop, ByteBuf.wrap(BIG_FILE)),
-						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
+						StreamProducers.ofValue(eventloop, ByteBufN.wrap(BIG_FILE)),
+						StreamProducers.<ByteBufN>closingWithError(eventloop, new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUTF8("Test4")));
 
 		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
@@ -227,12 +227,12 @@ public class SimpleFsIntegrationTest {
 		String file = "file1_downloaded.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<ByteBuf> expected = download(file, 0);
+		List<ByteBufN> expected = download(file, 0);
 
 		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
 
 		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
+		for (ByteBufN buf : expected) {
 			buf.recycle();
 		}
 
@@ -244,12 +244,12 @@ public class SimpleFsIntegrationTest {
 		String file = "file1_downloaded.txt";
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<ByteBuf> expected = download(file, 2);
+		List<ByteBufN> expected = download(file, 2);
 
 		assertTrue(equalsLowerCaseAscii("ntent".getBytes(UTF_8), expected.get(0).array(), 0, 5));
 
 		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
+		for (ByteBufN buf : expected) {
 			buf.recycle();
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -261,12 +261,12 @@ public class SimpleFsIntegrationTest {
 		Files.createDirectories(storage.resolve("this/is/not/empty/directory"));
 		Files.write(storage.resolve(file), CONTENT);
 
-		List<ByteBuf> expected = download(file, 0);
+		List<ByteBufN> expected = download(file, 0);
 
 		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
 
 		// created in 'toList' stream consumer
-		for (ByteBuf buf : expected) {
+		for (ByteBufN buf : expected) {
 			buf.recycle();
 		}
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -467,18 +467,18 @@ public class SimpleFsIntegrationTest {
 		SimpleFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+		StreamProducer<ByteBufN> producer = StreamProducers.ofValue(eventloop, ByteBufN.wrap(bytes));
 		client.upload(resultFile, producer, new CloseCompletionCallback(server, callback));
 		eventloop.run();
 		executor.shutdown();
 	}
 
-	private List<ByteBuf> download(String file, long startPosition) throws IOException {
+	private List<ByteBufN> download(String file, long startPosition) throws IOException {
 		final Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 		SimpleFsClient client = createClient(eventloop);
 		final SimpleFsServer server = createServer(eventloop, executor);
-		final List<ByteBuf> expected = new ArrayList<>();
+		final List<ByteBufN> expected = new ArrayList<>();
 
 		server.listen();
 		client.download(file, startPosition, new ResultCallback<StreamTransformerWithCounter>() {

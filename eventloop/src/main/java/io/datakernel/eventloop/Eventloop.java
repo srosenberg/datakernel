@@ -1103,8 +1103,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	public void recordIoError(Exception e, Object context) {
 		logger.warn("IO Error in {}", context, e.toString());
-		// TODO: (arashev) remove
-		e.printStackTrace();
 		stats.recordIoError(e, context);
 	}
 

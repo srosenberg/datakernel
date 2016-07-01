@@ -16,8 +16,8 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.bytebufnew.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -60,8 +60,8 @@ public class LogManagerTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 
 		testDir = temporaryFolder.newFolder().toPath();
 		clearTestDir(testDir);

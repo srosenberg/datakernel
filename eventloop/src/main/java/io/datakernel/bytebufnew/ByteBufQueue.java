@@ -242,13 +242,13 @@ public final class ByteBufQueue {
 	 * @param maxSize number of bytes for removing
 	 * @return number of removed bytes
 	 */
-	public int advance(int maxSize) {
+	public int skip(int maxSize) {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBufN buf = bufs[first];
 			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				buf.advance(s);
+				buf.skip(s);
 				return maxSize;
 			} else {
 				buf.setReadPosition(buf.getWritePosition());

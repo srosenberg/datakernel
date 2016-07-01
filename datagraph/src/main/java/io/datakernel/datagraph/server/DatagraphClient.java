@@ -17,7 +17,7 @@
 package io.datakernel.datagraph.server;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.DatagraphCommand;
@@ -77,10 +77,10 @@ public final class DatagraphClient {
 
 	private class DownloadConnectCallback implements ConnectCallback {
 		private final StreamId streamId;
-		private final StreamConsumer<ByteBuf> consumer;
+		private final StreamConsumer<ByteBufN> consumer;
 		private final CompletionCallback callback;
 
-		public DownloadConnectCallback(StreamId streamId, StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+		public DownloadConnectCallback(StreamId streamId, StreamConsumer<ByteBufN> consumer, CompletionCallback callback) {
 			this.streamId = streamId;
 			this.consumer = consumer;
 			this.callback = callback;

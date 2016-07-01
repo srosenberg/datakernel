@@ -20,7 +20,7 @@ import io.datakernel.FsClient;
 import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 
@@ -36,7 +36,7 @@ public final class SimpleFsClient extends FsClient {
 	}
 
 	@Override
-	public void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void upload(String fileName, StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 		doUpload(address, fileName, producer, callback);
 	}
 

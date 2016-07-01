@@ -17,7 +17,7 @@
 package io.datakernel.datagraph.server;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
 import io.datakernel.datagraph.node.Node;
@@ -50,7 +50,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private static final Logger logger = LoggerFactory.getLogger(DatagraphServer.class);
 
 	private final DatagraphEnvironment environment;
-	private final Map<StreamId, StreamForwarder<ByteBuf>> pendingStreams = new HashMap<>();
+	private final Map<StreamId, StreamForwarder<ByteBufN>> pendingStreams = new HashMap<>();
 	private final MessagingSerializer<DatagraphCommand, DatagraphResponse> serializer;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
@@ -81,7 +81,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		@Override
 		public void onCommand(final MessagingWithBinaryStreamingConnection<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.streamId;
-			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+			StreamForwarder<ByteBufN> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
@@ -122,7 +122,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer, 256 * 1024, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		streamSerializer.setTag(streamId);
 
-		StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
+		StreamForwarder<ByteBufN> forwarder = pendingStreams.remove(streamId);
 		if (forwarder != null) {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		} else {

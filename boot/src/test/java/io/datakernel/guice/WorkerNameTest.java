@@ -17,7 +17,7 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.service.*;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class WorkerNameTest {
@@ -37,8 +37,8 @@ public class WorkerNameTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	public static class Element1 {}
@@ -91,7 +91,6 @@ public class WorkerNameTest {
 			return new Element1();
 		}
 
-
 		@Provides
 		@Singleton
 		Element2 primaryServer(Element1 primaryEventloop, WorkerPool workerPool) {
@@ -136,6 +135,6 @@ public class WorkerNameTest {
 			serviceGraph.stopFuture().get();
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

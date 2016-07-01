@@ -28,7 +28,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.ConnectCallback;
@@ -86,7 +86,7 @@ public final class HashFsClient extends FsClient {
 
 	// api
 	@Override
-	public void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void upload(final String fileName, final StreamProducer<ByteBufN> producer, final CompletionCallback callback) {
 		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
 			public void onResult(List<Replica> result) {
@@ -179,13 +179,13 @@ public final class HashFsClient extends FsClient {
 		});
 	}
 
-	void makeReplica(Replica replica, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	void makeReplica(Replica replica, String fileName, StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 		super.doUpload(replica.getAddress(), fileName, producer, callback);
 	}
 
 	// inner
 	private void doUpload(final String fileName, final int currentAttempt, final List<Replica> candidates,
-	                      final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	                      final StreamProducer<ByteBufN> producer, final CompletionCallback callback) {
 		Replica server = candidates.get(currentAttempt % candidates.size());
 		doUpload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override

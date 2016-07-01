@@ -70,13 +70,11 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 					buf.skip(chunkSize);
 				} else {
 					buf.drainTo(internalBuf, minChunkSize - internalBuf.getWritePosition());
-					System.out.println(hashCode() + " send internal buf " + internalBuf.remainingToRead());
 					send(internalBuf);
 					internalBuf = ByteBufNPool.allocateAtLeast(maxChunkSize);
 				}
 			}
 
-			System.out.println(hashCode() + " drained to buffer " + buf.remainingToRead());
 			buf.drainTo(internalBuf, buf.remainingToRead());
 			assert internalBuf.getWritePosition() < minChunkSize;
 

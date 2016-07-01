@@ -19,7 +19,7 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamConsumerDecorator;
@@ -29,7 +29,7 @@ import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<ByteBuf> {
+public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<ByteBufN> {
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
 	private final StreamWriteLog streamWriteLog;
 
@@ -47,7 +47,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		streamWriteLog.setTag(tag);
 	}
 
-	private class StreamWriteLog extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+	private class StreamWriteLog extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> {
 		private InputConsumer inputConsumer;
 		private OutputProducer outputProducer;
 
@@ -58,7 +58,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			inputConsumer = new InputConsumer(datetimeFormat, fileSwitchPeriod, fileSystem, logPartition);
 		}
 
-		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
+		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBufN> {
 			private final String logPartition;
 
 			private long currentPeriod = -1;
@@ -96,12 +96,12 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			}
 
 			@Override
-			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			public StreamDataReceiver<ByteBufN> getDataReceiver() {
 				return this;
 			}
 
 			@Override
-			public void onData(ByteBuf buf) {
+			public void onData(ByteBufN buf) {
 				long timestamp = eventloop.currentTimeMillis();
 				long newPeriod = timestamp / fileSwitchPeriod;
 				outputProducer.send(buf);
@@ -205,7 +205,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		private class OutputProducer extends AbstractOutputProducer {
 			@Override
 			protected void doCleanup() {
-				for (ByteBuf byteBuf : outputProducer.bufferedList) {
+				for (ByteBufN byteBuf : outputProducer.bufferedList) {
 					byteBuf.recycle();
 				}
 				outputProducer.bufferedList.clear();
@@ -223,7 +223,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		}
 	}
 
-	private class ConsumerErrorIgnoring extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+	private class ConsumerErrorIgnoring extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> {
 		private InputConsumer upstreamConsumer;
 		private OutputProducer downstreamProducer;
 
@@ -241,7 +241,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			}
 
 			@Override
-			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			public StreamDataReceiver<ByteBufN> getDataReceiver() {
 				return downstreamProducer.getDownstreamDataReceiver();
 			}
 		}

@@ -20,7 +20,7 @@ import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -65,7 +65,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(decompressor.getInput());
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(decompressor.getInput());
 			}
 		});
 

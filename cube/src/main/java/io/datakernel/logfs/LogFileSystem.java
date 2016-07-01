@@ -18,7 +18,7 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -32,7 +32,7 @@ public interface LogFileSystem {
 
 	void list(String logPartition, ResultCallback<List<LogFile>> callback);
 
-	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer);
+	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBufN> consumer);
 
-	void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void write(String logPartition, LogFile logFile, StreamProducer<ByteBufN> producer, CompletionCallback callback);
 }

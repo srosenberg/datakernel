@@ -17,13 +17,13 @@
 package io.datakernel;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
 
-public final class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBufN, ByteBufN> {
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
 	private final long expectedSize;
@@ -50,7 +50,7 @@ public final class StreamTransformerWithCounter extends AbstractStreamTransforme
 		expectedSize = requiredSize;
 	}
 
-	private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
+	private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBufN> {
 		@Override
 		protected void onUpstreamEndOfStream() {
 			if (expectedSize == streamedSize) {
@@ -68,13 +68,13 @@ public final class StreamTransformerWithCounter extends AbstractStreamTransforme
 		}
 
 		@Override
-		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+		public StreamDataReceiver<ByteBufN> getDataReceiver() {
 			return this;
 		}
 
 		@Override
-		public void onData(ByteBuf item) {
-			streamedSize += (item.limit() - item.position());
+		public void onData(ByteBufN item) {
+			streamedSize += (item.remainingToRead());
 			outputProducer.send(item);
 		}
 	}

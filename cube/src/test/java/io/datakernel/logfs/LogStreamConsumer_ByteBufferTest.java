@@ -19,8 +19,8 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
 import static org.junit.Assert.assertEquals;
 
@@ -64,8 +64,8 @@ public class LogStreamConsumer_ByteBufferTest {
 
 	@Before
 	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 
 		testDir = temporaryFolder.newFolder().toPath();
 		clearTestDir(testDir);
@@ -88,7 +88,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter);
 
-		final StreamProducer<ByteBuf> producer = new ScheduledProducer(eventloop) {
+		final StreamProducer<ByteBufN> producer = new ScheduledProducer(eventloop) {
 			@Override
 			protected void doProduce() {
 				if (++nom == 9) {
@@ -98,7 +98,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				if (nom == 4) {
 					timeProvider.setTime(new LocalDateTime("1970-01-01T01:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBufN.wrap(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(5L, new Runnable() {
 					@Override
@@ -138,7 +138,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -148,7 +148,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter) {
 			@Override
-			public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+			public void write(String logPartition, LogFile logFile, StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 				try {
 					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, path(logPartition, logFile));
 					listWriter.add(writer);
@@ -161,7 +161,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 
-		StreamProducer<ByteBuf> producer = new ScheduledProducer(eventloop) {
+		StreamProducer<ByteBufN> producer = new ScheduledProducer(eventloop) {
 
 			@Override
 			protected void doProduce() {
@@ -169,7 +169,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					sendEndOfStream();
 					return;
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBufN.wrap(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(100L, new Runnable() {
 					@Override
@@ -210,7 +210,7 @@ public class LogStreamConsumer_ByteBufferTest {
 		}
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 	}
 
@@ -379,18 +379,18 @@ public class LogStreamConsumer_ByteBufferTest {
 		}
 
 		@Override
-		public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
+		public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBufN> consumer) {
 			try {
 				StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 						path(logPartition, logFile), startPosition);
 				reader.streamTo(consumer);
 			} catch (IOException e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		}
 
 		@Override
-		public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		public void write(String logPartition, LogFile logFile, StreamProducer<ByteBufN> producer, CompletionCallback callback) {
 			try {
 				StreamFileWriter writer = StreamFileWriter.create(eventloop, executorService, path(logPartition, logFile));
 				producer.streamTo(writer);
@@ -402,7 +402,7 @@ public class LogStreamConsumer_ByteBufferTest {
 		}
 	}
 
-	class ScheduledProducer extends AbstractStreamProducer<ByteBuf> {
+	class ScheduledProducer extends AbstractStreamProducer<ByteBufN> {
 		protected int nom;
 
 		protected ScheduledProducer(Eventloop eventloop) {
