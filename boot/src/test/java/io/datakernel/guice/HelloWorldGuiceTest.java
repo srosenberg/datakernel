@@ -18,8 +18,8 @@ package io.datakernel.guice;
 
 import com.google.common.io.Closeables;
 import com.google.inject.*;
-import io.datakernel.bytebufnew.ByteBuf;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufN;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.*;
@@ -31,7 +31,6 @@ import io.datakernel.util.ByteBufStrings;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,7 +43,7 @@ import java.net.Socket;
 import java.util.List;
 
 import static com.google.common.io.ByteStreams.readFully;
-import static io.datakernel.bytebufnew.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
@@ -55,8 +54,8 @@ public class HelloWorldGuiceTest {
 
 	@Before
 	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+		ByteBufNPool.clear();
+		ByteBufNPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	public static class TestModule extends AbstractModule {
@@ -106,7 +105,7 @@ public class HelloWorldGuiceTest {
 				@Override
 				protected void doServeAsync(HttpRequest request, Callback callback) {
 					HttpResponse httpResponse = HttpResponse.create(200);
-					httpResponse.body(ByteBuf.wrap(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
+					httpResponse.body(ByteBufN.wrap(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
 					callback.onResult(httpResponse);
 				}
 			};
@@ -143,13 +142,13 @@ public class HelloWorldGuiceTest {
 			Closeables.close(socket1, true);
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static void readAndAssert(InputStream is, String expected) throws IOException {
 		byte[] bytes = new byte[expected.length()];
 		readFully(is, bytes);
-		Assert.assertEquals(expected, decodeAscii(bytes));
+		assertEquals(expected, decodeAscii(bytes));
 	}
 
 	public static void main(String[] args) throws Exception {

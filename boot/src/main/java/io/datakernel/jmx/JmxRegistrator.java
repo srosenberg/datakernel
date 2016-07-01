@@ -18,7 +18,7 @@ package io.datakernel.jmx;
 
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.bytebufnew.ByteBufPool;
+import io.datakernel.bytebufnew.ByteBufNPool;
 import io.datakernel.worker.WorkerPools;
 
 import java.util.List;
@@ -41,8 +41,8 @@ public final class JmxRegistrator {
 
 	public void registerJmxMBeans() {
 		// register ByteBufPool
-		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
-		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
+		Key<?> byteBufPoolKey = Key.get(ByteBufNPool.ByteBufNPoolStats.class);
+		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufNPool.getStats());
 
 		// register singletons
 		for (Key<?> key : singletonKeys) {

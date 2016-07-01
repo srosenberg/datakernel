@@ -19,7 +19,7 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamConsumer;
@@ -136,7 +136,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
+	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBufN> consumer) {
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile file) {
@@ -146,13 +146,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
 	}
 
 	@Override
-	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBufN> producer, final CompletionCallback callback) {
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			public void onResult(AsyncFile file) {

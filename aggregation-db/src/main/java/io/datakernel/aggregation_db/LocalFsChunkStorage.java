@@ -19,7 +19,7 @@ package io.datakernel.aggregation_db;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
@@ -111,7 +111,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(decompressor.getInput());
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(decompressor.getInput());
 			}
 		});
 

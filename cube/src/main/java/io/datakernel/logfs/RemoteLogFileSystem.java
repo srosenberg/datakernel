@@ -21,7 +21,7 @@ import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebufnew.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -59,7 +59,7 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBuf> consumer) {
+	public void read(String logPartition, LogFile logFile, long startPosition, final StreamConsumer<ByteBufN> consumer) {
 		client.download(path(logPartition, logFile), startPosition, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
 			public void onResult(StreamTransformerWithCounter result) {
@@ -68,13 +68,13 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+				StreamProducers.<ByteBufN>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
 	}
 
 	@Override
-	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBufN> producer, final CompletionCallback callback) {
 		final String fileName = path(logPartition, logFile);
 		client.upload(fileName, producer, new CompletionCallback() {
 			@Override
