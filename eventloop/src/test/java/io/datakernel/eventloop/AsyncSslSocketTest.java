@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebufnew.ByteBufN;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -39,7 +39,7 @@ import java.security.SecureRandom;
 import java.util.Random;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebufnew.ByteBufNPool.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -337,7 +337,7 @@ public class AsyncSslSocketTest {
 			this.eventloop = eventloop;
 		}
 
-		public void onRead(ByteBuf buf) {
+		public void onRead(ByteBufN buf) {
 			downstreamEventHandler.onRead(buf);
 		}
 
@@ -355,7 +355,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void write(final ByteBuf buf) {
+		public void write(final ByteBufN buf) {
 			assert !writeEndOfStream;
 
 			if (otherSide == null) {
@@ -424,7 +424,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void onRead(ByteBuf buf) {
+		public void onRead(ByteBufN buf) {
 			data.append(extractMessageFromByteBuf(buf));
 		}
 
@@ -478,16 +478,15 @@ public class AsyncSslSocketTest {
 		return instance;
 	}
 
-	public static ByteBuf createByteBufFromString(String message) {
+	public static ByteBufN createByteBufFromString(String message) {
 		byte[] messageBytes = message.getBytes();
-		final ByteBuf messageByteBuf = ByteBuf.allocate(messageBytes.length);
+		final ByteBufN messageByteBuf = ByteBufN.create(messageBytes.length);
 		messageByteBuf.put(messageBytes);
-		messageByteBuf.flip();
 		return messageByteBuf;
 	}
 
-	public static String extractMessageFromByteBuf(ByteBuf buf) {
-		String result = new String(buf.array(), buf.position(), buf.limit());
+	public static String extractMessageFromByteBuf(ByteBufN buf) {
+		String result = new String(buf.array(), buf.getReadPosition(), buf.remainingToRead());
 		buf.recycle();
 		return result;
 	}
@@ -510,11 +509,11 @@ public class AsyncSslSocketTest {
 	// </editor-fold>
 
 	// <editor-fold desc="custom matchers">
-	public static Matcher<ByteBuf> bytebufOfMessage(final String message) {
-		return new BaseMatcher<ByteBuf>() {
+	public static Matcher<ByteBufN> bytebufOfMessage(final String message) {
+		return new BaseMatcher<ByteBufN>() {
 			@Override
 			public boolean matches(Object item) {
-				String extractedMessage = extractMessageFromByteBuf((ByteBuf) item);
+				String extractedMessage = extractMessageFromByteBuf((ByteBufN) item);
 				return extractedMessage.equals(message);
 			}
 
