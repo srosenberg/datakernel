@@ -228,7 +228,6 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 
 		private void growBuf(int newSize) {
-			buf.setWritePosition(bufferPos); // TODO check?? buf.limit(bufferPos)
 			buf = ByteBufNPool.reallocateAtLeast(buf, newSize);
 			buffer = buf.array();
 		}
