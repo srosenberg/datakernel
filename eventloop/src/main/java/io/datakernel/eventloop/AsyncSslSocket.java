@@ -39,6 +39,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
+	private boolean receivedCloseNotify = false;
+
 	private ByteBuf net2engine;
 	private final ByteBufQueue app2engineQueue = new ByteBufQueue();
 
@@ -53,6 +55,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
+
+		System.out.println("created");
 	}
 
 	@Override
@@ -78,8 +82,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		sync();
 	}
 
+	boolean receivedEndOfStream = false;
+
 	@Override
 	public void onReadEndOfStream() {
+		receivedEndOfStream = true;
 		try {
 			engine.closeInbound();
 			status = Status.CLOSED;
@@ -107,7 +114,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (!isOpen()) return;
+		if (!isOpen() || receivedCloseNotify) return;
 		status = Status.CLOSED_WITH_ERROR;
 		downstreamEventHandler.onClosedWithError(e);
 	}
@@ -161,7 +168,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		if (!isOpen()) return;
 		app2engineQueue.clear();
 		engine.closeOutbound();
-		status = Status.CLOSING;
+//		status = Status.CLOSING;
 		postSync();
 	}
 
@@ -288,6 +295,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWriteToNet();
 				if (engine.isOutboundDone()) {
+					status = Status.CLOSING;
 					break;
 				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
@@ -326,6 +334,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					downstreamEventHandler.onReadEndOfStream();
 					engine.closeOutbound();
 					status = Status.CLOSING;
+
+					receivedCloseNotify = true;
 				} else {
 					// write data to net
 					if (writeInterest && app2engineQueue.hasRemaining()) {
