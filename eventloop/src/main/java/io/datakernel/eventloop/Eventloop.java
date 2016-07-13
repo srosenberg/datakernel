@@ -248,11 +248,29 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 				updateSelectorSelectTimeStats();
 
-				processSelectedKeys(selector.selectedKeys());
+				System.out.println("------------");
+				System.out.println("START");
+				Set<SelectionKey> selectedKeys = selector.selectedKeys();
+				System.out.println("Selected keys: " + selectedKeys.size());
+				System.out.println("Local tasks: " + localTasks.size());
+				System.out.println("Backgroud tasks: " + backgroundTasks.size());
+				System.out.println("Concurrent tasks: " + concurrentTasks.size());
+				System.out.println("Scheduled tasks: " + scheduledTasks.size());
+				System.out.println("------------");
+
+				processSelectedKeys(selectedKeys);
 				executeConcurrentTasks();
 				executeScheduledTasks();
 				executeBackgroundTasks();
 				executeLocalTasks();
+				System.out.println("------------");
+				System.out.println("END");
+//				System.out.println("Selected keys: " + selectedKeys.size());
+				System.out.println("Local tasks: " + localTasks.size());
+				System.out.println("Backgroud tasks: " + backgroundTasks.size());
+				System.out.println("Concurrent tasks: " + concurrentTasks.size());
+				System.out.println("Scheduled tasks: " + scheduledTasks.size());
+				System.out.println("------------");
 			} catch (Throwable e) {
 				recordFatalError(e, this);
 			}
