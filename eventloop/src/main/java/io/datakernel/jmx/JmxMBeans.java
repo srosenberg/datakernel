@@ -28,11 +28,11 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.jmx.ReflectionUtils.*;
 import static io.datakernel.util.Preconditions.*;
+import static java.lang.Math.ceil;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
@@ -41,14 +41,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	public static final double DEFAULT_REFRESH_PERIOD = 1.0;  // one second
 
+
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
 	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new JmxMBeans(DEFAULT_REFRESH_PERIOD);
 
 	private final long refreshPeriodInMillis;
 
+	// refreshing stats
+	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE = 50;
 	private final Map<Eventloop, List<Iterable<JmxRefreshable>>> eventloopToJmxRefreshables =
 			new ConcurrentHashMap<>();
+//	private final Map<Eventloop, Long> eventloopToRefreshableStatsAmount =
+//			new ConcurrentHashMap<>();
 
 	private JmxMBeans(double refreshPeriod) {
 		this.refreshPeriodInMillis = secondsToMillis(refreshPeriod);
@@ -116,7 +121,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						eventloop,
 						asList(currentRefreshable)
 				);
-				eventloop.post(createRefreshTask(eventloop));
+				eventloop.post(createRefreshTask(eventloop, null, 0, 0));
 			} else {
 				List<Iterable<JmxRefreshable>> oldRefreshableWithCurrent =
 						new ArrayList<>(eventloopToJmxRefreshables.get(eventloop));
@@ -126,23 +131,64 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private Runnable createRefreshTask(final Eventloop eventloop) {
+	private Runnable createRefreshTask(final Eventloop eventloop,
+	                                   final Iterator<JmxRefreshable> previousIterator,
+	                                   final int refreshedByPreviousIterator,
+	                                   final int approximateAmountOfRefreshableStats) {
 		return new Runnable() {
 			@Override
 			public void run() {
 				long currentTime = eventloop.currentTimeMillis();
-				List<Iterable<JmxRefreshable>> listOfIterables = eventloopToJmxRefreshables.get(eventloop);
-				for (Iterable<JmxRefreshable> iterable : listOfIterables) {
-					for (JmxRefreshable jmxRefreshable : iterable) {
-						jmxRefreshable.refresh(currentTime);
-					}
+				Iterator<JmxRefreshable> commonIterator;
+				if (previousIterator == null) {
+					List<Iterable<JmxRefreshable>> listOfIterables = eventloopToJmxRefreshables.get(eventloop);
+					commonIterator = Utils.concat(listOfIterables).iterator();
+				} else {
+					commonIterator = previousIterator;
 				}
-				eventloop.schedule(currentTime + refreshPeriodInMillis, createRefreshTask(eventloop));
+				int statsRefreshed = 0;
+				while (commonIterator.hasNext()) {
+					if (statsRefreshed > MAX_JMX_REFRESHES_PER_ONE_CYCLE) {
+						eventloop.schedule(
+								currentTime + computeEffectiveRefreshPeriod(
+										refreshPeriodInMillis, approximateAmountOfRefreshableStats),
+								createRefreshTask(
+										eventloop,
+										commonIterator,
+										refreshedByPreviousIterator + statsRefreshed,
+										approximateAmountOfRefreshableStats
+								)
+						);
+						return;
+					}
+					commonIterator.next().refresh(currentTime);
+					statsRefreshed++;
+				}
+				int currentAmountOfRefreshableStats = refreshedByPreviousIterator + statsRefreshed;
+				eventloop.schedule(
+						currentTime + computeEffectiveRefreshPeriod(
+								refreshPeriodInMillis, currentAmountOfRefreshableStats
+						),
+						createRefreshTask(
+								eventloop,
+								null,
+								0,
+								currentAmountOfRefreshableStats
+						)
+				);
 			}
 		};
 	}
 
-	private static final AtomicInteger refreshCount = new AtomicInteger(0);
+	private static long computeEffectiveRefreshPeriod(long specifiedRefreshPeriod, int actualRefreshes) {
+		if (actualRefreshes == 0) {
+			return specifiedRefreshPeriod;
+		}
+		return (long) (specifiedRefreshPeriod /
+				(ceil(actualRefreshes / (double) MAX_JMX_REFRESHES_PER_ONE_CYCLE))
+		);
+
+	}
 
 	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
