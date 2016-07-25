@@ -446,7 +446,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				while (jmxRefreshableIterator.hasNext()) {
 					if (currentRefreshesCount > maxJmxRefreshesPerOneCycle) {
 						long period = computeEffectiveRefreshPeriod(supposedJmxRefreshablesCount);
-						eventloop.schedule(
+						eventloop.scheduleBackground(
 								currentTime + period,
 								createRefreshTask(
 										eventloop,
@@ -463,7 +463,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 				int freshJmxRefreshablesCount = previousIteratorRefreshesCount + currentRefreshesCount;
 				long period = computeEffectiveRefreshPeriod(freshJmxRefreshablesCount);
-				eventloop.schedule(
+				eventloop.scheduleBackground(
 						currentTime + period,
 						createRefreshTask(
 								eventloop,
