@@ -225,4 +225,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 	}
 
+	// jmx
+	@Override
+	protected void onHttpProtocolError(ParseException e) {
+		// TODO(vmykhalko): record event to HttpClient jmx
+	}
 }

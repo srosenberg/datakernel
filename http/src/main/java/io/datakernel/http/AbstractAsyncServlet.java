@@ -39,6 +39,8 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	private final ValueStats requestsTimings = new ValueStats();
 	private final ValueStats errorsTimings = new ValueStats();
 
+	// TODO(vmykhaklo): add map:   error code -> url
+
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
