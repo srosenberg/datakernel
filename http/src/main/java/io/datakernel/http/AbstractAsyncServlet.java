@@ -40,13 +40,12 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 
 	protected final Eventloop eventloop;
 
-	// JMX
+	// jmx
 	private final EventStats requests = new EventStats();
-	private final ServletErrorStats errors = new ServletErrorStats();
+	private final ExceptionStats errors = new ExceptionStats();
 	private final ValueStats requestsTimings = new ValueStats();
 	private final ValueStats errorsTimings = new ValueStats();
-
-	private final Map<Integer, ServletErrorStats> errorCodeToStats = new HashMap<>();
+	private final Map<Integer, ExceptionStats> errorCodeToStats = new HashMap<>();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -110,20 +109,17 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	}
 
 	private void recordError(HttpServletError error, HttpRequest request) {
-		int code = error.getCode();
 		String url = extractUrl(request);
 		Throwable cause = error.getCause();
-		String message = error.getMessage();
-
-		errors.recordError(cause, url, message);
-		ServletErrorStats stats = ensureStats(code);
-		stats.recordError(cause, url, message);
+		errors.recordException(cause, url);
+		ExceptionStats stats = ensureStats(error.getCode());
+		stats.recordException(cause, url);
 	}
 
-	private ServletErrorStats ensureStats(int code) {
-		ServletErrorStats stats = errorCodeToStats.get(code);
+	private ExceptionStats ensureStats(int code) {
+		ExceptionStats stats = errorCodeToStats.get(code);
 		if (stats == null) {
-			stats = new ServletErrorStats(eventloop);
+			stats = new ExceptionStats();
 			errorCodeToStats.put(code, stats);
 		}
 		return stats;
@@ -135,7 +131,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	}
 
 	private static String extractUrl(HttpRequest request) {
-		return request.toString();
+		return "url: " + request.getFullUrl();
 	}
 
 	@Override
@@ -149,7 +145,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	}
 
 	@JmxAttribute(description = "requests that were handled with error")
-	public final ServletErrorStats getErrors() {
+	public final ExceptionStats getErrors() {
 		return errors;
 	}
 
@@ -164,81 +160,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	}
 
 	@JmxAttribute(description = "servlet errors distributed by http code")
-	public final Map<Integer, ServletErrorStats> getErrorCodeToStats() {
+	public final Map<Integer, ExceptionStats> getErrorCodeToStats() {
 		return errorCodeToStats;
 	}
-
-	public static final class ServletErrorStats implements JmxStats<ServletErrorStats> {
-		public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-
-		private final CurrentTimeProvider timeProvider;
-
-		private Throwable throwable;
-		private int count;
-		private long lastErrorTimestamp;
-		private String url;
-		private String message;
-
-		public ServletErrorStats(CurrentTimeProvider timeProvider) {
-			this.timeProvider = timeProvider;
-		}
-
-		public ServletErrorStats() {
-			this.timeProvider = new CurrentTimeProviderSystem();
-		}
-
-		public void recordError(Throwable throwable, String url, String message) {
-			this.count++;
-			this.throwable = throwable;
-			this.lastErrorTimestamp = timeProvider.currentTimeMillis();
-			this.url = url;
-			this.message = message;
-		}
-
-		@Override
-		public void add(ServletErrorStats another) {
-			this.count += another.count;
-			if (another.lastErrorTimestamp > this.lastErrorTimestamp) {
-				this.throwable = another.throwable;
-				this.lastErrorTimestamp = another.lastErrorTimestamp;
-				this.url = another.url;
-				this.message = another.message;
-			}
-		}
-
-		@JmxAttribute
-		public int getTotalErrors() {
-			return count;
-		}
-
-		@JmxAttribute
-		public String getLastErrorType() {
-			return throwable != null ? throwable.getClass().getName() : "";
-		}
-
-		@JmxAttribute
-		public String getLastErrorTimestamp() {
-			return TIMESTAMP_FORMAT.format(new Date(lastErrorTimestamp));
-		}
-
-		@JmxAttribute
-		public String getLastErrorUrl() {
-			return url;
-		}
-
-		@JmxAttribute
-		public String getLastErrorMessage() {
-			return message;
-		}
-
-		@JmxAttribute
-		public List<String> getLastErrorStackTrace() {
-			if (throwable != null) {
-				return asList(MBeanFormat.formatException(throwable));
-			} else {
-				return new ArrayList<>();
-			}
-		}
-	}
-
 }

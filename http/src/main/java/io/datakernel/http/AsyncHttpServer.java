@@ -41,8 +41,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	// jmx
 	private final EventStats totalRequests = new EventStats();
-	private final EventStats sslRequests = new EventStats();
-	private final EventStats nonSslRequests = new EventStats();
+	private final EventStats httpsRequests = new EventStats();
+	private final EventStats httpRequests = new EventStats();
 	private final EventStats keepAliveRequests = new EventStats();
 	private final EventStats nonKeepAliveRequests = new EventStats();
 	private final EventStats expiredConnections = new EventStats();
@@ -140,21 +140,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// jmx
-	@JmxAttribute(
-			description = "current number of connections",
-			reducer = JmxReducers.JmxReducerSum.class
-	)
-	public int getConnectionsCount() {
-		return pool.size();
-	}
-
-	public void recordRequestEvent(boolean ssl, boolean keepAlive) {
+	void recordRequestEvent(boolean https, boolean keepAlive) {
 		totalRequests.recordEvent();
 
-		if (ssl) {
-			sslRequests.recordEvent();
+		if (https) {
+			httpsRequests.recordEvent();
 		} else {
-			nonSslRequests.recordEvent();
+			httpRequests.recordEvent();
 		}
 
 		if (keepAlive) {
@@ -164,12 +156,20 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		}
 	}
 
-	public void recordHttpProtocolError() {
+	void recordHttpProtocolError() {
 		httpProtocolErrors.recordEvent();
 	}
 
-	public void recordApplicationError() {
+	void recordApplicationError() {
 		applicationErrors.recordEvent();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getConnectionsCount() {
+		return pool.size();
 	}
 
 	@JmxAttribute()
@@ -177,14 +177,14 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return totalRequests;
 	}
 
-	@JmxAttribute(description = "requests that was sent over secured connection (ssl)")
-	public EventStats getSslRequests() {
-		return sslRequests;
+	@JmxAttribute(description = "requests that was sent over secured connection (https)")
+	public EventStats getHttpsRequests() {
+		return httpsRequests;
 	}
 
-	@JmxAttribute(description = "requests that was sent over unsecured connection (tcp)")
-	public EventStats getNonSslRequests() {
-		return nonSslRequests;
+	@JmxAttribute(description = "requests that was sent over unsecured connection (http)")
+	public EventStats getHttpRequests() {
+		return httpRequests;
 	}
 
 	@JmxAttribute(description = "after handling this type of request connection is returned to pool")
