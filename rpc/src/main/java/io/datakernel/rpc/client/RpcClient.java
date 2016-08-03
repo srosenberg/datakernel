@@ -89,24 +89,16 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 	};
 
-	// JMX
-
-	private boolean monitoring;
-
-	private final RpcRequestStats generalRequestsStats;
-	private final RpcConnectStats generalConnectsStats;
-	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass;
-	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
+	// jmx
+	private boolean monitoring = false;
+	private final RpcRequestStats generalRequestsStats = new RpcRequestStats();
+	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
+	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
+	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.socketSettings = socketSettings;
-
-		// JMX
-		this.generalRequestsStats = new RpcRequestStats();
-		this.generalConnectsStats = new RpcConnectStats();
-		this.requestStatsPerClass = new HashMap<>();
-		this.connectsStatsPerAddress = new HashMap<>();
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {
@@ -333,13 +325,13 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		ResultCallback<T> requestCallback = callback;
 
-		// jmx
-		generalRequestsStats.getTotalRequests().recordEvent();
-		if (isMonitoring()) {
-			Class<?> requestClass = request.getClass();
-			ensureRequestStatsPerClass(requestClass).getTotalRequests().recordEvent();
-			requestCallback = new JmxMonitoringResultCallback<>(requestClass, callback);
-		}
+//		// jmx
+//		generalRequestsStats.getTotalRequests().recordEvent();
+//		if (isMonitoring()) {
+//			Class<?> requestClass = request.getClass();
+//			ensureRequestStatsPerClass(requestClass).getTotalRequests().recordEvent();
+//			requestCallback = new JmxMonitoringResultCallback<>(requestClass, callback);
+//		}
 
 		requestSender.sendRequest(request, timeout, requestCallback);
 
@@ -372,10 +364,12 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 	}
 
-	// JMX
-	@JmxOperation
+	// jmx
+	@JmxOperation(description = "enable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
 	public void startMonitoring() {
-		RpcClient.this.monitoring = true;
+		monitoring = true;
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = connections.get(address);
 			if (connection != null) {
@@ -384,9 +378,11 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 	}
 
-	@JmxOperation
+	@JmxOperation(description = "disable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled) ]")
 	public void stopMonitoring() {
-		RpcClient.this.monitoring = false;
+		monitoring = false;
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = connections.get(address);
 			if (connection != null) {
@@ -395,6 +391,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 	}
 
+	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled)")
 	private boolean isMonitoring() {
 		return monitoring;
 	}
@@ -422,7 +420,12 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return generalRequestsStats;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "connects")
+	public RpcConnectStats getGeneralConnectsStats() {
+		return generalConnectsStats;
+	}
+
+	@JmxAttribute(description = "request stats distributed by request class")
 	public Map<Class<?>, RpcRequestStats> getRequestsStatsPerClass() {
 		return requestStatsPerClass;
 	}
@@ -432,8 +435,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return connectsStatsPerAddress;
 	}
 
-	@JmxAttribute
-	public Map<InetSocketAddress, RpcRequestStats> getRequestStatsPerAddress() {
+	@JmxAttribute(description = "request stats for current connections (when connection is closed stats are removed)")
+	public Map<InetSocketAddress, RpcRequestStats> getRequestStatsPerConnection() {
 		Map<InetSocketAddress, RpcRequestStats> requestStatsPerAddress = new HashMap<>();
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = connections.get(address);
@@ -452,65 +455,10 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return countStats;
 	}
 
-	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
+	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {
 			requestStatsPerClass.put(requestClass, new RpcRequestStats());
 		}
 		return requestStatsPerClass.get(requestClass);
-	}
-
-	private final class JmxMonitoringResultCallback<T> implements ResultCallback<T> {
-
-		private Stopwatch stopwatch;
-		private final Class<?> requestClass;
-		private final ResultCallback<T> callback;
-
-		public JmxMonitoringResultCallback(Class<?> requestClass, ResultCallback<T> callback) {
-			this.stopwatch = Stopwatch.createStarted();
-			this.requestClass = requestClass;
-			this.callback = callback;
-		}
-
-		@Override
-		public void onResult(T result) {
-			if (isMonitoring()) {
-				generalRequestsStats.getSuccessfulRequests().recordEvent();
-				ensureRequestStatsPerClass(requestClass).getSuccessfulRequests().recordEvent();
-				updateResponseTime(requestClass, timeElapsed());
-			}
-			callback.onResult(result);
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			if (isMonitoring()) {
-				if (exception instanceof RpcTimeoutException) {
-					generalRequestsStats.getExpiredRequests().recordEvent();
-					ensureRequestStatsPerClass(requestClass).getExpiredRequests().recordEvent();
-				} else if (exception instanceof RpcOverloadException) {
-					generalRequestsStats.getRejectedRequests().recordEvent();
-					ensureRequestStatsPerClass(requestClass).getRejectedRequests().recordEvent();
-				} else if (exception instanceof RpcRemoteException) {
-					generalRequestsStats.getFailedRequests().recordEvent();
-					ensureRequestStatsPerClass(requestClass).getFailedRequests().recordEvent();
-					updateResponseTime(requestClass, timeElapsed());
-
-					long timestamp = eventloop.currentTimeMillis();
-					generalRequestsStats.getServerExceptions().recordException(exception, null);
-					ensureRequestStatsPerClass(requestClass)
-							.getServerExceptions().recordException(exception, null);
-				}
-			}
-			callback.onException(exception);
-		}
-
-		private void updateResponseTime(Class<?> requestClass, int responseTime) {
-			generalRequestsStats.getResponseTime().recordValue(responseTime);
-			ensureRequestStatsPerClass(requestClass).getResponseTime().recordValue(responseTime);
-		}
-
-		private int timeElapsed() {
-			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
-		}
 	}
 }

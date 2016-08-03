@@ -119,16 +119,21 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	public void add(RpcServerConnection connection) {
+	void add(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
 			logger.info("Client connected on {}", connection);
+
+		if (monitoring) {
+			connection.startMonitoring();
+		}
+
 		connections.add(connection);
 
 		// jmx
 		connectionsCount.setCount(connections.size());
 	}
 
-	public void remove(RpcServerConnection connection) {
+	void remove(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
@@ -138,7 +143,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	// JMX
-	@JmxOperation
+	@JmxOperation(description = "enable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled) ]")
 	public void startMonitoring() {
 		monitoring = true;
 		for (RpcServerConnection connection : connections) {
@@ -146,7 +153,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@JmxOperation
+	@JmxOperation(description = "disable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled) ]")
 	public void stopMonitoring() {
 		monitoring = false;
 		for (RpcServerConnection connection : connections) {
@@ -154,17 +163,18 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled)")
 	public boolean isMonitoring() {
 		return monitoring;
 	}
 
-	@JmxAttribute(name = "currentConnections")
+	@JmxAttribute(description = "current number of connections")
 	public CountStats getConnectionsCount() {
 		return connectionsCount;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "detailed information about connections")
 	public List<RpcServerConnection> getConnections() {
 		return new ArrayList<>(connections);
 	}

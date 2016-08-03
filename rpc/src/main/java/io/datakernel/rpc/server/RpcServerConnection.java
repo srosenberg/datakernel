@@ -44,7 +44,7 @@ public final class RpcServerConnection implements RpcConnection {
 	private final ValueStats requestHandlingTime = new ValueStats();
 	private EventStats successfulResponses = new EventStats();
 	private EventStats errorResponses = new EventStats();
-	private boolean monitoring;
+	private boolean monitoring = false;
 
 	public RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
 	                           BufferSerializer<RpcMessage> messageSerializer,
