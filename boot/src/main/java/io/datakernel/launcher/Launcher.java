@@ -17,6 +17,8 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
+import io.datakernel.eventloop.FatalErrorHandler;
+import io.datakernel.eventloop.FatalErrorHandlers;
 import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
@@ -34,6 +36,8 @@ public abstract class Launcher {
 	protected String[] args;
 
 	private Stage stage;
+
+	private FatalErrorHandler fatalErrorHandler;
 
 	private Module[] modules;
 
@@ -59,7 +63,12 @@ public abstract class Launcher {
 	}
 
 	protected void injector(Stage stage, Module... modules) {
+		injector(stage, FatalErrorHandlers.ignoreAllErrors(), modules);
+	}
+
+	protected void injector(Stage stage, FatalErrorHandler fatalErrorHandler, Module... modules) {
 		this.stage = stage;
+		this.fatalErrorHandler = fatalErrorHandler;
 		this.modules = modules;
 	}
 
@@ -116,6 +125,7 @@ public abstract class Launcher {
 			@Override
 			protected void configure() {
 				bind(String[].class).annotatedWith(Args.class).toInstance(args);
+				bind(FatalErrorHandler.class).toInstance(fatalErrorHandler);
 			}
 		});
 
