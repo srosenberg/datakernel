@@ -373,10 +373,15 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		} catch (ParseException e) {
 			onHttpProtocolError(e);
 			closeWithError(e, this);
+		} catch (Exception e) {   // temp debug
+			onHttpFatalError(e);
+			throw e;
 		}
 	}
 
 	protected abstract void onHttpProtocolError(ParseException e);
+
+	protected abstract void onHttpFatalError(Exception e);  // temp debug method
 
 	@Override
 	public void onReadEndOfStream() {

@@ -516,4 +516,47 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			actualCallback.onException(exception);
 		}
 	}
+
+	// region jmx temp debug
+	private Map<StackTrace, ExceptionStats> fatalHttpErrors = new HashMap<>();
+
+	@JmxAttribute
+	public Map<StackTrace, ExceptionStats> getFatalHttpErrors() {
+		return fatalHttpErrors;
+	}
+
+	void recordHttpFatalError(Exception exception, String context) {
+		StackTrace stackTrace = new StackTrace(exception.getStackTrace());
+
+		ExceptionStats stats = fatalHttpErrors.get(stackTrace);
+		if (stats == null) {
+			stats = new ExceptionStats();
+			fatalHttpErrors.put(stackTrace, stats);
+		}
+		stats.recordException(exception, context);
+	}
+
+	private static final class StackTrace {
+		private final StackTraceElement[] stackTraceElements;
+
+		public StackTrace(StackTraceElement[] stackTraceElements) {
+			this.stackTraceElements = stackTraceElements;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (!(o instanceof StackTrace)) return false;
+
+			StackTrace that = (StackTrace) o;
+
+			return Arrays.equals(stackTraceElements, that.stackTraceElements);
+		}
+
+		@Override
+		public int hashCode() {
+			return stackTraceElements != null ? Arrays.hashCode(stackTraceElements) : 0;
+		}
+	}
+	// endregion
 }

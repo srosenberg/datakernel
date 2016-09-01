@@ -254,4 +254,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHttpProtocolError(ParseException e) {
 		httpClient.recordHttpProtocolError(e, lastRequestUrl);
 	}
+
+	@Override
+	protected void onHttpFatalError(Exception e) {  // temp debug method
+		httpClient.recordHttpFatalError(e, lastRequestUrl);
+	}
 }

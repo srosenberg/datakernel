@@ -330,4 +330,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		// jmx
 		server.recordHttpProtocolError();
 	}
+
+	@Override
+	protected void onHttpFatalError(Exception e) {  // temp debug method
+		// ignore
+	}
 }
