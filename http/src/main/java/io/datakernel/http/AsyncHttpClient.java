@@ -31,6 +31,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 
@@ -74,7 +75,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private final EventStats expiredConnections = new EventStats();
 	private final ExceptionStats httpProtocolErrors = new ExceptionStats();
 	private final EventStats timeoutErrors = new EventStats();
-	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
+	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new ConcurrentHashMap<>();
 	private boolean monitorCurrentRequestsDuration = false;
 
 	private int inetAddressIdx = 0;
@@ -359,19 +360,19 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return pool.size();
 	}
 
-	@JmxAttribute(description = "number of connections per address")
-	public List<String> getAddressConnections() {
-		if (addressPools.isEmpty())
-			return null;
-		List<String> result = new ArrayList<>();
-		result.add("SocketAddress,ConnectionsCount");
-		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : addressPools.entrySet()) {
-			InetSocketAddress address = entry.getKey();
-			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
-			result.add(address + "," + connections.size());
-		}
-		return result;
-	}
+//	@JmxAttribute(description = "number of connections per address")
+//	public List<String> getAddressConnections() {
+//		if (addressPools.isEmpty())
+//			return null;
+//		List<String> result = new ArrayList<>();
+//		result.add("SocketAddress,ConnectionsCount");
+//		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : addressPools.entrySet()) {
+//			InetSocketAddress address = entry.getKey();
+//			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
+//			result.add(address + "," + connections.size());
+//		}
+//		return result;
+//	}
 
 	@JmxAttribute(description = "all requests that were sent (both successful and failed)")
 	public EventStats getTotalRequests() {
