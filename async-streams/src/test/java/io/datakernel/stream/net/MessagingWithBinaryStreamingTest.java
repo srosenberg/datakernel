@@ -87,7 +87,7 @@ public class MessagingWithBinaryStreamingTest {
 			}
 
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		eventloop.connect(address, new ConnectCallback() {
@@ -178,7 +178,7 @@ public class MessagingWithBinaryStreamingTest {
 				return messaging;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		eventloop.connect(address, new ConnectCallback() {
@@ -254,7 +254,7 @@ public class MessagingWithBinaryStreamingTest {
 				return messaging;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		eventloop.connect(address, new ConnectCallback() {
@@ -340,7 +340,7 @@ public class MessagingWithBinaryStreamingTest {
 				return messaging;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		eventloop.connect(address, new ConnectCallback() {
@@ -438,7 +438,7 @@ public class MessagingWithBinaryStreamingTest {
 				return messaging;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		eventloop.connect(address, new ConnectCallback() {

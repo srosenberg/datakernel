@@ -68,18 +68,18 @@ public class RpcBinaryProtocolTest {
 		final Eventloop eventloop = new Eventloop();
 
 		final RpcClient client = RpcClient.create(eventloop)
-				.messageTypes(String.class)
-				.strategy(server(address));
+				.withMessageTypes(String.class)
+				.withStrategy(server(address));
 
 		final RpcServer server = RpcServer.create(eventloop)
-				.messageTypes(String.class)
-				.on(String.class, new RpcRequestHandler<String, String>() {
+				.withMessageTypes(String.class)
+				.withHandlerFor(String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {
 						callback.onResult("Hello, " + request + "!");
 					}
 				})
-				.setListenAddress(address);
+				.withListenAddress(address);
 		server.listen();
 
 		final int countRequests = 10;

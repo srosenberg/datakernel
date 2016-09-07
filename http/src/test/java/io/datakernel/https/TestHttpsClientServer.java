@@ -76,7 +76,7 @@ public class TestHttpsClientServer {
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
-				.enableSsl(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
+				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
 		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).body(wrapAscii("Hello, I am Alice!"));
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
@@ -110,11 +110,11 @@ public class TestHttpsClientServer {
 	public void testServesTwoPortsSimultaneously() throws Exception {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
 				.setSslListenPort(context, executor, SSL_PORT)
-				.setListenPort(PORT);
+				.withListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
-				.enableSsl(context, executor);
+				.withSslEnabled(context, executor);
 
 		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).body(wrapAscii("Hello, I am Alice!"));
 		HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).body(wrapAscii("Hello, I am Alice!"));

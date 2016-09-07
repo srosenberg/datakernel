@@ -154,6 +154,20 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		refreshTimestampAndGet();
 	}
 
+	/**
+	 * Sets the desired name of the thread
+	 */
+	public void withThreadName(String threadName) {
+		this.threadName = threadName;
+		if (eventloopThread != null)
+			eventloopThread.setName(threadName);
+	}
+
+	public Eventloop withFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
+		this.fatalErrorHandler = fatalErrorHandler;
+		return this;
+	}
+
 	private void openSelector() {
 		if (selector == null) {
 			try {
@@ -210,19 +224,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| concurrentOperationsCount.get() > 0
 				|| keepAlive || !selector.keys().isEmpty();
-	}
-
-	/**
-	 * Sets the desired name of the thread
-	 */
-	public void setThreadName(String threadName) {
-		this.threadName = threadName;
-		if (eventloopThread != null)
-			eventloopThread.setName(threadName);
-	}
-
-	public void setFatalErrorHandler(FatalErrorHandler fatalErrorHandler) {
-		this.fatalErrorHandler = fatalErrorHandler;
 	}
 
 	/**

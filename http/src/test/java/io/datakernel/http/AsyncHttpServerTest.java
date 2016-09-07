@@ -105,7 +105,7 @@ public class AsyncHttpServerTest {
 
 	private void doTestKeepAlive(Eventloop eventloop, AsyncHttpServer server) throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -151,7 +151,7 @@ public class AsyncHttpServerTest {
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -175,7 +175,7 @@ public class AsyncHttpServerTest {
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -209,7 +209,7 @@ public class AsyncHttpServerTest {
 
 	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server) throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -250,8 +250,8 @@ public class AsyncHttpServerTest {
 				});
 			}
 		});
-		server.setMaxHttpMessageSize(25);
-		server.setListenPort(port);
+		server.withMaxHttpMessageSize(25);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();
@@ -274,7 +274,7 @@ public class AsyncHttpServerTest {
 
 	public static void main(String[] args) throws Exception {
 		Eventloop eventloop = new Eventloop();
-		AsyncHttpServer server = blockingHttpServer(eventloop).setListenPort(8888);
+		AsyncHttpServer server = blockingHttpServer(eventloop).withListenPort(8888);
 		server.listen();
 		eventloop.run();
 	}

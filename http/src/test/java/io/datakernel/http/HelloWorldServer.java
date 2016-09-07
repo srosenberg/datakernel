@@ -32,7 +32,7 @@ public final class HelloWorldServer {
 				callback.onResult(content);
 			}
 		});
-		return httpServer.setListenPort(port).acceptOnce(false);
+		return httpServer.withListenPort(port).withAcceptOnce(false);
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -59,9 +59,9 @@ public final class CumulativeBenchmark {
 	private final Eventloop clientEventloop = new Eventloop();
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
-			.messageTypes(ValueMessage.class)
-			.protocol(streamProtocol(64 << 10, 64 << 10, true))
-			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
+			.withMessageTypes(ValueMessage.class)
+			.withProtocol(streamProtocol(64 << 10, 64 << 10, true))
+			.withHandlerFor(ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
 
 				@Override
@@ -74,12 +74,12 @@ public final class CumulativeBenchmark {
 					callback.onResult(currentSum);
 				}
 			})
-			.setListenPort(SERVICE_PORT);
+			.withListenPort(SERVICE_PORT);
 
 	private final RpcClient client = RpcClient.create(clientEventloop)
-			.messageTypes(ValueMessage.class)
-			.protocol(streamProtocol(64 << 10, 64 << 10, true))
-			.strategy(server(new InetSocketAddress(SERVICE_PORT)));
+			.withMessageTypes(ValueMessage.class)
+			.withProtocol(streamProtocol(64 << 10, 64 << 10, true))
+			.withStrategy(server(new InetSocketAddress(SERVICE_PORT)));
 
 	private final ValueMessage incrementMessage;
 	private final int totalRounds;

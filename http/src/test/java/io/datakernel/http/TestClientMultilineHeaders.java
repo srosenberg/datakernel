@@ -35,7 +35,7 @@ public class TestClientMultilineHeaders {
 			}
 		});
 
-		server.setListenPort(PORT);
+		server.withListenPort(PORT);
 		server.listen();
 
 		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {

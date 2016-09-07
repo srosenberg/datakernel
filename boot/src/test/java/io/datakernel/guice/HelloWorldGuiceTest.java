@@ -82,7 +82,7 @@ public class HelloWorldGuiceTest {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerHttpServers);
-			primaryNioServer.setListenPort(PORT);
+			primaryNioServer.withListenPort(PORT);
 			return primaryNioServer;
 		}
 

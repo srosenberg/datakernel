@@ -107,21 +107,21 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return new RpcClient(eventloop, socketSettings);
 	}
 
-	public RpcClient messageTypes(Class<?>... messageTypes) {
-		return messageTypes(Arrays.asList(messageTypes));
+	public RpcClient withMessageTypes(Class<?>... messageTypes) {
+		return withMessageTypes(Arrays.asList(messageTypes));
 	}
 
-	public RpcClient messageTypes(List<Class<?>> messageTypes) {
+	public RpcClient withMessageTypes(List<Class<?>> messageTypes) {
 		this.messageTypes.addAll(messageTypes);
 		return this;
 	}
 
-	public RpcClient serializerBuilder(SerializerBuilder serializerBuilder) {
+	public RpcClient withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
 		return this;
 	}
 
-	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
+	public RpcClient withStrategy(RpcStrategy requestSendingStrategy) {
 		checkState(this.strategy == null, "Strategy is already set");
 
 		this.strategy = requestSendingStrategy;
@@ -137,7 +137,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return this;
 	}
 
-	public RpcClient protocol(RpcProtocolFactory protocolFactory) {
+	public RpcClient withProtocol(RpcProtocolFactory protocolFactory) {
 		this.protocolFactory = protocolFactory;
 		return this;
 	}
@@ -146,22 +146,22 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return socketSettings;
 	}
 
-	public RpcClient logger(Logger logger) {
+	public RpcClient withLogger(Logger logger) {
 		this.logger = checkNotNull(logger);
 		return this;
 	}
 
-	public RpcClient connectTimeoutMillis(int connectTimeoutMillis) {
+	public RpcClient withConnectTimeoutMillis(int connectTimeoutMillis) {
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		return this;
 	}
 
-	public RpcClient reconnectIntervalMillis(int reconnectIntervalMillis) {
+	public RpcClient withReconnectIntervalMillis(int reconnectIntervalMillis) {
 		this.reconnectIntervalMillis = reconnectIntervalMillis;
 		return this;
 	}
 
-	public RpcClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+	public RpcClient withSslEnabled(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = checkNotNull(sslContext);
 		this.sslExecutor = checkNotNull(executor);
 		return this;

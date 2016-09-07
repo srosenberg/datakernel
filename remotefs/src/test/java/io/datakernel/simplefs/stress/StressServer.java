@@ -43,7 +43,7 @@ public class StressServer {
 	private static final Eventloop eventloop = new Eventloop();
 
 	public static SimpleFsServer server = new SimpleFsServer(eventloop, executor, STORAGE_PATH)
-			.setListenPort(PORT);
+			.withListenPort(PORT);
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(STORAGE_PATH);

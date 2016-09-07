@@ -508,7 +508,7 @@ public class SimpleFsIntegrationTest {
 
 	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
 		return new SimpleFsServer(eventloop, executor, storage)
-				.setListenAddress(address);
+				.withListenAddress(address);
 	}
 
 	static byte[] createBigByteArray() {

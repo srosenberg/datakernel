@@ -31,7 +31,7 @@ public class AbstractHttpConnectionTest {
 				callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
 			}
 		});
-		server.setListenPort(PORT);
+		server.withListenPort(PORT);
 		server.listen();
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,

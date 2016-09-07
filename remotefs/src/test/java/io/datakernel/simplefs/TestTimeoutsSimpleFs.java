@@ -46,9 +46,9 @@ public class TestTimeoutsSimpleFs {
 
 		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
 		final SimpleFsServer server = new SimpleFsServer(eventloop, serverExecutor, storagePath)
-				.socketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L))
-				.acceptOnce()
-				.setListenPort(7010);
+				.withSocketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L))
+				.withAcceptOnce()
+				.withListenPort(7010);
 
 		server.listen();
 

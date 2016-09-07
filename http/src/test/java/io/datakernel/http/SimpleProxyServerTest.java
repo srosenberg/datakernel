@@ -91,7 +91,7 @@ public class SimpleProxyServerTest {
 	public void testSimpleProxyServer() throws Exception {
 		Eventloop eventloop1 = new Eventloop();
 		AsyncHttpServer echoServer = echoServer(eventloop1);
-		echoServer.setListenPort(ECHO_SERVER_PORT);
+		echoServer.withListenPort(ECHO_SERVER_PORT);
 		echoServer.listen();
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
@@ -101,7 +101,7 @@ public class SimpleProxyServerTest {
 				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
-		proxyServer.setListenPort(PROXY_SERVER_PORT).acceptOnce(false);
+		proxyServer.withListenPort(PROXY_SERVER_PORT).withAcceptOnce(false);
 		proxyServer.listen();
 		Thread proxyServerThread = new Thread(eventloop2);
 		proxyServerThread.start();

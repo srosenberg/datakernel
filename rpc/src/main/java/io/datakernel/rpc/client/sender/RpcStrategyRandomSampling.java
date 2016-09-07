@@ -30,7 +30,7 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 
 	public RpcStrategyRandomSampling add(int weight, RpcStrategy strategy) {
 		checkArgument(weight >= 0, "weight cannot be negative");
-		checkArgument(!strategyToWeight.containsKey(strategy), "strategy is already added");
+		checkArgument(!strategyToWeight.containsKey(strategy), "withStrategy is already added");
 
 		strategyToWeight.put(strategy, weight);
 

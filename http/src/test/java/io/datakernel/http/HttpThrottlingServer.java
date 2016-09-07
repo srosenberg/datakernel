@@ -80,7 +80,7 @@ public class HttpThrottlingServer {
 	private final AsyncHttpServer server;
 
 	public HttpThrottlingServer(Eventloop eventloop, ServerOptions options) {
-		this.server = buildHttpServer(eventloop, options.getLoadBusinessLogic()).setListenPort(SERVER_PORT);
+		this.server = buildHttpServer(eventloop, options.getLoadBusinessLogic()).withListenPort(SERVER_PORT);
 	}
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {

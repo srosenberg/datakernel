@@ -107,7 +107,7 @@ public class AsyncHttpClientTest {
 				});
 			}
 		});
-		httpServer.setListenPort(PORT);
+		httpServer.withListenPort(PORT);
 
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
@@ -196,7 +196,7 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.maxHttpMessageSize(12);
+		httpClient.withMaxHttpMessageSize(12);
 		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
@@ -264,7 +264,7 @@ public class AsyncHttpClientTest {
 				};
 			}
 		}
-				.setListenPort(PORT);
+				.withListenPort(PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();

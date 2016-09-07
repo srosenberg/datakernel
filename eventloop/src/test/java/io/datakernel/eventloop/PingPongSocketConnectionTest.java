@@ -33,7 +33,7 @@ public class PingPongSocketConnectionTest {
 				return new ServerConnection(asyncTcpSocket);
 			}
 		};
-		ppServer.setListenAddress(ADDRESS);
+		ppServer.withListenAddress(ADDRESS);
 		ppServer.listen();
 
 		eventloop.connect(ADDRESS, new ConnectCallback() {

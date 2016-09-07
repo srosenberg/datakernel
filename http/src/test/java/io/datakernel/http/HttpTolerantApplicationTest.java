@@ -80,7 +80,7 @@ public class HttpTolerantApplicationTest {
 
 		AsyncHttpServer server = asyncHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		server.setListenPort(port);
+		server.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);
 		thread.start();

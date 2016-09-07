@@ -162,7 +162,7 @@ public class CubeTest {
 	private SimpleFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		SimpleFsServer fileServer = new SimpleFsServer(eventloop, executor, serverStorage);
-		fileServer.setListenPort(LISTEN_PORT);
+		fileServer.withListenPort(LISTEN_PORT);
 		fileServer.listen();
 		return fileServer;
 	}

@@ -95,40 +95,40 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return (S) this;
 	}
 
-	public final S acceptedIpAddresses(InetAddressRange range) {
+	public final S withAcceptedIpAddresses(InetAddressRange range) {
 		this.range = range;
 		return self();
 	}
 
-	public final S serverSocketSettings(ServerSocketSettings serverSocketSettings) {
+	public final S withServerSocketSettings(ServerSocketSettings serverSocketSettings) {
 		this.serverSocketSettings = checkNotNull(serverSocketSettings);
 		return self();
 	}
 
-	public final S socketSettings(SocketSettings socketSettings) {
+	public final S withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = checkNotNull(socketSettings);
 		return self();
 	}
 
-	public final S setListenAddresses(List<InetSocketAddress> addresses) {
+	public final S withListenAddresses(List<InetSocketAddress> addresses) {
 		ensureNotIntersect(sslListenAddresses, addresses);
 		this.listenAddresses = checkNotNull(addresses);
 		return self();
 	}
 
-	public final S setListenAddresses(InetSocketAddress... addresses) {
-		return setListenAddresses(Arrays.asList(addresses));
+	public final S withListenAddresses(InetSocketAddress... addresses) {
+		return withListenAddresses(Arrays.asList(addresses));
 	}
 
-	public final S setListenAddress(InetSocketAddress address) {
-		return setListenAddresses(address);
+	public final S withListenAddress(InetSocketAddress address) {
+		return withListenAddresses(address);
 	}
 
-	public final S setListenPort(int port) {
-		return setListenAddress(new InetSocketAddress(port));
+	public final S withListenPort(int port) {
+		return withListenAddress(new InetSocketAddress(port));
 	}
 
-	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
+	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
 		ensureNotIntersect(listenAddresses, addresses);
 		this.sslContext = checkNotNull(sslContext);
 		this.sslExecutor = checkNotNull(executor);
@@ -136,43 +136,43 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return self();
 	}
 
-	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
-		return setSslListenAddresses(sslContext, executor, Arrays.asList(addresses));
+	public final S withSslListenAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
+		return withSslListenAddresses(sslContext, executor, Arrays.asList(addresses));
 	}
 
 	public final S setSslListenAddress(SSLContext sslContext, ExecutorService executor, InetSocketAddress address) {
-		return this.setSslListenAddresses(sslContext, executor, Collections.singletonList(address));
+		return this.withSslListenAddresses(sslContext, executor, Collections.singletonList(address));
 	}
 
 	public final S setSslListenPort(SSLContext sslContext, ExecutorService executor, int port) {
 		return setSslListenAddress(sslContext, executor, new InetSocketAddress(port));
 	}
 
-	public final S banAddresses(Collection<InetAddress> addresses) {
+	public final S withBanned(Collection<InetAddress> addresses) {
 		bannedAddresses = new HashSet<>(checkNotNull(addresses));
 		return self();
 	}
 
-	public final S banAddresses(InetAddress... addresses) {
-		return banAddresses(Arrays.asList(addresses));
+	public final S withBanned(InetAddress... addresses) {
+		return withBanned(Arrays.asList(addresses));
 	}
 
-	public final S banAddress(InetAddress address) {
-		return banAddresses(Collections.singleton(address));
+	public final S withBanned(InetAddress address) {
+		return withBanned(Collections.singleton(address));
 	}
 
 	/**
 	 * Sets the flag as true, which means that this server can handle only one accepting.
 	 */
-	public final S acceptOnce() {
-		return acceptOnce(true);
+	public final S withAcceptOnce() {
+		return withAcceptOnce(true);
 	}
 
 	/**
 	 * Sets the flag which means possible accepting to this server. If it is true, this server can
 	 * accept only one socketChannel, else - as much as you need.
 	 */
-	public final S acceptOnce(boolean acceptOnce) {
+	public final S withAcceptOnce(boolean acceptOnce) {
 		this.acceptOnce = acceptOnce;
 		return self();
 	}

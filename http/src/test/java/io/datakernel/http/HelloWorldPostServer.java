@@ -34,7 +34,7 @@ public final class HelloWorldPostServer {
 				callback.onResult(content);
 			}
 		});
-		return httpServer.setListenPort(port);
+		return httpServer.withListenPort(port);
 	}
 
 	public static void main(String[] args) throws Exception {

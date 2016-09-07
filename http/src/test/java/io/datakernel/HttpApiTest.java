@@ -76,7 +76,7 @@ public class HttpApiTest {
 				HttpResponse response = createResponse();
 				callback.onResult(response);
 			}
-		}).setListenPort(PORT);
+		}).withListenPort(PORT);
 
 		client = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, HttpUtils.inetAddress("8.8.8.8")));

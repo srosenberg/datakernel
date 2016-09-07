@@ -267,14 +267,14 @@ public class LogFsTest {
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
 		return new SimpleFsServer(eventloop, executor, serverStorage)
-				.setListenAddress(address);
+				.withListenAddress(address);
 	}
 
 	private HashFsServer createServer(Replica replica, List<Replica> servers, Path serverStorage) {
 		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
 		localReplica.start(ignoreCompletionCallback());
 		return new HashFsServer(eventloop, localReplica)
-				.setListenAddress(replica.getAddress());
+				.withListenAddress(replica.getAddress());
 	}
 
 	private HashFsClient createClient(List<Replica> servers) {

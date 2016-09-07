@@ -39,6 +39,6 @@ public final class CubeHttpServer {
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, int classLoaderCacheSize, int port) {
 		return createServer(cube, eventloop, new ReportingServiceServlet(eventloop, cube,
-				new LRUCache<ClassLoaderCacheKey, DefiningClassLoader>(classLoaderCacheSize))).setListenPort(port);
+				new LRUCache<ClassLoaderCacheKey, DefiningClassLoader>(classLoaderCacheSize))).withListenPort(port);
 	}
 }

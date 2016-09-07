@@ -107,9 +107,9 @@ public class DatagraphServerTest {
 				.set("result", result2);
 
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		Partition partition1 = new RemotePartition(client, address1);
@@ -172,9 +172,9 @@ public class DatagraphServerTest {
 				.set("items", asList(new TestItem(1), new TestItem(6)))
 				.set("result", result2);
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		Partition partition1 = new RemotePartition(client, address1);
 		Partition partition2 = new RemotePartition(client, address2);
@@ -240,9 +240,9 @@ public class DatagraphServerTest {
 				.set("result", result2);
 
 		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1)
-				.setListenAddress(address1);
+				.withListenAddress(address1);
 		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2)
-				.setListenAddress(address2);
+				.withListenAddress(address2);
 
 		Partition partition1 = new RemotePartition(client, address1);
 		Partition partition2 = new RemotePartition(client, address2);

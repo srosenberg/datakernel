@@ -79,7 +79,7 @@ public final class SocketStreamingConnectionTest {
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
@@ -131,7 +131,7 @@ public final class SocketStreamingConnectionTest {
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
@@ -197,7 +197,7 @@ public final class SocketStreamingConnectionTest {
 				return connection;
 			}
 		};
-		server.setListenAddress(address).acceptOnce();
+		server.withListenAddress(address).withAcceptOnce();
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);

@@ -235,8 +235,8 @@ public class PageRankTest {
 				.set("items", asList(new Page(2, new long[]{1})))
 				.set("result", result2);
 
-		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1).setListenAddress(address1);
-		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2).setListenAddress(address2);
+		final DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
+		final DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
 
 		Partition partition1 = new RemotePartition(client, address1);
 		Partition partition2 = new RemotePartition(client, address2);

@@ -62,40 +62,40 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private RpcServer(Eventloop eventloop) {
 		super(eventloop);
-		serverSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS);
-		socketSettings(DEFAULT_SOCKET_SETTINGS);
+		withServerSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS);
+		withSocketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
 
 	public static RpcServer create(Eventloop eventloop) {
 		return new RpcServer(eventloop);
 	}
 
-	public RpcServer messageTypes(Class<?>... messageTypes) {
-		return messageTypes(Arrays.asList(messageTypes));
+	public RpcServer withMessageTypes(Class<?>... messageTypes) {
+		return withMessageTypes(Arrays.asList(messageTypes));
 	}
 
-	public RpcServer messageTypes(List<Class<?>> messageTypes) {
+	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
 		this.messageTypes.addAll(messageTypes);
 		return this;
 	}
 
-	public RpcServer serializerBuilder(SerializerBuilder serializerBuilder) {
+	public RpcServer withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		this.serializerBuilder = serializerBuilder;
 		return this;
 	}
 
-	public RpcServer logger(Logger logger) {
+	public RpcServer withLogger(Logger logger) {
 		this.logger = checkNotNull(logger);
 		return this;
 	}
 
-	public RpcServer protocol(RpcProtocolFactory protocolFactory) {
+	public RpcServer withProtocol(RpcProtocolFactory protocolFactory) {
 		this.protocolFactory = protocolFactory;
 		return this;
 	}
 
 	@SuppressWarnings("unchecked")
-	public <I> RpcServer on(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
+	public <I> RpcServer withHandlerFor(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
 		handlers.put(requestClass, handler);
 		return this;
 	}

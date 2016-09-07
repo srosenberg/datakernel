@@ -353,6 +353,6 @@ public class IntegrationSingleNodeTest {
 		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, newArrayList(local), local);
 		localReplica.start(ignoreCompletionCallback());
 		return new HashFsServer(eventloop, localReplica)
-				.setListenAddress(local.getAddress());
+				.withListenAddress(local.getAddress());
 	}
 }

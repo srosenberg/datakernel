@@ -59,8 +59,8 @@ public class AbstractServerTest {
 				};
 			}
 		};
-		server.socketSettings(settings);
-		server.setListenAddress(address);
+		server.withSocketSettings(settings);
+		server.withListenAddress(address);
 
 		server.listen();
 

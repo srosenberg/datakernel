@@ -61,7 +61,7 @@ public class TestHttpsServer {
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
 				.setSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
-				.setListenPort(5569);
+				.withListenPort(5569);
 
 		System.out.println("https://127.0.0.1:" + PORT);
 

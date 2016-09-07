@@ -95,18 +95,18 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this.headerChars = chars;
 	}
 
-	public AsyncHttpClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+	public AsyncHttpClient withSslEnabled(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = sslContext;
 		this.sslExecutor = executor;
 		return this;
 	}
 
-	public AsyncHttpClient keepConnectionAlive(long time) {
+	public AsyncHttpClient withKeepConnectionAliveTime(long time) {
 		this.keepConnectionInPoolTime = time;
 		return this;
 	}
 
-	public AsyncHttpClient maxHttpMessageSize(int size) {
+	public AsyncHttpClient withMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}

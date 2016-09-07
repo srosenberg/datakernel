@@ -42,13 +42,13 @@ public class ClientStressTest {
 		}
 	};
 	private AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
-			.setListenPort(1234);
+			.withListenPort(1234);
 
 	private final SSLContext context = SSLContext.getDefault();
 
 	private AsyncHttpClient client = new AsyncHttpClient(eventloop,
 			new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
-			.enableSsl(context, executor);
+			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}
 

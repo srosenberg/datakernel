@@ -67,7 +67,7 @@ public class TestGzipProcessor {
 		};
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
-				.setListenPort(PORT);
+				.withListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));

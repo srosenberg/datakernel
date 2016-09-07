@@ -23,9 +23,11 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
@@ -73,7 +75,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 		return (S) this;
 	}
 
-	public S enableSsl(SSLContext sslContext, ExecutorService executor) {
+	public S withSslEnabled(SSLContext sslContext, ExecutorService executor) {
 		this.sslContext = checkNotNull(sslContext);
 		this.sslExecutor = checkNotNull(executor);
 		return self();

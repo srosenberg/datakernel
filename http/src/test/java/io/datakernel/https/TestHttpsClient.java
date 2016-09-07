@@ -60,7 +60,7 @@ public class TestHttpsClient {
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
-				.enableSsl(SSLContext.getDefault(), executor);
+				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
 

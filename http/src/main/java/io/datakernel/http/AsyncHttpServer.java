@@ -66,12 +66,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		this.headerChars = chars;
 	}
 
-	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
+	public AsyncHttpServer withtMaxIdleConnectionTime(long maxIdleConnectionTime) {
 		this.maxIdleConnectionTime = maxIdleConnectionTime;
 		return this;
 	}
 
-	public AsyncHttpServer setMaxHttpMessageSize(int size) {
+	public AsyncHttpServer withMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}
@@ -235,7 +235,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@JmxAttribute(
 			description = "shows duration of current requests handling" +
-			"in case when monitorCurrentRequestsHandlingDuration == true"
+					"in case when monitorCurrentRequestsHandlingDuration == true"
 	)
 	public List<String> getCurrentRequestsDuration() {
 		SortedSet<UrlWithDuration> durations = new TreeSet<>();
