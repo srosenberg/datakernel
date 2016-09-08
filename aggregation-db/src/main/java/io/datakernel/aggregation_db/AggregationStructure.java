@@ -20,7 +20,10 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -30,7 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
@@ -53,8 +59,8 @@ public class AggregationStructure {
 	/**
 	 * Constructs a new aggregation structure with the given class loader, keys and fields.
 	 *
-	 * @param keys        map of aggregation keys (key is key name)
-	 * @param fields      map of aggregation fields (key is field name)
+	 * @param keys   map of aggregation keys (key is key name)
+	 * @param fields map of aggregation fields (key is field name)
 	 */
 	public AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
 		this.keys = new LinkedHashMap<>(keys);
@@ -90,12 +96,12 @@ public class AggregationStructure {
 		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			builder.field(key, d.getDataType());
+			builder.withField(key, d.getDataType());
 		}
-		builder.method("compareTo", compareTo(keys));
-		builder.method("equals", asEquals(keys));
-		builder.method("hashCode", hashCodeOfThis(keys));
-		builder.method("toString", asString(keys));
+		builder.withMethod("compareTo", compareTo(keys));
+		builder.withMethod("equals", asEquals(keys));
+		builder.withMethod("hashCode", hashCodeOfThis(keys));
+		builder.withMethod("toString", asString(keys));
 
 		return builder.defineClass();
 	}
@@ -108,7 +114,7 @@ public class AggregationStructure {
 			comparator.add(getter(cast(arg(0), recordClass), key), getter(cast(arg(1), recordClass), key));
 		}
 
-		builder.method("compare", comparator);
+		builder.withMethod("compare", comparator);
 
 		return builder.newInstance();
 	}
@@ -124,7 +130,7 @@ public class AggregationStructure {
 					getter(cast(arg(0), recordClass), fieldName)));
 		}
 		applyDef.add(result);
-		builder.method("apply", applyDef);
+		builder.withMethod("apply", applyDef);
 		return builder.newInstance();
 	}
 
@@ -140,7 +146,7 @@ public class AggregationStructure {
 					getter(cast(arg(0), recordClass), keyString)));
 		}
 		applyDef.add(key);
-		factory.method("apply", applyDef);
+		factory.withMethod("apply", applyDef);
 		return (Function) factory.newInstance();
 	}
 
@@ -149,13 +155,13 @@ public class AggregationStructure {
 		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			builder.field(key, d.getDataType());
+			builder.withField(key, d.getDataType());
 		}
 		for (String field : fields) {
 			FieldType m = this.fields.get(field);
-			builder.field(field, m.getDataType());
+			builder.withField(field, m.getDataType());
 		}
-		builder.method("toString", asString(newArrayList(concat(keys, fields))));
+		builder.withMethod("toString", asString(newArrayList(concat(keys, fields))));
 		return builder.defineClass();
 	}
 
@@ -169,16 +175,16 @@ public class AggregationStructure {
 			if (keyType == null) {
 				throw new AggregationException("Key with the name '" + key + "' not found.");
 			}
-			builder.field(key, keyType.getDataType());
+			builder.withField(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
 			FieldType fieldType = this.fields.get(field);
 			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
-			builder.field(field, fieldType.getDataType());
+			builder.withField(field, fieldType.getDataType());
 		}
-		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
+		builder.withMethod("toString", asString(newArrayList(concat(resultKeys, resultFields))));
 		return builder.defineClass();
 	}
 

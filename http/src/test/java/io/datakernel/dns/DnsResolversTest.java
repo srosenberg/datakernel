@@ -142,7 +142,7 @@ public class DnsResolversTest {
 
 		eventloop = new Eventloop();
 
-		nativeDnsResolver = new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		nativeDnsResolver = NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, LOCAL_DNS);
 	}
 
@@ -305,7 +305,7 @@ public class DnsResolversTest {
 
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider(0);
 		Eventloop eventloopWithTimeProvider = new Eventloop(timeProvider);
-		NativeDnsResolver nativeResolver = new NativeDnsResolver(eventloopWithTimeProvider, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		NativeDnsResolver nativeResolver = NativeDnsResolver.of(eventloopWithTimeProvider, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();
 
@@ -336,7 +336,7 @@ public class DnsResolversTest {
 	@Test
 	public void testTimeout() throws Exception {
 		String domainName = "www.google.com";
-		NativeDnsResolver nativeDnsResolver = new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		NativeDnsResolver nativeDnsResolver = NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, UNREACHABLE_DNS);
 		nativeDnsResolver.resolve4(domainName, new DnsResolveCallback());
 		eventloop.run();

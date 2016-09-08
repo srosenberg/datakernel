@@ -34,8 +34,8 @@ public class TestPostParseParams {
 		ByteBuf body = wrapAscii("hello=world&value=1234");
 
 		HttpRequest request = HttpRequest.post("http://127.0.0.1")
-				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
-				.body(body);
+				.withHeader(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
+				.withBody(body);
 
 		Map<String, String> params = request.getPostParameters();
 

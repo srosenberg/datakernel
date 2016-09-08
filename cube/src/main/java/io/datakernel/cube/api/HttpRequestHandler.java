@@ -74,10 +74,10 @@ public final class HttpRequestHandler implements RequestHandler {
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUtf8(e.getMessage())));
+			resultCallback.onResult(badRequest400().withBody(wrapUtf8(e.getMessage())));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUtf8("Failed to parse JSON")));
+			resultCallback.onResult(badRequest400().withBody(wrapUtf8("Failed to parse JSON")));
 		}
 	}
 }

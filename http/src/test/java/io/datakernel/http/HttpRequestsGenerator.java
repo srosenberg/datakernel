@@ -157,7 +157,7 @@ public final class HttpRequestsGenerator {
 		this.eventloop = checkNotNull(eventloop);
 		this.options = checkNotNull(options);
 		this.client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 						3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		this.completionCallback = checkNotNull(completionCallback);
 	}

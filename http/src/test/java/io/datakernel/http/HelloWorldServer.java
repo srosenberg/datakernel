@@ -28,7 +28,7 @@ public final class HelloWorldServer {
 		AsyncHttpServer httpServer = new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse content = HttpResponse.create().body(HELLO_WORLD);
+				HttpResponse content = HttpResponse.ok200().withBody(HELLO_WORLD);
 				callback.onResult(content);
 			}
 		});

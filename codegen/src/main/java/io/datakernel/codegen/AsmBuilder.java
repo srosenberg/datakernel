@@ -150,7 +150,7 @@ public class AsmBuilder<T> {
 	 * @param fieldClass type of field
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> field(String field, Class<?> fieldClass) {
+	public AsmBuilder<T> withField(String field, Class<?> fieldClass) {
 		fields.put(field, fieldClass);
 		return this;
 	}
@@ -162,12 +162,12 @@ public class AsmBuilder<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(Method method, Expression expression) {
+	public AsmBuilder<T> withMethod(Method method, Expression expression) {
 		expressionMap.put(method, expression);
 		return this;
 	}
 
-	public AsmBuilder<T> staticMethod(Method method, Expression expression) {
+	public AsmBuilder<T> withStaticMethod(Method method, Expression expression) {
 		expressionStaticMap.put(method, expression);
 		return this;
 	}
@@ -181,20 +181,20 @@ public class AsmBuilder<T> {
 	 * @param expression    function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public AsmBuilder<T> withMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
 		}
-		return method(new Method(methodName, getType(returnClass), types), expression);
+		return withMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
 
-	public AsmBuilder<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public AsmBuilder<T> withStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
 		}
-		return staticMethod(new Method(methodName, getType(returnClass), types), expression);
+		return withStaticMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
 
 	/**
@@ -204,10 +204,10 @@ public class AsmBuilder<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmBuilder<T> method(String methodName, Expression expression) {
+	public AsmBuilder<T> withMethod(String methodName, Expression expression) {
 		if (methodName.contains("(")) {
 			Method method = Method.getMethod(methodName);
-			return method(method, expression);
+			return withMethod(method, expression);
 		}
 
 		Method foundMethod = null;
@@ -231,7 +231,7 @@ public class AsmBuilder<T> {
 			}
 		}
 		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
-		return method(foundMethod, expression);
+		return withMethod(foundMethod, expression);
 	}
 
 	/**

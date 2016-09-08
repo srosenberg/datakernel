@@ -50,8 +50,8 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	@Override
 	public void serveAsync(HttpRequest request, Callback callback) {
 		callback.onResult(HttpResponse
-				.create()
-				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
+				.ok200()
+				.withContentType(ContentType.of(MediaTypes.JSON))
+				.withBody(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}
 }

@@ -20,8 +20,6 @@ import com.google.common.collect.ImmutableSet;
 import io.datakernel.aggregation_db.RangeTree;
 import org.junit.Test;
 
-import java.util.Set;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 

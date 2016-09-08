@@ -327,22 +327,22 @@ public final class RequestExecutor {
 			AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(localClassLoader, QueryResultPlaceholder.class);
 			for (String dimension : cubeQueryDimensions) {
 				KeyType keyType = structure.getKeyType(dimension);
-				builder.field(dimension, keyType.getDataType());
+				builder.withField(dimension, keyType.getDataType());
 			}
 			for (String measure : cubeQueryStoredMeasures) {
 				FieldType fieldType = structure.getFieldType(measure);
-				builder.field(measure, fieldType.getDataType());
+				builder.withField(measure, fieldType.getDataType());
 			}
 			for (Map.Entry<String, Class<?>> nameEntry : attributeTypes.entrySet()) {
-				builder.field(nameEntry.getKey(), nameEntry.getValue());
+				builder.withField(nameEntry.getKey(), nameEntry.getValue());
 			}
 			ExpressionSequence computeSequence = sequence();
 			for (String computedMeasure : sortedComputedMeasures) {
-				builder.field(computedMeasure, double.class);
+				builder.withField(computedMeasure, double.class);
 				computeSequence.add(set(getter(self(), computedMeasure),
 						reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 			}
-			builder.method("computeMeasures", computeSequence);
+			builder.withMethod("computeMeasures", computeSequence);
 			return builder.defineClass();
 		}
 
@@ -369,7 +369,7 @@ public final class RequestExecutor {
 							getter(cast(arg(0), resultClass), ordering.getPropertyName()));
 			}
 
-			builder.method("compare", comparator);
+			builder.withMethod("compare", comparator);
 
 			return builder.newInstance();
 		}
@@ -481,10 +481,10 @@ public final class RequestExecutor {
 
 			for (String field : cubeQueryStoredMeasures) {
 				FieldType fieldType = structure.getFieldType(field);
-				builder.field(field, fieldType.getDataType());
+				builder.withField(field, fieldType.getDataType());
 			}
 			for (String computedMeasure : sortedComputedMeasures) {
-				builder.field(computedMeasure, double.class);
+				builder.withField(computedMeasure, double.class);
 			}
 
 			ExpressionSequence initSequence = sequence();
@@ -498,15 +498,15 @@ public final class RequestExecutor {
 						getter(self(), field), fieldType.getDataType(),
 						getter(cast(arg(0), resultClass), field), fieldType.getDataType()));
 			}
-			builder.method("init", initSequence);
-			builder.method("accumulate", accumulateSequence);
+			builder.withMethod("init", initSequence);
+			builder.withMethod("accumulate", accumulateSequence);
 
 			ExpressionSequence computeSequence = sequence();
 			for (String computedMeasure : sortedComputedMeasures) {
 				computeSequence.add(set(getter(self(), computedMeasure),
 						reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 			}
-			builder.method("computeMeasures", computeSequence);
+			builder.withMethod("computeMeasures", computeSequence);
 
 			return builder.newInstance();
 		}
@@ -520,7 +520,7 @@ public final class RequestExecutor {
 		Class createFilterAttributesClass() {
 			AsmBuilder<Object> builder = new AsmBuilder<>(localClassLoader, Object.class);
 			for (String filterAttribute : filterAttributes) {
-				builder.field(filterAttribute, attributeTypes.get(filterAttribute));
+				builder.withField(filterAttribute, attributeTypes.get(filterAttribute));
 			}
 			return builder.defineClass();
 		}
@@ -540,7 +540,7 @@ public final class RequestExecutor {
 						value(true)));
 			}
 
-			builder.method("matches", boolean.class, asList(Object.class, String.class), predicate);
+			builder.withMethod("matches", boolean.class, asList(Object.class, String.class), predicate);
 			return builder.newInstance();
 		}
 	}

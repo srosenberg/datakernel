@@ -68,7 +68,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 		}
 
 		applyDef.add(result);
-		factory.method("apply", applyDef);
+		factory.withMethod("apply", applyDef);
 		Function function = factory.newInstance();
 		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop,
 				Iterables.transform(lists.get(id), function));

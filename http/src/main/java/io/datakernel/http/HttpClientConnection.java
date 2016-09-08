@@ -93,7 +93,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
 		if (!(statusCode >= 100 && statusCode < 600))
 			throw new ParseException("Invalid HTTP Status Code " + statusCode);
-		response = HttpResponse.create(statusCode);
+		response = HttpResponse.of(statusCode);
 		if (isNoBodyMessage(response)) {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
@@ -119,7 +119,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
-		response.body(bodyBuf);
+		response.withBody(bodyBuf);
 		HttpResponse response = this.response;
 		ResultCallback<HttpResponse> callback = this.callback;
 		this.response = null;

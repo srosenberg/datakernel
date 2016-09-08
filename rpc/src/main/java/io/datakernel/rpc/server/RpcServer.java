@@ -105,7 +105,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
 					this.serializerBuilder :
 					SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-			serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
+			serializerBuilder.withExtraSubclasses("extraRpcMessageData", messageTypes);
 			serializer = serializerBuilder.create(RpcMessage.class);
 		}
 		return serializer;

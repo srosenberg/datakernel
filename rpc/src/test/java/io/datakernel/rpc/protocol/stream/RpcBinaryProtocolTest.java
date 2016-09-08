@@ -150,7 +150,7 @@ public class RpcBinaryProtocolTest {
 	@Test
 	public void testCompression() {
 		SerializerBuilder serializerBuilder = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-		serializerBuilder.setExtraSubclasses("extraRpcMessageData", String.class);
+		serializerBuilder.withExtraSubclasses("extraRpcMessageData", String.class);
 		BufferSerializer<RpcMessage> serializer = serializerBuilder.create(RpcMessage.class);
 
 		int countRequests = 10;

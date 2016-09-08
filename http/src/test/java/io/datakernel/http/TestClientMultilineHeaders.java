@@ -24,14 +24,14 @@ public class TestClientMultilineHeaders {
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
 		Eventloop eventloop = new Eventloop();
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(HttpResponse.create().header(HttpHeaders.ALLOW, "GET,\r\n HEAD"));
+				callback.onResult(HttpResponse.ok200().withHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD"));
 			}
 		});
 

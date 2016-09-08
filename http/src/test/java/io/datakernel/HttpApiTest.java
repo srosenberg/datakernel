@@ -78,7 +78,7 @@ public class HttpApiTest {
 			}
 		}).withListenPort(PORT);
 
-		client = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		client = new AsyncHttpClient(eventloop, NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		// setup request and response data
@@ -92,14 +92,14 @@ public class HttpApiTest {
 		requestAcceptCharsets.add(AcceptCharset.of(Charset.forName("ISO-8859-2"), 10));
 		requestAcceptCharsets.add(AcceptCharset.of(Charset.forName("ISO-8859-3"), 10));
 
-		HttpCookie cookie2 = new HttpCookie("name1", "value1");
+		HttpCookie cookie2 = HttpCookie.of("name1", "value1");
 		requestCookies.add(cookie2);
-		HttpCookie cookie3 = new HttpCookie("name3");
+		HttpCookie cookie3 = HttpCookie.of("name3");
 		requestCookies.add(cookie3);
 
-		HttpCookie cookie1 = new HttpCookie("name2", "value2");
-		cookie1.setMaxAge(123);
-		cookie1.setExpirationDate(new Date());
+		HttpCookie cookie1 = HttpCookie.of("name2", "value2")
+				.withMaxAge(123)
+				.withExpirationDate(new Date());
 		responseCookies.add(cookie1);
 	}
 
@@ -132,25 +132,25 @@ public class HttpApiTest {
 	}
 
 	private HttpResponse createResponse() {
-		HttpResponse response = HttpResponse.create();
-		response.date(responseDate);
-		response.expires(expiresDate);
-		response.contentType(responseContentType);
-		response.setCookies(responseCookies);
-		response.lastModified(lastModified);
-		response.age(age);
+		HttpResponse response = HttpResponse.ok200();
+		response.withDate(responseDate);
+		response.withExpires(expiresDate);
+		response.withContentType(responseContentType);
+		response.withCookies(responseCookies);
+		response.withLastModified(lastModified);
+		response.withAge(age);
 		return response;
 	}
 
 	private HttpRequest createRequest() {
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT);
-		request.accept(requestAcceptContentTypes);
-		request.acceptCharsets(requestAcceptCharsets);
-		request.date(requestDate);
-		request.contentType(requestContentType);
-		request.ifModifiedSince(dateIMS);
-		request.ifUnModifiedSince(dateIUMS);
-		request.cookies(requestCookies);
+		request.withAccept(requestAcceptContentTypes);
+		request.withAcceptCharsets(requestAcceptCharsets);
+		request.withDate(requestDate);
+		request.withContentType(requestContentType);
+		request.withIfModifiedSince(dateIMS);
+		request.withIfUnModifiedSince(dateIUMS);
+		request.withCookies(requestCookies);
 		return request;
 	}
 

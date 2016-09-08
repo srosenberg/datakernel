@@ -162,11 +162,11 @@ public class UiKernelServlets {
 					model.delete(id, new ResultCallback<DeleteResponse>() {
 						@Override
 						public void onResult(DeleteResponse response) {
-							HttpResponse res = HttpResponse.create();
+							HttpResponse res = HttpResponse.ok200();
 							if (response.hasErrors()) {
 								String json = gson.toJson(response.getErrors());
-								res.contentType(JSON_UTF8)
-										.body(ByteBufStrings.wrapUtf8(json));
+								res.withContentType(JSON_UTF8)
+										.withBody(ByteBufStrings.wrapUtf8(json));
 							}
 							callback.onResult(res);
 						}
@@ -184,8 +184,8 @@ public class UiKernelServlets {
 	}
 
 	private static HttpResponse createResponse(String body) {
-		return HttpResponse.create()
-				.contentType(JSON_UTF8)
-				.body(ByteBufStrings.wrapUtf8(body));
+		return HttpResponse.ok200()
+				.withContentType(JSON_UTF8)
+				.withBody(ByteBufStrings.wrapUtf8(body));
 	}
 }

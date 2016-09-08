@@ -176,44 +176,44 @@ public class ExpressionTest {
 	public void test() throws IllegalAccessException, InstantiationException {
 		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test.class)
-				.field("x", int.class)
-				.field("y", Long.class)
-				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
+				.withField("x", int.class)
+				.withField("y", Long.class)
+				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "field1", "field2"))
-				.method("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
+				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
-				.method("equals",
+				.withMethod("equals",
 						asEquals("x"))
-				.method("setXY", sequence(
+				.withMethod("setXY", sequence(
 						setter(self(), "x", arg(0)),
 						setter(self(), "y", arg(1))))
-				.method("test",
+				.withMethod("test",
 						add(arg(0), value(1L)))
-				.method("hash",
+				.withMethod("hash",
 						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
-				.method("field1",
+				.withMethod("field1",
 						getter(arg(0), "field1"))
-				.method("setter", sequence(
+				.withMethod("setter", sequence(
 						setter(arg(0), "field1", value(10)),
 						setter(arg(0), "field2", value(20)),
 						arg(0)))
-				.method("ctor", sequence(
+				.withMethod("ctor", sequence(
 						local,
 						setter(local, "field2", value(2)),
 						local))
-				.method("getX",
+				.withMethod("getX",
 						getter(self(), "x"))
-				.method("getY",
+				.withMethod("getY",
 						getter(self(), "y"))
-				.method("allEqual",
+				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("anyEqual",
+				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("setPojoField1",
+				.withMethod("setPojoField1",
 						call(arg(0), "setField1", arg(1)))
-				.method("getPojoField1",
+				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
-				.method("toString",
+				.withMethod("toString",
 						asString()
 								.quotes("{", "}", ", ")
 								.add(getter(self(), "x"))
@@ -267,7 +267,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test2.class)
-				.method("hash",
+				.withMethod("hash",
 						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2"), getter(arg(0), "field3"),
 								getter(arg(0), "field4"), getter(arg(0), "field5"), getter(arg(0), "field6"),
 								getter(arg(0), "field7"))).defineClass();
@@ -282,7 +282,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testComparator() {
 		Comparator<TestPojo> comparator = new AsmBuilder<>(new DefiningClassLoader(), Comparator.class)
-				.method("compare",
+				.withMethod("compare",
 						compare(TestPojo.class, "field1", "field2"))
 				.newInstance();
 		assertTrue(comparator.compare(new TestPojo(1, 10), new TestPojo(1, 10)) == 0);
@@ -318,14 +318,14 @@ public class ExpressionTest {
 		double d = Double.MAX_VALUE;
 
 		TestNeg testClass = new AsmBuilder<>(new DefiningClassLoader(), TestNeg.class)
-				.method("negBoolean", neg(value(z)))
-				.method("negShort", neg(value(s)))
-				.method("negByte", neg(value(b)))
-				.method("negChar", neg(value(c)))
-				.method("negInt", neg(value(i)))
-				.method("negLong", neg(value(l)))
-				.method("negFloat", neg(value(f)))
-				.method("negDouble", neg(value(d)))
+				.withMethod("negBoolean", neg(value(z)))
+				.withMethod("negShort", neg(value(s)))
+				.withMethod("negByte", neg(value(b)))
+				.withMethod("negChar", neg(value(c)))
+				.withMethod("negInt", neg(value(i)))
+				.withMethod("negLong", neg(value(l)))
+				.withMethod("negFloat", neg(value(f)))
+				.withMethod("negDouble", neg(value(d)))
 				.newInstance();
 
 		assertTrue(testClass.negBoolean() == !z);
@@ -365,13 +365,13 @@ public class ExpressionTest {
 		double d = Double.MAX_VALUE;
 
 		TestOperation testClass = new AsmBuilder<>(new DefiningClassLoader(), TestOperation.class)
-				.method("remB", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(b), value(20)))
-				.method("remS", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(s), value(20)))
-				.method("remC", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(c), value(20)))
-				.method("remI", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(i), value(20)))
-				.method("remL", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(l), value(20)))
-				.method("remF", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(f), value(20)))
-				.method("remD", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(d), value(20)))
+				.withMethod("remB", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(b), value(20)))
+				.withMethod("remS", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(s), value(20)))
+				.withMethod("remC", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(c), value(20)))
+				.withMethod("remI", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(i), value(20)))
+				.withMethod("remL", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(l), value(20)))
+				.withMethod("remF", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(f), value(20)))
+				.withMethod("remD", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(d), value(20)))
 				.newInstance();
 
 		assertTrue(testClass.remB() == (b % (20)));
@@ -402,11 +402,11 @@ public class ExpressionTest {
 		long l = 4;
 
 		TestSH testClass = new AsmBuilder<>(new DefiningClassLoader(), TestSH.class)
-				.method("shlInt", bitOp(ExpressionBitOp.Operation.SHL, value(b), value(i)))
-				.method("shlLong", bitOp(ExpressionBitOp.Operation.SHL, value(l), value(b)))
-				.method("shrInt", bitOp(ExpressionBitOp.Operation.SHR, value(b), value(i)))
-				.method("shrLong", bitOp(ExpressionBitOp.Operation.SHR, value(l), value(i)))
-				.method("ushrInt", bitOp(ExpressionBitOp.Operation.USHR, value(b), value(i)))
+				.withMethod("shlInt", bitOp(ExpressionBitOp.Operation.SHL, value(b), value(i)))
+				.withMethod("shlLong", bitOp(ExpressionBitOp.Operation.SHL, value(l), value(b)))
+				.withMethod("shrInt", bitOp(ExpressionBitOp.Operation.SHR, value(b), value(i)))
+				.withMethod("shrLong", bitOp(ExpressionBitOp.Operation.SHR, value(l), value(i)))
+				.withMethod("ushrInt", bitOp(ExpressionBitOp.Operation.USHR, value(b), value(i)))
 				.newInstance();
 
 		assertTrue(testClass.shlInt() == (b << i));
@@ -433,12 +433,12 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBitMask() {
 		TestBitMask testClass = new AsmBuilder<>(new DefiningClassLoader(), TestBitMask.class)
-				.method("andInt", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4)))
-				.method("orInt", bitOp(ExpressionBitOp.Operation.OR, value(2), value(4)))
-				.method("xorInt", bitOp(ExpressionBitOp.Operation.XOR, value(2), value(4)))
-				.method("andLong", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4L)))
-				.method("orLong", bitOp(ExpressionBitOp.Operation.OR, value((byte) 2), value(4L)))
-				.method("xorLong", bitOp(ExpressionBitOp.Operation.XOR, value(2L), value(4L)))
+				.withMethod("andInt", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4)))
+				.withMethod("orInt", bitOp(ExpressionBitOp.Operation.OR, value(2), value(4)))
+				.withMethod("xorInt", bitOp(ExpressionBitOp.Operation.XOR, value(2), value(4)))
+				.withMethod("andLong", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4L)))
+				.withMethod("orLong", bitOp(ExpressionBitOp.Operation.OR, value((byte) 2), value(4L)))
+				.withMethod("xorLong", bitOp(ExpressionBitOp.Operation.XOR, value(2L), value(4L)))
 				.newInstance();
 
 		assertTrue(testClass.andInt() == (2 & 4));
@@ -462,14 +462,14 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testCall() {
 		TestCall testClass = new AsmBuilder<>(new DefiningClassLoader(), TestCall.class)
-				.method("callOther1", call(self(), "method", arg(0)))
-				.method("callOther2", call(self(), "method"))
-				.method("method", int.class, asList(int.class), arg(0))
-				.method("method", long.class, Collections.<Class<?>>emptyList(), value(-1L))
-				.method("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
-				.method("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
-				.staticMethod("method", int.class, asList(int.class, int.class), arg(1))
-				.staticMethod("method", long.class, asList(long.class), arg(0))
+				.withMethod("callOther1", call(self(), "method", arg(0)))
+				.withMethod("callOther2", call(self(), "method"))
+				.withMethod("method", int.class, asList(int.class), arg(0))
+				.withMethod("method", long.class, Collections.<Class<?>>emptyList(), value(-1L))
+				.withMethod("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
+				.withMethod("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
+				.withStaticMethod("method", int.class, asList(int.class, int.class), arg(1))
+				.withStaticMethod("method", long.class, asList(long.class), arg(0))
 				.newInstance();
 
 		assert (testClass.callOther1(100) == 100);
@@ -498,8 +498,8 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testArgument() {
 		TestArgument testClass = new AsmBuilder<>(new DefiningClassLoader(), TestArgument.class)
-				.method("array", call(arg(0), "writeFirst", arg(1)))
-				.method("write", call(arg(0), "write", arg(1)))
+				.withMethod("array", call(arg(0), "writeFirst", arg(1)))
+				.withMethod("write", call(arg(0), "write", arg(1)))
 				.newInstance();
 
 		assertTrue(testClass.array(new WriteFirstElement(), new Object[]{1000, 2, 3, 4}).equals(1000));
@@ -519,13 +519,13 @@ public class ExpressionTest {
 		List<Integer> listTo2 = new ArrayList<>();
 
 		WriteAllListElement testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteAllListElement.class)
-				.method("write", forEach(arg(0), new ForVar() {
+				.withMethod("write", forEach(arg(0), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return sequence(addListItem(arg(1), it), voidExp());
 					}
 				}))
-				.method("writeIter", forEach(arg(0), new ForVar() {
+				.withMethod("writeIter", forEach(arg(0), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return sequence(addListItem(arg(1), it), voidExp());
@@ -557,7 +557,7 @@ public class ExpressionTest {
 		List<Long> list = new ArrayList<>();
 
 		WriteArrayElements testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteArrayElements.class)
-				.method("write", forEach(arg(0), new ForVar() {
+				.withMethod("write", forEach(arg(0), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return sequence(addListItem(arg(1), cast(it, Object.class)), voidExp());
@@ -578,7 +578,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testCastPrimitive() {
 		CastPrimitive testClass = new AsmBuilder<>(new DefiningClassLoader(), CastPrimitive.class)
-				.method("a", value(1))
+				.withMethod("a", value(1))
 				.newInstance();
 
 		assertEquals(testClass.a(), 1);
@@ -596,14 +596,14 @@ public class ExpressionTest {
 	public void testGetter() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Initializable intHolder = new AsmBuilder<>(classLoader, Initializable.class)
-				.field("x", int.class)
-				.method("init", set(getter(self(), "x"), value(42)))
+				.withField("x", int.class)
+				.withMethod("init", set(getter(self(), "x"), value(42)))
 				.newInstance();
 
 		intHolder.init();
 
 		Getter getter = new AsmBuilder<>(classLoader, Getter.class)
-				.method("get", getter(cast(arg(0), intHolder.getClass()), "x"))
+				.withMethod("get", getter(cast(arg(0), intHolder.getClass()), "x"))
 				.newInstance();
 
 		assertEquals(42, getter.get(intHolder));
@@ -614,44 +614,44 @@ public class ExpressionTest {
 		DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass1 = new AsmBuilder<>(definingClassLoader, Test.class)
-				.field("x", int.class)
-				.field("y", Long.class)
-				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
+				.withField("x", int.class)
+				.withField("y", Long.class)
+				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "field1", "field2"))
-				.method("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
+				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
-				.method("equals",
+				.withMethod("equals",
 						asEquals("x"))
-				.method("setXY", sequence(
+				.withMethod("setXY", sequence(
 						set(getter(self(), "x"), arg(0)),
 						set(getter(self(), "y"), arg(1))))
-				.method("test",
+				.withMethod("test",
 						add(arg(0), value(1L)))
-				.method("hash",
+				.withMethod("hash",
 						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
-				.method("field1",
+				.withMethod("field1",
 						getter(arg(0), "field1"))
-				.method("setter", sequence(
+				.withMethod("setter", sequence(
 						set(getter(arg(0), "field1"), value(10)),
 						set(getter(arg(0), "field2"), value(20)),
 						arg(0)))
-				.method("ctor", sequence(
+				.withMethod("ctor", sequence(
 						local,
 						set(getter(local, "field2"), value(2)),
 						local))
-				.method("getX",
+				.withMethod("getX",
 						getter(self(), "x"))
-				.method("getY",
+				.withMethod("getY",
 						getter(self(), "y"))
-				.method("allEqual",
+				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("anyEqual",
+				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("setPojoField1",
+				.withMethod("setPojoField1",
 						call(arg(0), "setField1", arg(1)))
-				.method("getPojoField1",
+				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
-				.method("toString",
+				.withMethod("toString",
 						asString()
 								.quotes("{", "}", ", ")
 								.add(getter(self(), "x"))
@@ -659,44 +659,44 @@ public class ExpressionTest {
 				.defineClass();
 
 		Class<Test> testClass2 = new AsmBuilder<>(definingClassLoader, Test.class)
-				.field("x", int.class)
-				.field("y", Long.class)
-				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
+				.withField("x", int.class)
+				.withField("y", Long.class)
+				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "field1", "field2"))
-				.method("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
+				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
 						compareTo("x"))
-				.method("equals",
+				.withMethod("equals",
 						asEquals("x"))
-				.method("setXY", sequence(
+				.withMethod("setXY", sequence(
 						set(getter(self(), "x"), arg(0)),
 						set(getter(self(), "y"), arg(1))))
-				.method("test",
+				.withMethod("test",
 						add(arg(0), value(1L)))
-				.method("hash",
+				.withMethod("hash",
 						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
-				.method("field1",
+				.withMethod("field1",
 						getter(arg(0), "field1"))
-				.method("setter", sequence(
+				.withMethod("setter", sequence(
 						set(getter(arg(0), "field1"), value(10)),
 						set(getter(arg(0), "field2"), value(20)),
 						arg(0)))
-				.method("ctor", sequence(
+				.withMethod("ctor", sequence(
 						local,
 						set(getter(local, "field2"), value(2)),
 						local))
-				.method("getX",
+				.withMethod("getX",
 						getter(self(), "x"))
-				.method("getY",
+				.withMethod("getY",
 						getter(self(), "y"))
-				.method("allEqual",
+				.withMethod("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("anyEqual",
+				.withMethod("anyEqual",
 						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.method("setPojoField1",
+				.withMethod("setPojoField1",
 						call(arg(0), "setField1", arg(1)))
-				.method("getPojoField1",
+				.withMethod("getPojoField1",
 						call(arg(0), "getField1"))
-				.method("toString",
+				.withMethod("toString",
 						asString()
 								.quotes("{", "}", ", ")
 								.add(getter(self(), "x"))
@@ -721,10 +721,10 @@ public class ExpressionTest {
 	public void testCompare() throws IllegalAccessException, InstantiationException {
 		DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		Class<TestCompare> test1 = new AsmBuilder<>(definingClassLoader, TestCompare.class)
-				.method("compareObjectLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
-				.method("comparePrimitiveLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
-				.method("compareObjectEQ", cmp(PredicateDefCmp.Operation.EQ, arg(0), arg(1)))
-				.method("compareObjectNE", cmp(PredicateDefCmp.Operation.NE, arg(0), arg(1)))
+				.withMethod("compareObjectLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.withMethod("comparePrimitiveLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.withMethod("compareObjectEQ", cmp(PredicateDefCmp.Operation.EQ, arg(0), arg(1)))
+				.withMethod("compareObjectNE", cmp(PredicateDefCmp.Operation.NE, arg(0), arg(1)))
 				.defineClass();
 
 		TestCompare testCompare = test1.newInstance();
@@ -817,7 +817,7 @@ public class ExpressionTest {
 		comparator.add(getter(cast(arg(0), StringHolder.class), "string2"),
 				getter(cast(arg(1), StringHolder.class), "string2"));
 		Comparator generatedComparator = new AsmBuilder<>(classLoader, Comparator.class)
-				.method("compare", comparator)
+				.withMethod("compare", comparator)
 				.newInstance();
 
 		List<StringHolder> strings = Arrays.asList(new StringHolder(null, "b"), new StringHolder(null, "a"),
@@ -843,8 +843,8 @@ public class ExpressionTest {
 	public void testAbstractClassWithInterface() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		TestAbstract testObj = new AsmBuilder<>(classLoader, TestAbstract.class)
-				.method("returnInt", value(42))
-				.method("returnDouble", value(-1.0))
+				.withMethod("returnInt", value(42))
+				.withMethod("returnDouble", value(-1.0))
 				.newInstance();
 		assertEquals(42, testObj.returnInt());
 		assertEquals(-1.0, testObj.returnDouble(), 1E-5);
@@ -870,9 +870,9 @@ public class ExpressionTest {
 	public void testMultipleInterfacesWithAbstract() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final A instance = new AsmBuilder<>(definingClassLoader, A.class, asList(B.class, C.class))
-				.method("a", value(42))
-				.method("b", value(43))
-				.method("c", value("44"))
+				.withMethod("a", value(42))
+				.withMethod("b", value(43))
+				.withMethod("c", value("44"))
 				.newInstance();
 
 		assertEquals(instance.t(), 40);
@@ -885,8 +885,8 @@ public class ExpressionTest {
 	public void testMultipleInterfaces() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final B instance = new AsmBuilder<>(definingClassLoader, B.class, Collections.<Class<?>>singletonList(C.class))
-				.method("b", value(43))
-				.method("c", value("44"))
+				.withMethod("b", value(43))
+				.withMethod("c", value("44"))
 				.newInstance();
 
 		assertEquals(instance.b(), Integer.valueOf(43));
@@ -898,8 +898,8 @@ public class ExpressionTest {
 	public void testNullableToString() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final B instance = new AsmBuilder<>(definingClassLoader, B.class)
-				.method("b", nullRef(Integer.class))
-				.method("toString",
+				.withMethod("b", nullRef(Integer.class))
+				.withMethod("toString",
 						asString()
 								.quotes("{", "}", ", ")
 								.add(call(self(), "b")))
@@ -915,8 +915,8 @@ public class ExpressionTest {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final B instance = new AsmBuilder<>(definingClassLoader, B.class)
 				.setBytecodeSaveDir(folder.toPath())
-				.method("b", nullRef(Integer.class))
-				.method("toString",
+				.withMethod("b", nullRef(Integer.class))
+				.withMethod("toString",
 						asString()
 								.quotes("{", "}", ", ")
 								.add(call(self(), "b")))
@@ -934,7 +934,7 @@ public class ExpressionTest {
 	public void testArraySet() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final TestArraySet instance = new AsmBuilder<>(definingClassLoader, TestArraySet.class)
-				.method("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
+				.withMethod("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
 				.newInstance();
 		Integer[] ints = new Integer[]{1, 2, 3, 4};
 
@@ -949,7 +949,7 @@ public class ExpressionTest {
 	public void testCallStatic() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final TestCallStatic instance = new AsmBuilder<>(definingClassLoader, TestCallStatic.class)
-				.method("method", callStatic(Math.class, "min", arg(0), arg(1)))
+				.withMethod("method", callStatic(Math.class, "min", arg(0), arg(1)))
 				.newInstance();
 		assertEquals(instance.method(5, 0), 0);
 		assertEquals(instance.method(5, 10), 5);
@@ -963,7 +963,7 @@ public class ExpressionTest {
 	public void testIsNull() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final TestIsNull instance = new AsmBuilder<>(definingClassLoader, TestIsNull.class)
-				.method("method", isNull(arg(0)))
+				.withMethod("method", isNull(arg(0)))
 				.newInstance();
 		assertEquals(instance.method("42"), false);
 		assertEquals(instance.method(null), true);
@@ -979,8 +979,8 @@ public class ExpressionTest {
 	public void testNewArray() {
 		final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 		final TestNewArray instance = new AsmBuilder<>(definingClassLoader, TestNewArray.class)
-				.method("ints", newArray(int[].class, arg(0)))
-				.method("integers", newArray(String[].class, arg(0)))
+				.withMethod("ints", newArray(int[].class, arg(0)))
+				.withMethod("integers", newArray(String[].class, arg(0)))
 				.newInstance();
 		assertEquals(instance.ints(1).length, 1);
 		assertEquals(instance.integers(2).length, 2);

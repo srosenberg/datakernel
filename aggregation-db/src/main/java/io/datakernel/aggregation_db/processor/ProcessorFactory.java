@@ -70,12 +70,12 @@ public final class ProcessorFactory {
 		}
 
 		onFirstItemDef.add(accumulator);
-		builder.method("onFirstItem", onFirstItemDef);
+		builder.withMethod("onFirstItem", onFirstItemDef);
 
 		onNextItemDef.add(arg(3));
-		builder.method("onNextItem", onNextItemDef);
+		builder.withMethod("onNextItem", onNextItemDef);
 
-		builder.method("onComplete", call(arg(0), "onData", arg(2)));
+		builder.withMethod("onComplete", call(arg(0), "onData", arg(2)));
 
 		return builder.newInstance();
 	}
@@ -103,9 +103,9 @@ public final class ProcessorFactory {
 		}
 
 		createAccumulatorDef.add(accumulator);
-		builder.method("createAccumulator", createAccumulatorDef);
+		builder.withMethod("createAccumulator", createAccumulatorDef);
 
-		builder.method("accumulate", accumulateDef);
+		builder.withMethod("accumulate", accumulateDef);
 
 		return builder.newInstance();
 	}

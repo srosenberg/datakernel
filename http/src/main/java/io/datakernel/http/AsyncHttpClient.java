@@ -82,7 +82,15 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
-	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
+	public static AsyncHttpClient of(Eventloop eventloop, DnsClient dnsClient) {
+		return new AsyncHttpClient(eventloop, dnsClient, defaultSocketSettings());
+	}
+
+	public static AsyncHttpClient of(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
+		return new AsyncHttpClient(eventloop, dnsClient, socketSettings);
+	}
+
+	private AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
 		this.socketSettings = checkNotNull(socketSettings);

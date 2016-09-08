@@ -58,7 +58,7 @@ public class AsyncHttpClientTest {
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
@@ -102,7 +102,7 @@ public class AsyncHttpClientTest {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
 					@Override
 					public void run() {
-						callback.onResult(HttpResponse.create().body(TIMEOUT_EXCEPTION_BYTES));
+						callback.onResult(HttpResponse.ok200().withBody(TIMEOUT_EXCEPTION_BYTES));
 					}
 				});
 			}
@@ -110,7 +110,7 @@ public class AsyncHttpClientTest {
 		httpServer.withListenPort(PORT);
 
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
@@ -152,7 +152,7 @@ public class AsyncHttpClientTest {
 		final Eventloop eventloop = new Eventloop();
 
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
@@ -191,7 +191,7 @@ public class AsyncHttpClientTest {
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
@@ -266,7 +266,7 @@ public class AsyncHttpClientTest {
 		}
 				.withListenPort(PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		server.listen();

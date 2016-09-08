@@ -322,7 +322,7 @@ public class ReportingTest {
 		serverStartFuture.await();
 
 		clientEventloop = new Eventloop();
-		NativeDnsResolver dnsClient = new NativeDnsResolver(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
+		NativeDnsResolver dnsClient = NativeDnsResolver.of(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
 				HttpUtils.inetAddress("8.8.8.8"));
 		httpClient = new AsyncHttpClient(clientEventloop, dnsClient);
 		cubeHttpClient = new CubeHttpClient("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);

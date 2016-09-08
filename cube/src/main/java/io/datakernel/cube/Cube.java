@@ -633,7 +633,7 @@ public final class Cube implements EventloopJmxMBean {
 						getter(cast(arg(0), fieldClass), field));
 		}
 
-		builder.method("compare", comparator);
+		builder.withMethod("compare", comparator);
 
 		return builder.newInstance();
 	}

@@ -55,14 +55,19 @@ public final class HttpCookie {
 	private String extension;
 
 	// constructors & creators
-	public HttpCookie(String name, String value) {
+	private HttpCookie(String name, String value) {
 		this.name = name;
 		this.value = value;
 	}
 
-	public HttpCookie(String name) {
-		this.name = name;
+	public static HttpCookie of(String name, String value) {
+		return new HttpCookie(name, value);
 	}
+
+	public static HttpCookie of(String name) {
+		return new HttpCookie(name, null);
+	}
+
 
 	static void parse(String cookieString, List<HttpCookie> cookies) throws ParseException {
 		byte[] bytes = encodeAscii(cookieString);
@@ -93,7 +98,7 @@ public final class HttpCookie {
 				AvHandler handler = getCookieHandler(hashCodeLowerCaseAscii
 						(bytes, keyStart, (equalSign == -1 ? valueEnd : equalSign) - keyStart));
 				if (equalSign == -1 && handler == null) {
-					cookie.setExtension(decodeAscii(bytes, keyStart, valueEnd - keyStart));
+					cookie.withExtension(decodeAscii(bytes, keyStart, valueEnd - keyStart));
 				} else if (handler == null) {
 					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
 					String value;
@@ -166,7 +171,7 @@ public final class HttpCookie {
 
 				if (equalSign == -1) {
 					String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
-					cookies.add(new HttpCookie(key));
+					cookies.add(HttpCookie.of(key));
 				} else {
 					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
 					String value;
@@ -248,42 +253,42 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setExpirationDate(parseExpirationDate(bytes, start, end));
+						cookie.withExpirationDate(parseExpirationDate(bytes, start, end));
 					}
 				};
 			case MAX_AGE_HC:
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(decodeDecimal(bytes, start, end - start));
+						cookie.withMaxAge(decodeDecimal(bytes, start, end - start));
 					}
 				};
 			case DOMAIN_HC:
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-						cookie.setDomain(decodeAscii(bytes, start, end - start));
+						cookie.withDomain(decodeAscii(bytes, start, end - start));
 					}
 				};
 			case PATH_HC:
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-						cookie.setPath(decodeAscii(bytes, start, end - start));
+						cookie.withPath(decodeAscii(bytes, start, end - start));
 					}
 				};
 			case SECURE_HC:
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-						cookie.setSecure(true);
+						cookie.withSecure(true);
 					}
 				};
 			case HTTP_ONLY_HC:
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-						cookie.setHttpOnly(true);
+						cookie.withHttpOnly(true);
 					}
 				};
 
@@ -313,63 +318,71 @@ public final class HttpCookie {
 		return value;
 	}
 
-	public void setValue(String value) {
+	public HttpCookie withValue(String value) {
 		this.value = value;
+		return this;
 	}
 
 	public Date getExpirationDate() {
 		return expirationDate;
 	}
 
-	public void setExpirationDate(Date expirationDate) {
+	public HttpCookie withExpirationDate(Date expirationDate) {
 		this.expirationDate = expirationDate;
+		return this;
 	}
 
 	public int getMaxAge() {
 		return maxAge;
 	}
 
-	public void setMaxAge(int maxAge) {
+	public HttpCookie withMaxAge(int maxAge) {
 		this.maxAge = maxAge;
+		return this;
 	}
 
 	public String getDomain() {
 		return domain;
 	}
 
-	public void setDomain(String domain) {
+	public HttpCookie withDomain(String domain) {
 		this.domain = domain;
+		return this;
 	}
 
 	public String getPath() {
 		return path;
 	}
 
-	public void setPath(String path) {
+	public HttpCookie withPath(String path) {
 		this.path = path;
+		return this;
 	}
 
 	public boolean isSecure() {
 		return secure;
 	}
 
-	public void setSecure(boolean secure) {
+	public HttpCookie withSecure(boolean secure) {
 		this.secure = secure;
+		return this;
 	}
 
 	public boolean isHttpOnly() {
 		return httpOnly;
 	}
 
-	public void setHttpOnly(boolean httpOnly) {
+	public HttpCookie withHttpOnly(boolean httpOnly) {
 		this.httpOnly = httpOnly;
+		return this;
 	}
 
 	public String getExtension() {
 		return extension;
 	}
 
-	public void setExtension(String extension) {
+	public HttpCookie withExtension(String extension) {
 		this.extension = extension;
+		return this;
 	}
 }

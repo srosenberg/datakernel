@@ -442,8 +442,8 @@ public class SerializerGenClass implements SerializerGen {
 
 			Method method = checkNotNull(fieldGen.method);
 
-			asmFactory.field(fieldName, method.getReturnType());
-			asmFactory.method(method.getName(), getter(self(), fieldName));
+			asmFactory.withField(fieldName, method.getReturnType());
+			asmFactory.withMethod(method.getName(), getter(self(), fieldName));
 		}
 
 		Class<?> newClass = asmFactory.defineClass();

@@ -147,7 +147,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (method == null)
 			throw new ParseException("Unknown HTTP method");
 
-		request = HttpRequest.create(method);
+		request = HttpRequest.of(method);
 
 		int i;
 		for (i = 0; i != line.headRemaining(); i++) {
@@ -157,7 +157,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			this.headerChars[i] = (char) b;
 		}
 
-		request.url(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
+		request.withUrl(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
@@ -196,8 +196,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		reading = NOTHING;
-		request.body(bodyBuf);
-		request.remoteAddress(remoteAddress);
+		request.withBody(bodyBuf);
+		request.withRemoteAddress(remoteAddress);
 
 		// jmx
 		server.requestHandlingStarted(this, request);
@@ -293,7 +293,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
 		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
-		return HttpResponse.create(e.getCode()).noCache().body(message);
+		return HttpResponse.of(e.getCode()).withNoCache().withBody(message);
 	}
 
 	private void recycleBufs() {

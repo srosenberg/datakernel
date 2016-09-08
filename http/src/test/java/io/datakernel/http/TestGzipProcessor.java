@@ -33,7 +33,7 @@ import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
-import static io.datakernel.http.HttpResponse.create;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -62,7 +62,7 @@ public class TestGzipProcessor {
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
 				assertEquals(TEST_PHRASE, receivedData);
-				callback.onResult(create().body(ByteBufStrings.wrapAscii(receivedData)));
+				callback.onResult(ok200().withBody(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 
@@ -70,14 +70,14 @@ public class TestGzipProcessor {
 				.withListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
 
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
 		HttpRequest request = HttpRequest.get("http://127.0.0.1:" + PORT)
-				.header(ACCEPT_ENCODING, "gzip")
-				.body(wrapAscii(TEST_PHRASE))
-				.compressWithGzip();
+				.withHeader(ACCEPT_ENCODING, "gzip")
+				.withBody(wrapAscii(TEST_PHRASE))
+				.withGzipCompression();
 
 		server.listen();
 		client.send(request, TIMEOUT, new ResultCallback<HttpResponse>() {

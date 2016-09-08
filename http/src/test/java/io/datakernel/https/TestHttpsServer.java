@@ -31,7 +31,7 @@ import java.io.File;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.http.HttpResponse.create;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.https.SslUtils.*;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -52,7 +52,7 @@ public class TestHttpsServer {
 		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(create().body(wrapAscii("Hello, I am Bob!")));
+				callback.onResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 			}
 		};
 

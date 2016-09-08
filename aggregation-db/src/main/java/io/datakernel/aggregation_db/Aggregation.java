@@ -257,7 +257,7 @@ public class Aggregation implements AggregationOperationTracker {
 					getter(cast(arg(0), recordClass), keyComponent),
 					getter(cast(arg(1), recordClass), keyComponent)));
 		}
-		builder.method("test", predicate);
+		builder.withMethod("test", predicate);
 		return builder.newInstance();
 	}
 
@@ -568,7 +568,7 @@ public class Aggregation implements AggregationOperationTracker {
 					value(notEqualsPredicate.value)
 			));
 		}
-		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
+		builder.withMethod("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
 		return builder.newInstance();
 	}
 
@@ -613,7 +613,7 @@ public class Aggregation implements AggregationOperationTracker {
 						value(to)));
 			}
 		}
-		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
+		builder.withMethod("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
 		return builder.newInstance();
 	}
 

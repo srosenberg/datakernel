@@ -55,7 +55,7 @@ public class HttpTolerantApplicationTest {
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+						HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 						callback.onResult(content);
 					}
 				});
@@ -142,7 +142,7 @@ public class HttpTolerantApplicationTest {
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 		Eventloop eventloop = new Eventloop();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
+			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					HttpUtils.inetAddress("8.8.8.8")));
 
 			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {

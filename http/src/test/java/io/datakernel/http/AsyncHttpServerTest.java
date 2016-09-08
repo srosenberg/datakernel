@@ -50,7 +50,7 @@ public class AsyncHttpServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				callback.onResult(content);
 			}
 		});
@@ -60,7 +60,7 @@ public class AsyncHttpServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
-				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
@@ -76,7 +76,7 @@ public class AsyncHttpServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
-				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
 					public void run() {
@@ -236,12 +236,12 @@ public class AsyncHttpServerTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		final Eventloop eventloop = new Eventloop();
 		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
-				.body(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body"))).write();
+				.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body"))).write();
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
-				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {

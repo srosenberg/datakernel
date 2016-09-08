@@ -231,7 +231,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
 					this.serializerBuilder :
 					SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-			serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
+			serializerBuilder.withExtraSubclasses("extraRpcMessageData", messageTypes);
 			serializer = serializerBuilder.create(RpcMessage.class);
 		}
 		return serializer;

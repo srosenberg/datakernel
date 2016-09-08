@@ -38,7 +38,7 @@ public class ClientStressTest {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 			test();
-			callback.onResult(HttpResponse.create());
+			callback.onResult(HttpResponse.ok200());
 		}
 	};
 	private AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
@@ -47,7 +47,7 @@ public class ClientStressTest {
 	private final SSLContext context = SSLContext.getDefault();
 
 	private AsyncHttpClient client = new AsyncHttpClient(eventloop,
-			new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
+			NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}
@@ -90,17 +90,17 @@ public class ClientStressTest {
 
 	private HttpRequest formRequest(String url, boolean keepAlive) {
 		HttpRequest request = HttpRequest.get(url)
-				.header(CACHE_CONTROL, "max-age=0")
-				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
-				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
-				.accept(AcceptMediaType.of(HTML),
+				.withHeader(CACHE_CONTROL, "max-age=0")
+				.withHeader(ACCEPT_ENCODING, "gzip, deflate, sdch")
+				.withHeader(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
+				.withHeader(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
+				.withAccept(AcceptMediaType.of(HTML),
 						AcceptMediaType.of(XHTML_APP),
 						AcceptMediaType.of(XML_APP, 90),
 						AcceptMediaType.of(WEBP),
 						AcceptMediaType.of(ANY, 80));
 		if (keepAlive) {
-			request.header(CONNECTION, "keep-alive");
+			request.withHeader(CONNECTION, "keep-alive");
 		}
 		return request;
 	}

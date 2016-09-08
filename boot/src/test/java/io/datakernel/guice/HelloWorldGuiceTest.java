@@ -104,8 +104,8 @@ public class HelloWorldGuiceTest {
 			return new AbstractAsyncServlet(eventloop) {
 				@Override
 				protected void doServeAsync(HttpRequest request, Callback callback) {
-					HttpResponse httpResponse = HttpResponse.create(200);
-					httpResponse.body(ByteBuf.wrapForReading(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
+					HttpResponse httpResponse = HttpResponse.of(200);
+					httpResponse.withBody(ByteBuf.wrapForReading(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
 					callback.onResult(httpResponse);
 				}
 			};

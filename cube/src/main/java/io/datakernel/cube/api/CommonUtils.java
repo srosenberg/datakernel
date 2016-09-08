@@ -62,14 +62,14 @@ public class CommonUtils {
 	// Codegen
 	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
 		return new AsmBuilder<>(classLoader, FieldGetter.class)
-				.method("get", getter(cast(arg(0), objClass), propertyName))
+				.withMethod("get", getter(cast(arg(0), objClass), propertyName))
 				.newInstance();
 	}
 
 	public static FieldSetter generateSetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName,
 	                                         Class<?> propertyClass) {
 		return new AsmBuilder<>(classLoader, FieldSetter.class)
-				.method("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
+				.withMethod("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
 				.newInstance();
 	}
 
@@ -82,10 +82,10 @@ public class CommonUtils {
 	}
 
 	public static HttpResponse createResponse(String body) {
-		return HttpResponse.create()
-				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUtf8(body))
-				.header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		return HttpResponse.ok200()
+				.withContentType(ContentType.of(MediaTypes.JSON))
+				.withBody(wrapUtf8(body))
+				.withHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
 
 	public static Set<String> getSetOfStrings(Gson gson, String json) {

@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpRequest.post;
-import static io.datakernel.http.HttpResponse.create;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.https.SslUtils.*;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
@@ -60,7 +60,7 @@ public class TestHttpsClientServer {
 	private AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-			callback.onResult(create().body(wrapAscii("Hello, I am Bob!")));
+			callback.onResult(ok200().withBody(wrapAscii("Hello, I am Bob!")));
 		}
 	};
 	private Eventloop eventloop = new Eventloop();
@@ -75,10 +75,10 @@ public class TestHttpsClientServer {
 				.setSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
-		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).body(wrapAscii("Hello, I am Alice!"));
+		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
 		final ResultCallbackFuture<String> callback = new ResultCallbackFuture<>();
 
 		server.listen();
@@ -113,11 +113,11 @@ public class TestHttpsClientServer {
 				.withListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
 				.withSslEnabled(context, executor);
 
-		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).body(wrapAscii("Hello, I am Alice!"));
-		HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).body(wrapAscii("Hello, I am Alice!"));
+		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
+		HttpRequest httpRequest = post("http://127.0.0.1:" + PORT).withBody(wrapAscii("Hello, I am Alice!"));
 
 		final ResultCallbackFuture<String> callbackHttps = new ResultCallbackFuture<>();
 		final ResultCallbackFuture<String> callbackHttp = new ResultCallbackFuture<>();

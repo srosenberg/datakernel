@@ -34,8 +34,8 @@ public class AbstractHttpConnectionTest {
 		server.withListenPort(PORT);
 		server.listen();
 
-		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				new NativeDnsResolver(eventloop, new DatagramSocketSettings(), 300, HttpUtils.inetAddress("8.8.8.8")));
+		final AsyncHttpClient client = AsyncHttpClient.of(eventloop,
+				NativeDnsResolver.of(eventloop, new DatagramSocketSettings(), 300, HttpUtils.inetAddress("8.8.8.8")));
 
 		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), 50000, new ResultCallback<HttpResponse>() {
 			@Override
@@ -61,9 +61,9 @@ public class AbstractHttpConnectionTest {
 	}
 
 	private HttpResponse createMultiLineHeaderWithInitialBodySpacesResponse() {
-		return HttpResponse.create()
-				.header(HttpHeaders.DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
-				.header(HttpHeaders.CONTENT_TYPE, "text/\n          html")
-				.body(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"));
+		return HttpResponse.ok200()
+				.withHeader(HttpHeaders.DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
+				.withHeader(HttpHeaders.CONTENT_TYPE, "text/\n          html")
+				.withBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"));
 	}
 }

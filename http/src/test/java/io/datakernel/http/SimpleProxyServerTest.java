@@ -56,8 +56,8 @@ public class SimpleProxyServerTest {
 				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
 					@Override
 					public void onResult(final HttpResponse result) {
-						HttpResponse res = HttpResponse.create(result.getCode());
-						res.body(encodeAscii("FORWARDED: " + decodeAscii(result.getBody())));
+						HttpResponse res = HttpResponse.of(result.getCode());
+						res.withBody(encodeAscii("FORWARDED: " + decodeAscii(result.getBody())));
 						callback.onResult(res);
 					}
 
@@ -74,7 +74,7 @@ public class SimpleProxyServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
 				callback.onResult(content);
 			}
 
@@ -98,7 +98,7 @@ public class SimpleProxyServerTest {
 
 		Eventloop eventloop2 = new Eventloop();
 		AsyncHttpClient httpClient = new AsyncHttpClient(eventloop2,
-				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.of(eventloop2, new DatagramSocketSettings(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.withListenPort(PROXY_SERVER_PORT).withAcceptOnce(false);

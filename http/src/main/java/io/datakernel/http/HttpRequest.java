@@ -47,97 +47,97 @@ public final class HttpRequest extends HttpMessage {
 		this.method = method;
 	}
 
-	public static HttpRequest create(HttpMethod method) {
+	public static HttpRequest of(HttpMethod method) {
 		assert method != null;
 		return new HttpRequest(method);
 	}
 
 	public static HttpRequest get(String url) {
-		return create(GET).url(url);
+		return of(GET).withUrl(url);
 	}
 
 	public static HttpRequest post(String url) {
-		return create(POST).url(url);
+		return of(POST).withUrl(url);
 	}
 
 	// common builder methods
-	public HttpRequest header(HttpHeader header, ByteBuf value) {
+	public HttpRequest withHeader(HttpHeader header, ByteBuf value) {
 		setHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest header(HttpHeader header, byte[] value) {
+	public HttpRequest withHeader(HttpHeader header, byte[] value) {
 		setHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest header(HttpHeader header, String value) {
+	public HttpRequest withHeader(HttpHeader header, String value) {
 		setHeader(header, value);
 		return this;
 	}
 
-	public HttpRequest body(byte[] array) {
-		return body(ByteBuf.wrapForReading(array));
+	public HttpRequest withBody(byte[] array) {
+		return withBody(ByteBuf.wrapForReading(array));
 	}
 
-	public HttpRequest body(ByteBuf body) {
+	public HttpRequest withBody(ByteBuf body) {
 		setBody(body);
 		return this;
 	}
 
 	// specific builder methods
-	public HttpRequest accept(List<AcceptMediaType> value) {
+	public HttpRequest withAccept(List<AcceptMediaType> value) {
 		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
 		return this;
 	}
 
-	public HttpRequest accept(AcceptMediaType... value) {
-		return accept(Arrays.asList(value));
+	public HttpRequest withAccept(AcceptMediaType... value) {
+		return withAccept(Arrays.asList(value));
 	}
 
-	public HttpRequest acceptCharsets(List<AcceptCharset> values) {
+	public HttpRequest withAcceptCharsets(List<AcceptCharset> values) {
 		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
 		return this;
 	}
 
-	public HttpRequest acceptCharsets(AcceptCharset... values) {
-		return acceptCharsets(Arrays.asList(values));
+	public HttpRequest withAcceptCharsets(AcceptCharset... values) {
+		return withAcceptCharsets(Arrays.asList(values));
 	}
 
-	public HttpRequest cookies(List<HttpCookie> cookies) {
+	public HttpRequest withCookies(List<HttpCookie> cookies) {
 		addHeader(ofCookies(COOKIE, cookies));
 		return this;
 	}
 
-	public HttpRequest cookies(HttpCookie... cookie) {
-		return cookies(Arrays.asList(cookie));
+	public HttpRequest withCookies(HttpCookie... cookie) {
+		return withCookies(Arrays.asList(cookie));
 	}
 
-	public HttpRequest cookie(HttpCookie cookie) {
-		return cookies(Collections.singletonList(cookie));
+	public HttpRequest withCookie(HttpCookie cookie) {
+		return withCookies(Collections.singletonList(cookie));
 	}
 
-	public HttpRequest contentType(ContentType contentType) {
+	public HttpRequest withContentType(ContentType contentType) {
 		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
 		return this;
 	}
 
-	public HttpRequest date(Date date) {
+	public HttpRequest withDate(Date date) {
 		setHeader(ofDate(HttpHeaders.DATE, date));
 		return this;
 	}
 
-	public HttpRequest ifModifiedSince(Date date) {
+	public HttpRequest withIfModifiedSince(Date date) {
 		setHeader(ofDate(IF_MODIFIED_SINCE, date));
 		return this;
 	}
 
-	public HttpRequest ifUnModifiedSince(Date date) {
+	public HttpRequest withIfUnModifiedSince(Date date) {
 		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
 		return this;
 	}
 
-	public HttpRequest url(HttpUri url) {
+	public HttpRequest withUrl(HttpUri url) {
 		assert !recycled;
 		this.url = url;
 		if (!url.isPartial()) {
@@ -146,11 +146,11 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest url(String url) {
-		return url(HttpUri.ofUrl(url));
+	public HttpRequest withUrl(String url) {
+		return withUrl(HttpUri.ofUrl(url));
 	}
 
-	public HttpRequest remoteAddress(InetAddress inetAddress) {
+	public HttpRequest withRemoteAddress(InetAddress inetAddress) {
 		assert !recycled;
 		this.remoteAddress = inetAddress;
 		return this;
@@ -158,7 +158,7 @@ public final class HttpRequest extends HttpMessage {
 
 	private boolean gzip = false;
 
-	public HttpRequest compressWithGzip() {
+	public HttpRequest withGzipCompression() {
 		setHeader(CONTENT_ENCODING, "gzip");
 		gzip = true;
 		return this;
