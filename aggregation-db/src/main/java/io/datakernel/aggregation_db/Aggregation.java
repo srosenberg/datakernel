@@ -341,7 +341,7 @@ public class Aggregation implements AggregationOperationTracker {
 		}
 
 		if (!notEqualsPredicates.isEmpty()) {
-			StreamFilter streamFilter = new StreamFilter<>(eventloop,
+			StreamFilter streamFilter = StreamFilter.create(eventloop,
 					createNotEqualsPredicate(outputClass, notEqualsPredicates, classLoader));
 			streamProducer.streamTo(streamFilter.getInput());
 			queryResultProducer = streamFilter.getOutput();
@@ -362,9 +362,9 @@ public class Aggregation implements AggregationOperationTracker {
 		Comparator keyComparator = createKeyComparator(resultClass, keys, classLoader);
 		Path path = Paths.get("sorterStorage", "%d.part");
 		BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, getKeys(), fields, classLoader);
-		StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+		StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
 				bufferSerializer, path, sorterBlockSize);
-		StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
+		StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
 				sorterItemsInMemory);
 		rawStream.streamTo(sorter.getInput());
 		return sorter.getOutput();
@@ -500,14 +500,14 @@ public class Aggregation implements AggregationOperationTracker {
 			 */
 			StreamMap.MapperProjection mapper = createMapper(producerClasses.get(0), resultClass, queryKeys,
 					newArrayList(filter(fields, in(producersFields.get(0)))), classLoader);
-			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
+			StreamMap<Object, T> streamMap = StreamMap.create(eventloop, mapper);
 			producers.get(0).streamTo(streamMap.getInput());
 			if (queryPlan != null)
 				queryPlan.setOptimizedAwayReducer(true);
 			return streamMap.getOutput();
 		}
 
-		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
 		Class<?> keyClass = structure.createKeyClass(queryKeys, this.classLoader);
 
@@ -545,13 +545,13 @@ public class Aggregation implements AggregationOperationTracker {
 				chunk.getFields(), chunkRecordClass, chunk.getChunkId(), this.classLoader);
 		StreamProducer chunkProducer = chunkReader;
 		if (ignoreChunkReadingExceptions) {
-			ErrorIgnoringTransformer errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+			ErrorIgnoringTransformer errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 			chunkReader.streamTo(errorIgnoringTransformer.getInput());
 			chunkProducer = errorIgnoringTransformer.getOutput();
 		}
 		if (predicates == null)
 			return chunkProducer;
-		StreamFilter streamFilter = new StreamFilter<>(eventloop,
+		StreamFilter streamFilter = StreamFilter.create(eventloop,
 				createPredicate(chunk, chunkRecordClass, predicates, classLoader));
 		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();

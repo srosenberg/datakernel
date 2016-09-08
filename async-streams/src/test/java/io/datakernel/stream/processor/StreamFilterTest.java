@@ -45,7 +45,7 @@ public class StreamFilterTest {
 				return input % 2 == 1;
 			}
 		};
-		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -73,7 +73,7 @@ public class StreamFilterTest {
 				return input % 2 != 2;
 			}
 		};
-		StreamFilter<Integer> streamFilter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
@@ -122,7 +122,7 @@ public class StreamFilterTest {
 				return input % 2 != 2;
 			}
 		};
-		StreamFilter<Integer> streamFilter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> streamFilter = StreamFilter.create(eventloop, predicate);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -152,7 +152,7 @@ public class StreamFilterTest {
 				return input % 2 == 1;
 			}
 		};
-		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
+		StreamFilter<Integer> filter = StreamFilter.create(eventloop, predicate);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 

@@ -105,7 +105,7 @@ public final class LogToCubeRunner<T> {
 			}
 		});
 
-		final StreamUnion<T> streamUnion = new StreamUnion<>(eventloop);
+		final StreamUnion<T> streamUnion = StreamUnion.create(eventloop);
 
 		for (String logPartition : positions.keySet()) {
 			LogPosition logPosition = positions.get(logPartition);

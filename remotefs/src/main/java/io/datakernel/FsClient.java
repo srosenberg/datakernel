@@ -236,7 +236,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 				asyncTcpSocket.setEventHandler(messaging);
 				asyncTcpSocketImpl.register();
 				callback.onConnect(messaging);

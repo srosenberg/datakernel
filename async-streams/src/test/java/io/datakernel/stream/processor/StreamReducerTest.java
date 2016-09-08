@@ -46,7 +46,7 @@ public class StreamReducerTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
@@ -76,7 +76,7 @@ public class StreamReducerTest {
 		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, asList(1, 3));
 		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
@@ -116,7 +116,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 
 		final List<KeyValueResult> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = new TestStreamConsumers.TestConsumerToList<KeyValueResult>(eventloop, list) {
@@ -174,7 +174,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 
 		List<KeyValueResult> list = new ArrayList<>();
 		StreamConsumers.ToList<KeyValueResult> consumer = new StreamConsumers.ToList<>(eventloop, list);
@@ -391,7 +391,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 
 		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -426,7 +426,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 
 		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -466,7 +466,7 @@ public class StreamReducerTest {
 		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, asList(1, 3));
 		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
-		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
@@ -504,7 +504,7 @@ public class StreamReducerTest {
 	public void testWithoutProducer() {
 		Eventloop eventloop = Eventloop.create();
 
-		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		StreamReducer<Integer, Integer, Void> streamReducer = StreamReducer.create(eventloop, Ordering.<Integer>natural(), 1);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();
 		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
 		toList.setCompletionCallback(checkCallCallback);

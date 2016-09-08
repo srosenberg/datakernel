@@ -53,7 +53,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.positionCallback = positionCallback;
-		this.forwarder = new StreamForwarder<>(eventloop);
+		this.forwarder = StreamForwarder.create(eventloop);
 		setActualProducer(forwarder.getOutput());
 		fileSystem.list(logPartition, new ResultCallback<List<LogFile>>() {
 			@Override
@@ -100,14 +100,14 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				boolean first = currentLogFile == null;
 				currentLogFile = it.next();
 
-				currentDecompressor = new StreamLZ4Decompressor(eventloop);
+				currentDecompressor = StreamLZ4Decompressor.create(eventloop);
 
 				fileSystem.read(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L,
 						currentDecompressor.getInput());
 
-				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer,
+				StreamBinaryDeserializer<T> currentDeserializer = StreamBinaryDeserializer.create(eventloop, serializer,
 						StreamBinarySerializer.MAX_SIZE);
-				ErrorIgnoringTransformer<T> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+				ErrorIgnoringTransformer<T> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
 				currentDeserializer.getOutput().streamTo(errorIgnoringTransformer.getInput());

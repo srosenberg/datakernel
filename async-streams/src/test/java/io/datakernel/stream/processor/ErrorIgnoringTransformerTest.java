@@ -35,7 +35,7 @@ public class ErrorIgnoringTransformerTest {
 		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
-		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
 
@@ -59,7 +59,7 @@ public class ErrorIgnoringTransformerTest {
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
-		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
@@ -82,7 +82,7 @@ public class ErrorIgnoringTransformerTest {
 		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6));
 
-		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = ErrorIgnoringTransformer.create(eventloop);
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {

@@ -65,7 +65,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -132,7 +132,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -204,7 +204,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -258,7 +258,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override
@@ -313,7 +313,7 @@ public class StreamMemoryReducerTest {
 				return accumulator;
 			}
 		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = StreamMemoryReducer.create(eventloop,
 				reducer,
 				new Function<DataItem1, DataItemKey>() {
 					@Override

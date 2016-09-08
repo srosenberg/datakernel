@@ -80,10 +80,10 @@ public class StreamLZ4Test {
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
+		StreamByteChunker preBuf = StreamByteChunker.create(eventloop, 64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		StreamByteChunker postBuf = StreamByteChunker.create(eventloop, 64, 128);
+		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(preBuf.getInput());
@@ -132,10 +132,10 @@ public class StreamLZ4Test {
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
+		StreamByteChunker preBuf = StreamByteChunker.create(eventloop, 64, 128);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		StreamByteChunker postBuf = StreamByteChunker.create(eventloop, 64, 128);
+		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(preBuf.getInput());
@@ -219,7 +219,7 @@ public class StreamLZ4Test {
 		buffers.add(buf);
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		StreamLZ4Decompressor decompressor = StreamLZ4Decompressor.create(eventloop);
 		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop);
 
 		source.streamTo(compressor.getInput());

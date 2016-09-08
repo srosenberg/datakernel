@@ -41,7 +41,7 @@ public class StreamFunctionTest {
 	public void testFunction() {
 		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -68,7 +68,7 @@ public class StreamFunctionTest {
 	public void testFunctionConsumerError() {
 		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -112,7 +112,7 @@ public class StreamFunctionTest {
 	public void testFunctionProducerError() {
 		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;
@@ -143,7 +143,7 @@ public class StreamFunctionTest {
 	public void testWithoutConsumer() {
 		Eventloop eventloop = Eventloop.create();
 
-		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+		StreamFunction<Integer, Integer> streamFunction = StreamFunction.create(eventloop, new Function<Integer, Integer>() {
 			@Override
 			public Integer apply(Integer input) {
 				return input * input;

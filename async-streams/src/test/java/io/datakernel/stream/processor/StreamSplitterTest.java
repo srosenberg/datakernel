@@ -39,7 +39,7 @@ public class StreamSplitterTest {
 		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
+		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
@@ -60,7 +60,7 @@ public class StreamSplitterTest {
 		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
+		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 
 		List<Integer> toList1 = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListOneByOne(eventloop, toList1);
@@ -115,7 +115,7 @@ public class StreamSplitterTest {
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
-		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
+		StreamSplitter<Integer> streamConcat = StreamSplitter.create(eventloop);
 
 		List<Integer> list1 = new ArrayList<>();
 		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);

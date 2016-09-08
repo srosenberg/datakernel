@@ -19,7 +19,7 @@ package io.datakernel.stream;
 import io.datakernel.eventloop.Eventloop;
 
 public final class SimpleStreamProducer<T> extends AbstractStreamProducer<T> {
-	private final StatusListener statusListener;
+	private StatusListener statusListener;
 
 	public interface StatusListener {
 		void onResumed();
@@ -28,6 +28,22 @@ public final class SimpleStreamProducer<T> extends AbstractStreamProducer<T> {
 
 		void onClosedWithError(Exception e);
 	}
+
+	// region creators
+	private SimpleStreamProducer(Eventloop eventloop) {
+		super(eventloop);
+		this.statusListener = null;
+	}
+
+	public static <T> SimpleStreamProducer<T> create(Eventloop eventloop) {
+		return new SimpleStreamProducer<>(eventloop);
+	}
+
+	public SimpleStreamProducer withStatusListener(StatusListener statusListener) {
+		this.statusListener = statusListener;
+		return this;
+	}
+	// endregion
 
 	@Override
 	protected void onDataReceiverChanged() {
@@ -49,16 +65,6 @@ public final class SimpleStreamProducer<T> extends AbstractStreamProducer<T> {
 	protected void onError(Exception e) {
 		if (statusListener != null)
 			statusListener.onClosedWithError(e);
-	}
-
-	public SimpleStreamProducer(Eventloop eventloop, StatusListener statusListener) {
-		super(eventloop);
-		this.statusListener = statusListener;
-	}
-
-	public SimpleStreamProducer(Eventloop eventloop) {
-		super(eventloop);
-		this.statusListener = null;
 	}
 
 	public void send(T item) {

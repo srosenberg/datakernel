@@ -238,7 +238,7 @@ class StressClient {
 
 		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
 		StreamBinarySerializer<TestObject> serializer =
-				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+				StreamBinarySerializer.create(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
 		client.upload("someName" + i, serializer.getOutput(), ignoreCompletionCallback());

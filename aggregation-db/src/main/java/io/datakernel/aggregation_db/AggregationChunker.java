@@ -161,7 +161,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				final Metadata metadata = new Metadata();
 				currentChunkMetadata = metadata;
 
-				final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+				final StreamForwarder<T> forwarder = StreamForwarder.create(eventloop);
 				outputProducer.streamTo(forwarder.getInput());
 
 				logger.info("Retrieving new chunk id for aggregation {}", keys);

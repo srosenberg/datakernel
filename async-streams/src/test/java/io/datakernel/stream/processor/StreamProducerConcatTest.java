@@ -142,7 +142,7 @@ public class StreamProducerConcatTest {
 				StreamProducers.<Integer>closing(eventloop));
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
-		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 
 		producer.streamTo(function.getInput());
 		eventloop.run();

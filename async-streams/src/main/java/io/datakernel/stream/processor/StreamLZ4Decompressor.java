@@ -178,16 +178,23 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		}
 	}
 
-	// creators
-	public StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
+	// region creators
+	private StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		super(eventloop);
 		this.outputProducer = new OutputProducer(decompressor, checksum);
 		this.inputConsumer = new InputConsumer();
 	}
 
-	public StreamLZ4Decompressor(Eventloop eventloop) {
-		this(eventloop, LZ4Factory.fastestInstance().fastDecompressor(), XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
+	public static StreamLZ4Decompressor create(Eventloop eventloop, LZ4FastDecompressor decompressor,
+	                                           StreamingXXHash32 checksum) {
+		return new StreamLZ4Decompressor(eventloop, decompressor, checksum);
 	}
+
+	public static StreamLZ4Decompressor create(Eventloop eventloop) {
+		return new StreamLZ4Decompressor(eventloop, LZ4Factory.fastestInstance().fastDecompressor(),
+				XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
+	}
+	// endregion
 
 	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 	                                byte[] bytes, int off) throws ParseException {

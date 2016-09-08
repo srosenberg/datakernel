@@ -125,7 +125,7 @@ public class StreamJoinAsUnsortedStreamTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				new StreamJoin<>(eventloop, Ordering.<Integer>natural(),
+				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
 						new Function<DataItemMaster, Integer>() {
 							@Override
 							public Integer apply(DataItemMaster input) {
@@ -190,7 +190,7 @@ public class StreamJoinAsUnsortedStreamTest {
 				new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				new StreamJoin<>(eventloop, Ordering.<Integer>natural(),
+				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
 						new Function<DataItemMaster, Integer>() {
 							@Override
 							public Integer apply(DataItemMaster input) {
@@ -265,7 +265,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
-				new StreamJoin<>(eventloop, Ordering.<Integer>natural(),
+				StreamJoin.create(eventloop, Ordering.<Integer>natural(),
 						new Function<DataItemMaster, Integer>() {
 							@Override
 							public Integer apply(DataItemMaster input) {

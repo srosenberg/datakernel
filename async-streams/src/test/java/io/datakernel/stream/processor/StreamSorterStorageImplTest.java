@@ -60,7 +60,7 @@ public class StreamSorterStorageImplTest {
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(111));
 
 		File workPath = tempFolder.newFolder("tmp");
-		StreamMergeSorterStorageImpl<Integer> storage = new StreamMergeSorterStorageImpl<>(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
+		StreamMergeSorterStorageImpl<Integer> storage = StreamMergeSorterStorageImpl.create(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
 
 		int firstStorage = storage.write(source1, ignoreCompletionCallback());
 		int secondStorage = storage.write(source2, ignoreCompletionCallback());

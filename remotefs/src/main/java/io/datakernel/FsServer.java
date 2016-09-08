@@ -66,7 +66,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = MessagingWithBinaryStreaming.create(eventloop, asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
 			@Override
 			public void onReceive(FsCommand msg) {

@@ -235,7 +235,7 @@ public final class Cube implements EventloopJmxMBean {
 	                                      final ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> callback) {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensions, measures);
 
-		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
+		final StreamSplitter<T> streamSplitter = StreamSplitter.create(eventloop);
 		final AsyncResultsTrackerMultimap<AggregationMetadata, AggregationChunk.NewChunk> tracker = ofMultimap(callback);
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
@@ -345,7 +345,7 @@ public final class Cube implements EventloopJmxMBean {
 	 * @return producer that streams query results
 	 */
 	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query, DefiningClassLoader classLoader) {
-		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
+		StreamReducer<Comparable, T, Object> streamReducer = StreamReducer.create(eventloop, Ordering.natural());
 
 		Map<Aggregation, List<String>> aggregationsToAppliedPredicateKeys = findAggregationsForQuery(query.getAggregationQuery());
 
@@ -384,7 +384,7 @@ public final class Cube implements EventloopJmxMBean {
 				 */
 				StreamMap.MapperProjection mapper = createMapper(aggregationClass, resultClass, resultDimensions,
 						aggregationMeasures, classLoader);
-				StreamMap streamMap = new StreamMap<>(eventloop, mapper);
+				StreamMap streamMap = StreamMap.create(eventloop, mapper);
 				aggregationProducer.streamTo(streamMap.getInput());
 				queryResultProducer = streamMap.getOutput();
 				queryPlan.setOptimizedAwayReducer(true);
@@ -603,9 +603,9 @@ public final class Cube implements EventloopJmxMBean {
 			Comparator fieldComparator = createFieldComparator(query, resultClass, classLoader);
 			Path path = Paths.get("sorterStorage", "%d.part");
 			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures, classLoader);
-			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+			StreamMergeSorterStorage sorterStorage = StreamMergeSorterStorageImpl.create(eventloop, executorService,
 					bufferSerializer, path, sorterBlockSize);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
+			StreamSorter sorter = StreamSorter.create(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.streamTo(sorter.getInput());
 			return sorter.getOutput();

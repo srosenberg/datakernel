@@ -60,7 +60,7 @@ public class StreamProducerDecoratorTest {
 		};
 
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
 
 		producerDecorator.streamTo(consumer);
 
@@ -80,7 +80,7 @@ public class StreamProducerDecoratorTest {
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
 
 		producerDecorator.streamTo(consumer);
 
@@ -99,8 +99,8 @@ public class StreamProducerDecoratorTest {
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
-		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(producer) {};
+		StreamFunction<Integer, Integer> function = StreamFunction.create(eventloop, Functions.<Integer>identity());
 
 		producerDecorator.streamTo(function.getInput());
 		eventloop.run();

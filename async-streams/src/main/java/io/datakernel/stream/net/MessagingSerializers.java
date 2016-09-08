@@ -10,8 +10,8 @@ import io.datakernel.exception.ParseException;
 import static io.datakernel.bytebuf.ByteBufStrings.putUtf8;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
-public class MessagingSerializers {
-	public static final ParseException DESERIALIZE_ERR = new ParseException("Cant deserialize message");
+public final class MessagingSerializers {
+	public static final ParseException DESERIALIZE_ERR = new ParseException("Can't deserialize message");
 
 	private MessagingSerializers() {
 	}

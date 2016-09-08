@@ -81,7 +81,7 @@ public class StreamByteChunkerTest {
 		int bufSize = 128;
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamByteChunker resizer = new StreamByteChunker(eventloop, bufSize / 2, bufSize);
+		StreamByteChunker resizer = StreamByteChunker.create(eventloop, bufSize / 2, bufSize);
 		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
 
 		source.streamTo(resizer.getInput());

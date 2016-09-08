@@ -33,9 +33,9 @@ public final class GsonSubclassesAdapter<T> implements JsonSerializer<T>, JsonDe
 	private final ImmutableBiMap<String, Class<? extends T>> subclassNames;
 	private final String subclassField;
 
-	public GsonSubclassesAdapter(Map<String, Class<? extends T>> classTags,
-	                             Map<String, InstanceCreator<T>> classCreators,
-	                             String subclassField, Map<String, Class<? extends T>> subclassNames) {
+	private GsonSubclassesAdapter(Map<String, Class<? extends T>> classTags,
+	                              Map<String, InstanceCreator<T>> classCreators,
+	                              String subclassField, Map<String, Class<? extends T>> subclassNames) {
 		this.classTags = ImmutableBiMap.copyOf(classTags);
 		this.classCreators = ImmutableMap.copyOf(classCreators);
 		this.subclassField = subclassField;
