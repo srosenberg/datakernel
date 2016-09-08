@@ -8,10 +8,10 @@ import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -19,12 +19,13 @@ import static org.junit.Assert.assertThat;
 public class TestClientMultilineHeaders {
 
 	public static final int PORT = 9595;
+	public static final InetAddress GOOGLE_PUBLIC_DNS = HttpUtils.inetAddress("8.8.8.8");
 
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
 		Eventloop eventloop = Eventloop.create();
 		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(GOOGLE_PUBLIC_DNS));
 
 		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 

@@ -26,7 +26,7 @@ public final class CubeHttpServer {
 	public static final String QUERY_REQUEST_PATH = "/";
 
 	private static MiddlewareServlet createServlet(Cube cube, ReportingServiceServlet reportingServiceServlet) {
-		MiddlewareServlet servlet = new MiddlewareServlet();
+		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.get(QUERY_REQUEST_PATH, reportingServiceServlet);
 		servlet.get("/consolidation-debug", new ConsolidationDebugServlet(cube));
 		return servlet;

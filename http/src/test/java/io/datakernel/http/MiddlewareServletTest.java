@@ -69,16 +69,16 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet a = new MiddlewareServlet();
+		MiddlewareServlet a = MiddlewareServlet.create();
 		a.get("/c", action);
 		a.get("/d", action);
 		a.get("/", action);
 
-		MiddlewareServlet b = new MiddlewareServlet();
+		MiddlewareServlet b = MiddlewareServlet.create();
 		b.get("/f", action);
 		b.get("/g", action);
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/", action);
 		main.get("/a", a);
 		main.get("/b", b);
@@ -115,7 +115,7 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 
 		main.get("/", action);
 		main.get("/a", action);
@@ -155,7 +155,7 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet s1 = new MiddlewareServlet();
+		MiddlewareServlet s1 = MiddlewareServlet.create();
 		s1.get("/", action);
 		s1.get("/", action);
 
@@ -183,13 +183,13 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/a", action);
 		main.get("/a/c", action);
 		main.get("/a/d", action);
 		main.get("/b", action);
 
-		MiddlewareServlet supp = new MiddlewareServlet();
+		MiddlewareServlet supp = MiddlewareServlet.create();
 		supp.get("/", action);
 		supp.get("/a/e", action);
 		supp.get("/a/c/f", action);
@@ -228,12 +228,12 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/", action);
 		main.get("/a/e", action);
 		main.get("/a/c/f", action);
 
-		MiddlewareServlet exc = new MiddlewareServlet();
+		MiddlewareServlet exc = MiddlewareServlet.create();
 		exc.get("/a/c/f", anotherAction);
 
 		// /a/c/f already mapped
@@ -259,7 +259,7 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/:id/a/:uid/b/:eid", printParameters);
 		main.get("/:id/a/:uid", printParameters);
 
@@ -291,7 +291,7 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet ms = new MiddlewareServlet();
+		MiddlewareServlet ms = MiddlewareServlet.create();
 		ms.get("/serve/:cid/wash", serveCar);
 		ms.get("/serve/:mid/feed", serveMan);
 
@@ -335,7 +335,7 @@ public class MiddlewareServletTest {
 			}
 		};
 
-		MiddlewareServlet servlet = new MiddlewareServlet();
+		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.use("/a/b/c/action", wildcard);
 		servlet.post("/a/b/c/action", post);
 		servlet.get("/a/b/c/action", get);
@@ -367,7 +367,7 @@ public class MiddlewareServletTest {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.get("/html/admin/action", action);
 		main.setDefault("/html/admin", def);
 
@@ -386,7 +386,7 @@ public class MiddlewareServletTest {
 				callback.onResult(HttpResponse.of(200).withBody(ByteBufStrings.wrapUtf8("All OK")));
 			}
 		};
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.use("/a/:id/b/c", null);
 		main.use("/a/:id/b/d", handler);
 

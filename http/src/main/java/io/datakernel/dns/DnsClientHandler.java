@@ -82,10 +82,14 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 		}
 	};
 
-	public DnsClientHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
+	private DnsClientHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 		this.eventloop = eventloop;
 		this.socket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
 		this.socket.setEventHandler(upstreamEventHandler);
+	}
+
+	public static DnsClientHandler create(Eventloop eventloop, DatagramChannel datagramChannel) {
+		return new DnsClientHandler(eventloop, datagramChannel);
 	}
 
 	@Override

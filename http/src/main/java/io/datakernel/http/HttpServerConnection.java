@@ -76,11 +76,23 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet   servlet for handling requests
 	 * @param pool      pool in which will be stored this connection
 	 */
-	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+	private HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
+	                             AsyncHttpServer server, AsyncHttpServlet servlet,
+	                             ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
+	                             int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
 		this.server = server;
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
+	}
+
+	static HttpServerConnection create(Eventloop eventloop, InetAddress remoteAddress,
+	                                   AsyncTcpSocket asyncTcpSocket, AsyncHttpServer server,
+	                                   AsyncHttpServlet servlet,
+	                                   ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars,
+	                                   int maxHttpMessageSize) {
+		return new HttpServerConnection(eventloop, remoteAddress, asyncTcpSocket, server, servlet,
+				pool, headerChars, maxHttpMessageSize);
 	}
 
 	@Override

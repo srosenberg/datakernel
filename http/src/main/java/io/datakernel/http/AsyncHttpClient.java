@@ -82,13 +82,15 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
-	public static AsyncHttpClient create(Eventloop eventloop, DnsClient dnsClient) {return new AsyncHttpClient(eventloop, dnsClient);}
+	public static AsyncHttpClient create(Eventloop eventloop, DnsClient dnsClient) {
+		return new AsyncHttpClient(eventloop, dnsClient);
+	}
 
 	private AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
 		this.socketSettings = checkNotNull(socketSettings);
-		this.pool = new ExposedLinkedList<>();
+		this.pool = ExposedLinkedList.create();
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
 			chars = new char[MAX_HEADER_LINE_SIZE];
@@ -165,7 +167,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		if (addressPool == null) {
 			addressPool = addressPools.get(connection.remoteAddress);
 			if (addressPool == null) {
-				addressPool = new ExposedLinkedList<>();
+				addressPool = ExposedLinkedList.create();
 				addressPools.put(connection.remoteAddress, addressPool);
 			}
 			connection.addressPool = addressPool;
@@ -240,7 +242,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = request.isHttps() ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 
-				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
+				HttpClientConnection connection = HttpClientConnection.create(eventloop, address,
 						asyncTcpSocket,
 						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 

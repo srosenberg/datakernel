@@ -98,7 +98,9 @@ public class SimpleProxyServerTest {
 
 		Eventloop eventloop2 = Eventloop.create();
 		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2,
-				NativeDnsResolver.create(eventloop2, DatagramSocketSettings.create(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.create(eventloop2)
+						.withDatagramSocketSetting(DatagramSocketSettings.create())
+						.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.withListenPort(PROXY_SERVER_PORT).withAcceptOnce(false);

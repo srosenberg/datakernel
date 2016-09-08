@@ -21,7 +21,6 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ClientStressTest {
@@ -47,7 +46,7 @@ public class ClientStressTest {
 	private final SSLContext context = SSLContext.getDefault();
 
 	private AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-			NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
+			NativeDnsResolver.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}

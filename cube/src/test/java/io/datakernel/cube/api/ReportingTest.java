@@ -68,7 +68,6 @@ import static io.datakernel.codegen.Expressions.call;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.cube.CubeTestUtils.*;
 import static io.datakernel.cube.api.ReportingDSL.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -322,8 +321,10 @@ public class ReportingTest {
 		serverStartFuture.await();
 
 		clientEventloop = Eventloop.create();
-		NativeDnsResolver dnsClient = NativeDnsResolver.create(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
-				HttpUtils.inetAddress("8.8.8.8"));
+		NativeDnsResolver dnsClient
+				= NativeDnsResolver.create(clientEventloop)
+				.withTimeout(TIMEOUT)
+				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
 		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);
 		cubeHttpClient = new CubeHttpClient("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
 	}

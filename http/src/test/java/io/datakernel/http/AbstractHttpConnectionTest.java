@@ -35,7 +35,10 @@ public class AbstractHttpConnectionTest {
 		server.listen();
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, DatagramSocketSettings.create(), 300, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.create(eventloop)
+						.withDatagramSocketSetting(DatagramSocketSettings.create())
+						.withTimeout(300).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"))
+		);
 
 		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), 50000, new ResultCallback<HttpResponse>() {
 			@Override

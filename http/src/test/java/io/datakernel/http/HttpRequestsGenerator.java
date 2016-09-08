@@ -26,7 +26,6 @@ import io.datakernel.exception.ParseException;
 import io.datakernel.util.Stopwatch;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.Preconditions.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -157,8 +156,7 @@ public final class HttpRequestsGenerator {
 		this.eventloop = checkNotNull(eventloop);
 		this.options = checkNotNull(options);
 		this.client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-						3_000L, HttpUtils.inetAddress("8.8.8.8")));
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 		this.completionCallback = checkNotNull(completionCallback);
 	}
 

@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static org.junit.Assert.*;
 
@@ -78,8 +77,8 @@ public class HttpApiTest {
 			}
 		}).withListenPort(PORT);
 
-		client = AsyncHttpClient.create(eventloop, NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		client = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8")));
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));

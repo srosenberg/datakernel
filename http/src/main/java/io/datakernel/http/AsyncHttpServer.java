@@ -56,7 +56,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
-		this.pool = new ExposedLinkedList<>();
+		this.pool = ExposedLinkedList.create();
 		this.servlet = servlet;
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
@@ -117,7 +117,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		return new HttpServerConnection(
+		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				this, servlet, pool, headerChars, maxHttpMessageSize);
 	}

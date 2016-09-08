@@ -26,7 +26,11 @@ import java.io.OutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-class GzipProcessor {
+final class GzipProcessor {
+	private GzipProcessor() {}
+
+	static GzipProcessor create() {return new GzipProcessor();}
+
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
 		try {
 			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.head(), raw.headRemaining()));

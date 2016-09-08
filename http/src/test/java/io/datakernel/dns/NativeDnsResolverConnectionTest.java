@@ -94,7 +94,7 @@ public class NativeDnsResolverConnectionTest {
 			public void run() {
 				try {
 					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-					dnsClientConnection = new DnsClientHandler(eventloop, datagramChannel);
+					dnsClientConnection = DnsClientHandler.create(eventloop, datagramChannel);
 					dnsClientConnection.register();
 				} catch (IOException e) {
 					e.printStackTrace();

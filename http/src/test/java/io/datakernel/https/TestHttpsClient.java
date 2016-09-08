@@ -40,7 +40,6 @@ import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -59,7 +58,7 @@ public class TestHttpsClient {
 		ExecutorService executor = newCachedThreadPool();
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(inetAddress("8.8.8.8")))
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
 		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();

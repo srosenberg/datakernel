@@ -30,6 +30,7 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import java.io.File;
+import java.net.InetAddress;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
@@ -41,7 +42,6 @@ import static io.datakernel.http.HttpRequest.post;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.https.SslUtils.*;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -70,13 +70,15 @@ public class TestHttpsClientServer {
 
 	public TestHttpsClientServer() throws Exception {}
 
+	public static final InetAddress GOOGLE_PUBLIC_DNS = inetAddress("8.8.8.8");
+
 	@Test
 	public void testClientServerInteraction() throws Exception {
 		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.setSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
 				.withSslEnabled(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor);
 
 		HttpRequest request = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));
@@ -114,7 +116,7 @@ public class TestHttpsClientServer {
 				.withListenPort(PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+				NativeDnsResolver.create(eventloop).withTimeout(500).withDnsServerAddress(GOOGLE_PUBLIC_DNS))
 				.withSslEnabled(context, executor);
 
 		HttpRequest httpsRequest = post("https://127.0.0.1:" + SSL_PORT).withBody(wrapAscii("Hello, I am Alice!"));

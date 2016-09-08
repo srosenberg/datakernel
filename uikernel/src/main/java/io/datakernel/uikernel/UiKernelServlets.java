@@ -39,7 +39,7 @@ public class UiKernelServlets {
 	private static final String ID_PARAMETER_NAME = "id";
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel<K, R> model, Gson gson) {
-		MiddlewareServlet main = new MiddlewareServlet();
+		MiddlewareServlet main = MiddlewareServlet.create();
 		main.post(create(model, gson));
 		main.get(read(model, gson));
 		main.use(PUT, update(model, gson));

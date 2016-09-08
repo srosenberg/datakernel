@@ -37,7 +37,6 @@ import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpUtils.inetAddress;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -70,7 +69,7 @@ public class TestGzipProcessor {
 				.withListenPort(PORT);
 
 		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
-				NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")));
+				NativeDnsResolver.create(eventloop).withDnsServerAddress(inetAddress("8.8.8.8")));
 
 		final ResultCallbackFuture<String> callback = ResultCallbackFuture.create();
 
