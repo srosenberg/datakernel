@@ -23,7 +23,7 @@ import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
 
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 
 public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	private final Gson gson;

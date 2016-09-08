@@ -33,11 +33,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static io.datakernel.util.ByteBufStrings.*;
 import static org.junit.Assert.*;
 
 public class HttpTolerantApplicationTest {
@@ -49,7 +49,7 @@ public class HttpTolerantApplicationTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
 				primaryEventloop.post(new Runnable() {
@@ -76,7 +76,7 @@ public class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		AsyncHttpServer server = asyncHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -139,10 +139,10 @@ public class HttpTolerantApplicationTest {
 	@Test
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
-		Eventloop eventloop = new Eventloop();
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
+		Eventloop eventloop = Eventloop.create();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
+			final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop, NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					HttpUtils.inetAddress("8.8.8.8")));
 
 			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {

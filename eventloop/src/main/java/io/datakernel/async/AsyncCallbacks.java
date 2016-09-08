@@ -648,7 +648,7 @@ public final class AsyncCallbacks {
 	}
 
 	public static <T> AsyncGetterWithSetter<T> createAsyncGetterWithSetter(Eventloop eventloop) {
-		return new AsyncGetterWithSetter<>(eventloop);
+		return AsyncGetterWithSetter.create(eventloop);
 	}
 
 	private static final class AsyncCompletionCallback implements CompletionCallback {
@@ -722,7 +722,7 @@ public final class AsyncCallbacks {
 	 * @param server the NioServer which it sets listen.
 	 */
 	public static CompletionCallbackFuture listenFuture(final EventloopServer server) {
-		final CompletionCallbackFuture future = new CompletionCallbackFuture();
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		server.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
@@ -743,7 +743,7 @@ public final class AsyncCallbacks {
 	 * @param server the NioServer which it will close.
 	 */
 	public static CompletionCallbackFuture closeFuture(final EventloopServer server) {
-		final CompletionCallbackFuture future = new CompletionCallbackFuture();
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		server.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
@@ -760,7 +760,7 @@ public final class AsyncCallbacks {
 	 * @param eventloopService the NioService which will be ran.
 	 */
 	public static CompletionCallbackFuture startFuture(final EventloopService eventloopService) {
-		final CompletionCallbackFuture future = new CompletionCallbackFuture();
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		eventloopService.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
@@ -776,7 +776,7 @@ public final class AsyncCallbacks {
 	 * @param eventloopService the NioService which will be stopped.
 	 */
 	public static CompletionCallbackFuture stopFuture(final EventloopService eventloopService) {
-		final CompletionCallbackFuture future = new CompletionCallbackFuture();
+		final CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		eventloopService.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {

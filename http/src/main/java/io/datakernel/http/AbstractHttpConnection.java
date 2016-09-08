@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.ByteBufStrings.*;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {

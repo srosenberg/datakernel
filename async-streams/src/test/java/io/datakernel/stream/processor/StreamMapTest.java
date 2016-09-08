@@ -42,7 +42,7 @@ public class StreamMapTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
@@ -61,7 +61,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -99,7 +99,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
@@ -122,7 +122,7 @@ public class StreamMapTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);

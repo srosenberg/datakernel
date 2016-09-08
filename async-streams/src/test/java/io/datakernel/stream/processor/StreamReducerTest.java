@@ -42,7 +42,7 @@ import static org.junit.Assert.*;
 public class StreamReducerTest {
 	@Test
 	public void testEmpty() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
@@ -65,7 +65,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testDeduplicate() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -110,7 +110,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -164,7 +164,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
@@ -385,7 +385,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -420,7 +420,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test3() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -455,7 +455,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -502,7 +502,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();

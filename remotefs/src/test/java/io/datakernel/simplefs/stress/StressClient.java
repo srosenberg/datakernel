@@ -53,7 +53,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 class StressClient {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private InetSocketAddress address = new InetSocketAddress(5560);
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
 	private SimpleFsClient client = new SimpleFsClient(eventloop, address);

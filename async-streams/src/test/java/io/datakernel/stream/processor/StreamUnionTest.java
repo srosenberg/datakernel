@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 public class StreamUnionTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -82,7 +82,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -129,7 +129,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -159,7 +159,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -204,7 +204,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();

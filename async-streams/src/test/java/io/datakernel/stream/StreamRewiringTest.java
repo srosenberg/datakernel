@@ -35,7 +35,7 @@ import static org.junit.Assert.*;
 public class StreamRewiringTest {
 	@Test
 	public void noRewire() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -62,7 +62,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -95,7 +95,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer2() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -127,7 +127,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireProducer1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);
@@ -166,7 +166,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void testProducerWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1));
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 		producer.streamTo(function.getInput());

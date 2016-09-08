@@ -93,7 +93,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -156,7 +156,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -221,7 +221,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);

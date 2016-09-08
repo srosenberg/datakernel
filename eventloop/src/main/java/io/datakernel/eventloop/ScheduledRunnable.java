@@ -18,7 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCancellable;
 
-public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
+public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
 	/**
 	 * The time after which this runnable will be executed
 	 */

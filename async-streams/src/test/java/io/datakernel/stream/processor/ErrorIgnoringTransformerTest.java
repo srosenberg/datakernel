@@ -32,7 +32,7 @@ public class ErrorIgnoringTransformerTest {
 
 	@Test
 	public void test1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
 		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
@@ -54,7 +54,7 @@ public class ErrorIgnoringTransformerTest {
 
 	@Test
 	public void testProducerWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
@@ -79,7 +79,7 @@ public class ErrorIgnoringTransformerTest {
 
 	@Test
 	public void testConsumerWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6));
 
 		ErrorIgnoringTransformer<Integer> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);

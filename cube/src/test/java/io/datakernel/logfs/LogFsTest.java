@@ -69,10 +69,10 @@ public class LogFsTest {
 	@Before
 	public void setUp() throws Exception {
 		path = temporaryFolder.newFolder("storage").toPath();
-		timeProvider = new SettableCurrentTimeProvider();
+		timeProvider = SettableCurrentTimeProvider.create();
 		executor = Executors.newCachedThreadPool();
-		eventloop = new Eventloop(timeProvider);
-		serverEventloop = new Eventloop();
+		eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		serverEventloop = Eventloop.create();
 		serverEventloop.keepAlive(true);
 	}
 
@@ -116,7 +116,7 @@ public class LogFsTest {
 		eventloop.run();
 		assertEquals(asList("7", "8", "9"), consumer1.getList());
 
-		ResultCallbackFuture<LogPosition> positionFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<LogPosition> positionFuture = ResultCallbackFuture.create();
 		LogStreamProducer<String> producer2 = logManager.producer(logPartition,
 				new LogFile(dateTimeFormatter.print(0), 1), 0,
 				new LogFile(dateTimeFormatter.print(2 * ONE_HOUR_MILLIS), 0), positionFuture);

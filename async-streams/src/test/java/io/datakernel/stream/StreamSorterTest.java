@@ -37,7 +37,7 @@ import static org.junit.Assert.*;
 public class StreamSorterTest {
 	@Test
 	public void test() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -61,7 +61,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -86,7 +86,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testCollision() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
 
 		final StreamProducer<Integer> scheduledSource = new ScheduledProducer(eventloop) {
@@ -152,7 +152,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testBadStorage() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -198,7 +198,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -232,7 +232,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnProducer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),

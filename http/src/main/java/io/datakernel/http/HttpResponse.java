@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.putDecimal;
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.putDecimal;
 
 /**
  * It represents the HTTP result with which server response in client {@link HttpRequest}. It must ave only

@@ -1,10 +1,10 @@
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -22,13 +22,13 @@ public class TestClientMultilineHeaders {
 
 	@Test
 	public void testMultilineHeaders() throws ExecutionException, InterruptedException, IOException {
-		Eventloop eventloop = new Eventloop();
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		Eventloop eventloop = Eventloop.create();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				callback.onResult(HttpResponse.ok200().withHeader(HttpHeaders.ALLOW, "GET,\r\n HEAD"));

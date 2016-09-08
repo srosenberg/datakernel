@@ -1,9 +1,9 @@
 package io.datakernel;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ public class ClientStressTest {
 
 	private static final String PATH_TO_URLS = "./src/test/resources/urls.txt";
 
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = newCachedThreadPool();
 	private Random random = new Random();
 	private Iterator<String> urls = getUrls().iterator();
@@ -41,13 +41,13 @@ public class ClientStressTest {
 			callback.onResult(HttpResponse.ok200());
 		}
 	};
-	private AsyncHttpServer server = new AsyncHttpServer(eventloop, servlet)
+	private AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
 			.withListenPort(1234);
 
 	private final SSLContext context = SSLContext.getDefault();
 
-	private AsyncHttpClient client = new AsyncHttpClient(eventloop,
-			NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
+	private AsyncHttpClient client = AsyncHttpClient.create(eventloop,
+			NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 3000, inetAddress("8.8.8.8")))
 			.withSslEnabled(context, executor);
 
 	private ClientStressTest() throws Exception {}

@@ -19,11 +19,11 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -32,8 +32,8 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.http.HttpResponse.badRequest400;
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public final class HttpRequestHandler implements RequestHandler {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());

@@ -16,10 +16,10 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -43,10 +43,10 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 
 	// jmx
 	private final InetSocketAddress remoteAddress;
-	private final ExceptionStats lastRequestHandlingException = new ExceptionStats();
-	private final ValueStats requestHandlingTime = new ValueStats();
-	private EventStats successfulRequests = new EventStats();
-	private EventStats failedRequests = new EventStats();
+	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private final ValueStats requestHandlingTime = ValueStats.create();
+	private EventStats successfulRequests = EventStats.create();
+	private EventStats failedRequests = EventStats.create();
 	private boolean monitoring = false;
 
 	public RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,

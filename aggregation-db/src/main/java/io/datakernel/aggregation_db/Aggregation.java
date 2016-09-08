@@ -716,7 +716,7 @@ public class Aggregation implements AggregationOperationTracker {
 			return;
 		}
 
-		loadChunksCallback = new ListenableCompletionCallback();
+		loadChunksCallback = ListenableCompletionCallback.create();
 		loadChunksCallback.addListener(callback);
 
 		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;

@@ -92,7 +92,7 @@ public final class ThrottlingController implements EventloopJmxMBean {
 		return throttlingController;
 	}
 
-	public ThrottlingController(Eventloop eventloop) {
+	private ThrottlingController(Eventloop eventloop) {
 		this.eventloop = eventloop;
 		checkArgument(this.eventloop.throttlingController == null, "Throttling controller already set");
 		this.eventloop.throttlingController = this;

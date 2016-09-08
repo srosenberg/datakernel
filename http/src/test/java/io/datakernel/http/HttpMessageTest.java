@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufStrings;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;

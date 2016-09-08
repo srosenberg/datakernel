@@ -140,9 +140,9 @@ public class DnsResolversTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 
-		nativeDnsResolver = NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		nativeDnsResolver = NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, LOCAL_DNS);
 	}
 
@@ -243,7 +243,7 @@ public class DnsResolversTest {
 				} catch (InterruptedException e) {
 					logger.warn("Thread interrupted.", e);
 				}
-				Eventloop callerEventloop = new Eventloop();
+				Eventloop callerEventloop = Eventloop.create();
 				ConcurrentOperationTracker concurrentOperationTracker = callerEventloop.startConcurrentOperation();
 				ConcurrentDnsResolveCallback callback = new ConcurrentDnsResolveCallback(new DnsResolveCallback(),
 						concurrentOperationTracker, counter);
@@ -303,40 +303,40 @@ public class DnsResolversTest {
 				new InetAddress[]{InetAddress.getByName("173.194.113.210"), InetAddress.getByName("173.194.113.209")},
 				3, (short) 1);
 
-		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider(0);
-		Eventloop eventloopWithTimeProvider = new Eventloop(timeProvider);
-		NativeDnsResolver nativeResolver = NativeDnsResolver.of(eventloopWithTimeProvider, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create().withTime(0);
+		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
+		NativeDnsResolver nativeResolver = NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();
 
 		timeProvider.setTime(0);
-		eventloopWithTimeProvider.refreshTimestampAndGet();
+		eventloop.refreshTimestampAndGet();
 		cache.add(testResult);
 
 		timeProvider.setTime(1500);
-		eventloopWithTimeProvider.refreshTimestampAndGet();
+		eventloop.refreshTimestampAndGet();
 		nativeResolver.resolve4(domainName, new DnsResolveCallback());
 
 		timeProvider.setTime(3500);
-		eventloopWithTimeProvider.refreshTimestampAndGet();
+		eventloop.refreshTimestampAndGet();
 		DnsResolveCallback callback = new DnsResolveCallback();
 		nativeResolver.resolve4(domainName, callback);
-		eventloopWithTimeProvider.run();
+		eventloop.run();
 		cache.add(testResult);
 
 		timeProvider.setTime(70000);
-		eventloopWithTimeProvider.refreshTimestampAndGet();
+		eventloop.refreshTimestampAndGet();
 		nativeResolver.resolve4(domainName, new DnsResolveCallback());
-		eventloopWithTimeProvider.run();
+		eventloop.run();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertThat(eventloop, doesntHaveFatals());
+		assertThat(this.eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testTimeout() throws Exception {
 		String domainName = "www.google.com";
-		NativeDnsResolver nativeDnsResolver = NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		NativeDnsResolver nativeDnsResolver = NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, UNREACHABLE_DNS);
 		nativeDnsResolver.resolve4(domainName, new DnsResolveCallback());
 		eventloop.run();

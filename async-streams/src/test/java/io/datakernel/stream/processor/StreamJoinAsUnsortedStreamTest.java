@@ -111,7 +111,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItemMaster(10, 10, "masterA"),
@@ -175,7 +175,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -248,7 +248,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
 				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception("Test Exception")),

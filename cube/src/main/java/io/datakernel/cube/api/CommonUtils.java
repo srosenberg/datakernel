@@ -33,8 +33,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public class CommonUtils {
 	// Reflection

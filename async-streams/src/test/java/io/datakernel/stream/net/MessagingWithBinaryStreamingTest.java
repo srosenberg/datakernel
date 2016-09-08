@@ -55,7 +55,7 @@ public class MessagingWithBinaryStreamingTest {
 
 	@Test
 	public void testPing() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
@@ -145,7 +145,7 @@ public class MessagingWithBinaryStreamingTest {
 //			source.add(i);
 //		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		List<Long> l = new ArrayList<>();
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop, l);
@@ -219,7 +219,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -297,7 +297,7 @@ public class MessagingWithBinaryStreamingTest {
 
 		final boolean[] ack = new boolean[]{false};
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -401,7 +401,7 @@ public class MessagingWithBinaryStreamingTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 

@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
 /**
@@ -50,7 +49,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryServer workerServers(Collection<? extends EventloopServer> workerServers) {
+	public PrimaryServer withWorkerServers(Collection<? extends EventloopServer> workerServers) {
 		this.workerServers = workerServers.toArray(new EventloopServer[workerServers.size()]);
 		return this;
 	}
@@ -62,7 +61,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryServer workerServers(EventloopServer... workerServers) {
+	public PrimaryServer withWorkerServers(EventloopServer... workerServers) {
 		this.workerServers = workerServers;
 		return this;
 	}

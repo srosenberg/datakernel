@@ -32,11 +32,11 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.*;
 
 public class SimpleProxyServerTest {
@@ -50,7 +50,7 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final Callback callback) {
 				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
@@ -71,7 +71,7 @@ public class SimpleProxyServerTest {
 	}
 
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
@@ -89,16 +89,16 @@ public class SimpleProxyServerTest {
 
 	@Test
 	public void testSimpleProxyServer() throws Exception {
-		Eventloop eventloop1 = new Eventloop();
+		Eventloop eventloop1 = Eventloop.create();
 		AsyncHttpServer echoServer = echoServer(eventloop1);
 		echoServer.withListenPort(ECHO_SERVER_PORT);
 		echoServer.listen();
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
 
-		Eventloop eventloop2 = new Eventloop();
-		AsyncHttpClient httpClient = new AsyncHttpClient(eventloop2,
-				NativeDnsResolver.of(eventloop2, new DatagramSocketSettings(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		Eventloop eventloop2 = Eventloop.create();
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop2,
+				NativeDnsResolver.create(eventloop2, DatagramSocketSettings.create(), 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.withListenPort(PROXY_SERVER_PORT).withAcceptOnce(false);

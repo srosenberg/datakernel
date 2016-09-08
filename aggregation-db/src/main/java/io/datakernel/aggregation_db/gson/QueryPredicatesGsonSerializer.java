@@ -21,7 +21,7 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.ParseException;
+import io.datakernel.exception.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.Map;

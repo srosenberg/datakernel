@@ -55,8 +55,8 @@ public final class CumulativeBenchmark {
 
 	private static final int SERVICE_PORT = 55555;
 
-	private final Eventloop serverEventloop = new Eventloop();
-	private final Eventloop clientEventloop = new Eventloop();
+	private final Eventloop serverEventloop = Eventloop.create();
+	private final Eventloop clientEventloop = Eventloop.create();
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
 			.withMessageTypes(ValueMessage.class)

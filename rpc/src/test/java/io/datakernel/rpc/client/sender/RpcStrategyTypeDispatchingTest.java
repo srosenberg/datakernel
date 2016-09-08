@@ -64,13 +64,13 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		for (int i = 0; i < dataTypeOneRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeOne(), 50, new ResultCallbackFuture<>());
+			sender.sendRequest(new RpcMessageDataTypeOne(), 50, ResultCallbackFuture.create());
 		}
 		for (int i = 0; i < dataTypeTwoRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeTwo(), 50, new ResultCallbackFuture<>());
+			sender.sendRequest(new RpcMessageDataTypeTwo(), 50, ResultCallbackFuture.create());
 		}
 		for (int i = 0; i < dataTypeThreeRequests; i++) {
-			sender.sendRequest(new RpcMessageDataTypeThree(), 50, new ResultCallbackFuture<>());
+			sender.sendRequest(new RpcMessageDataTypeThree(), 50, ResultCallbackFuture.create());
 		}
 
 		assertEquals(dataTypeOneRequests, connection1.getRequests());
@@ -129,7 +129,7 @@ public class RpcStrategyTypeDispatchingTest {
 
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		// sender is not specified for RpcMessageDataStub, default sender is null
-		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Object> callback = ResultCallbackFuture.create();
 		sender.sendRequest(new RpcMessageDataStub(), 50, callback);
 
 		callback.get();

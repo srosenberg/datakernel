@@ -16,9 +16,9 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.net.SocketSettings;
 
 import java.io.IOException;
@@ -94,7 +94,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
 
-		assert (this.contractChecker = new AsyncTcpSocketContract()) != null;
+		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
 
 	@Override

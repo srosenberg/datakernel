@@ -43,18 +43,18 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
 	// jmx
-	private final EventStats totalRequests = new EventStats();
-	private final EventStats httpsRequests = new EventStats();
-	private final EventStats httpRequests = new EventStats();
-	private final EventStats keepAliveRequests = new EventStats();
-	private final EventStats nonKeepAliveRequests = new EventStats();
-	private final EventStats expiredConnections = new EventStats();
-	private final EventStats httpProtocolErrors = new EventStats();
-	private final EventStats applicationErrors = new EventStats();
+	private final EventStats totalRequests = EventStats.create();
+	private final EventStats httpsRequests = EventStats.create();
+	private final EventStats httpRequests = EventStats.create();
+	private final EventStats keepAliveRequests = EventStats.create();
+	private final EventStats nonKeepAliveRequests = EventStats.create();
+	private final EventStats expiredConnections = EventStats.create();
+	private final EventStats httpProtocolErrors = EventStats.create();
+	private final EventStats applicationErrors = EventStats.create();
 	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
 	private boolean monitorCurrentRequestsHandlingDuration = false;
 
-	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
+	private AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
 		this.pool = new ExposedLinkedList<>();
 		this.servlet = servlet;
@@ -64,6 +64,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+	}
+
+	public static AsyncHttpServer create(Eventloop eventloop, AsyncHttpServlet servlet) {
+		return new AsyncHttpServer(eventloop, servlet);
 	}
 
 	public AsyncHttpServer withtMaxIdleConnectionTime(long maxIdleConnectionTime) {

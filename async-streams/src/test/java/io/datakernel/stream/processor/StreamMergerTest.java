@@ -42,7 +42,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -71,7 +71,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDuplicate() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -100,7 +100,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		DataItem1 d0 = new DataItem1(0, 1, 1, 1);
 		DataItem1 d1 = new DataItem1(0, 2, 1, 2);
 		DataItem1 d2 = new DataItem1(0, 6, 1, 3);
@@ -150,7 +150,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicateWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7, 8, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
@@ -195,7 +195,7 @@ public class StreamMergerTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDeduplicateWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
@@ -233,7 +233,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));

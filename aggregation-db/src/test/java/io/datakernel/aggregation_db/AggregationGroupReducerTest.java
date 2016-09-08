@@ -65,7 +65,7 @@ public class AggregationGroupReducerTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
@@ -160,7 +160,7 @@ public class AggregationGroupReducerTest {
 	@Ignore // TODO(vsavchuk): fix this test
 	@Test
 	public void testProducerWithError() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,

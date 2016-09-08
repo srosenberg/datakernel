@@ -30,11 +30,11 @@ import java.net.Socket;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
 import static org.junit.Assert.*;
 
@@ -47,7 +47,7 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
@@ -57,7 +57,7 @@ public class AsyncHttpServerTest {
 	}
 
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
@@ -73,7 +73,7 @@ public class AsyncHttpServerTest {
 
 	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop) {
 		final Random random = new Random();
-		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
@@ -135,7 +135,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testKeepAlive() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		doTestKeepAlive(eventloop, blockingHttpServer(eventloop));
 		doTestKeepAlive(eventloop, asyncHttpServer(eventloop));
@@ -147,7 +147,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testClosed() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -171,7 +171,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testNoKeepAlive() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -197,7 +197,7 @@ public class AsyncHttpServerTest {
 
 	@Test
 	public void testPipelining() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 //		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 //		doTestPipelining(eventloop, asyncHttpServer(eventloop));
@@ -234,11 +234,11 @@ public class AsyncHttpServerTest {
 	@Test
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
 				.withBody(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body"))).write();
 
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()));
@@ -273,7 +273,7 @@ public class AsyncHttpServerTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AsyncHttpServer server = blockingHttpServer(eventloop).withListenPort(8888);
 		server.listen();
 		eventloop.run();

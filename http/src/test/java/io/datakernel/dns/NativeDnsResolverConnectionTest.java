@@ -46,7 +46,7 @@ public class NativeDnsResolverConnectionTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 	}
 
 	private class DnsResolveCallback implements ResultCallback<DnsQueryResult> {

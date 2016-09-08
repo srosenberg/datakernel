@@ -16,14 +16,14 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.exception.ParseException;
 
 import java.util.Date;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.ByteBufStrings.*;
 
 // RFC 6265
 public final class HttpCookie {
@@ -67,7 +67,6 @@ public final class HttpCookie {
 	public static HttpCookie of(String name) {
 		return new HttpCookie(name, null);
 	}
-
 
 	static void parse(String cookieString, List<HttpCookie> cookies) throws ParseException {
 		byte[] bytes = encodeAscii(cookieString);

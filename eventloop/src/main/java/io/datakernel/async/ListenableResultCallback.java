@@ -30,6 +30,10 @@ public final class ListenableResultCallback<T> implements ResultCallback<T> {
 	private T result;
 	private Exception exception;
 
+	private ListenableResultCallback() {}
+
+	public static <T> ListenableResultCallback<T> create() {return new ListenableResultCallback<T>();}
+
 	/**
 	 * Adds new listener and if this callback has result or exception it will call listeners methods
 	 * for handle ir.

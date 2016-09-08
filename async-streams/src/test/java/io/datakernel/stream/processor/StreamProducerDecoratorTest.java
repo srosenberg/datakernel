@@ -38,7 +38,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test2() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		List<Integer> list = new ArrayList<>();
 
 		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -75,7 +75,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test1() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -94,7 +94,7 @@ public class StreamProducerDecoratorTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);

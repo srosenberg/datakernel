@@ -42,12 +42,15 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	// fields for aggregation
 	private int addedStats;
 
-	public EventStats() {
+	private EventStats() {
 		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	}
 
-	public EventStats(double smoothingWindow) {
+	public static EventStats create() {return new EventStats();}
+
+	public EventStats withSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+		return this;
 	}
 
 	/**

@@ -53,7 +53,7 @@ public class StreamSorterStorageImplTest {
 
 	@Test
 	public void testStreamStorage() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6, 7));

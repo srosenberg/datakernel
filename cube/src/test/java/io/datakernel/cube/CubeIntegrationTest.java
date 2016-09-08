@@ -107,7 +107,7 @@ public class CubeIntegrationTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -170,7 +170,7 @@ public class CubeIntegrationTest {
 		}
 
 		// Consolidate
-		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Boolean> callback = ResultCallbackFuture.create();
 		cube.consolidate(100, callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;

@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,23 +45,17 @@ public final class SocketReconnector {
 	 * @param reconnectAttempts number for attempts to connect
 	 * @param reconnectTimeout  time after which it will begin connect
 	 */
-	public SocketReconnector(Eventloop eventloop, InetSocketAddress address,
-	                         int reconnectAttempts, long reconnectTimeout) {
+	private SocketReconnector(Eventloop eventloop, InetSocketAddress address,
+	                          int reconnectAttempts, long reconnectTimeout) {
 		this.eventloop = checkNotNull(eventloop);
 		this.address = checkNotNull(address);
 		this.reconnectAttempts = reconnectAttempts;
 		this.reconnectTimeout = reconnectTimeout;
 	}
 
-	/**
-	 * Creates a new instance of SocketReconnector
-	 *
-	 * @param eventloop      eventloop to which its instance will be related
-	 * @param address        address to which socketChannels will be connected.
-	 * @param socketSettings sockets settings for creating new sockets
-	 */
-	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings) {
-		this(eventloop, address, 0, 0);
+	public static SocketReconnector create(Eventloop eventloop, InetSocketAddress address,
+	                                       int reconnectAttempts, long reconnectTimeout) {
+		return new SocketReconnector(eventloop, address, reconnectAttempts, reconnectTimeout);
 	}
 
 	/**

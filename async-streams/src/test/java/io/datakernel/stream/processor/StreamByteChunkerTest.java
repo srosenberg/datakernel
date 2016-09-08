@@ -65,7 +65,7 @@ public class StreamByteChunkerTest {
 
 	@Test
 	public void testResizer() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);

@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

@@ -37,8 +37,9 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcServer extends AbstractServer<RpcServer> {
 	private Logger logger = getLogger(RpcServer.class);
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
+			= ServerSocketSettings.create().withBacklog(16384);
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
@@ -50,14 +51,14 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private BufferSerializer<RpcMessage> serializer;
 
 	// jmx
-	private CountStats connectionsCount = new CountStats();
-	private EventStats totalConnects = new EventStats();
+	private CountStats connectionsCount = CountStats.create();
+	private EventStats totalConnects = EventStats.create();
 	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
-	private EventStats successfulRequests = new EventStats();
-	private EventStats failedRequests = new EventStats();
-	private ValueStats requestHandlingTime = new ValueStats();
-	private ExceptionStats lastRequestHandlingException = new ExceptionStats();
-	private ExceptionStats lastProtocolError = new ExceptionStats();
+	private EventStats successfulRequests = EventStats.create();
+	private EventStats failedRequests = EventStats.create();
+	private ValueStats requestHandlingTime = ValueStats.create();
+	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 
 	private RpcServer(Eventloop eventloop) {
@@ -198,7 +199,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private EventStats ensureConnectStats(InetAddress address) {
 		EventStats stats = connectsPerAddress.get(address);
 		if (stats == null) {
-			stats = new EventStats();
+			stats = EventStats.create();
 			connectsPerAddress.put(address, stats);
 		}
 		return stats;

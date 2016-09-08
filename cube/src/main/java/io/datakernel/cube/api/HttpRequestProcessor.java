@@ -20,8 +20,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.async.ParseException;
 import io.datakernel.cube.CubeQuery;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 
 import java.util.List;

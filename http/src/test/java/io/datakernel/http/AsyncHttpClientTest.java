@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.exception.ParseException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,10 +33,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeUtf8;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeUtf8;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -54,12 +54,12 @@ public class AsyncHttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
@@ -94,9 +94,9 @@ public class AsyncHttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		final AsyncHttpServer httpServer = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final Callback callback) {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
@@ -109,9 +109,9 @@ public class AsyncHttpClientTest {
 		});
 		httpServer.withListenPort(PORT);
 
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
@@ -149,11 +149,11 @@ public class AsyncHttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
@@ -187,12 +187,12 @@ public class AsyncHttpClientTest {
 	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		httpServer.listen();
 
@@ -230,7 +230,7 @@ public class AsyncHttpClientTest {
 
 	@Test(expected = ParseException.class)
 	public void testEmptyLineResponse() throws Throwable {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AbstractServer server = new AbstractServer(eventloop) {
 			@Override
@@ -265,9 +265,9 @@ public class AsyncHttpClientTest {
 			}
 		}
 				.withListenPort(PORT);
-		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
-		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+		final AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = ResultCallbackFuture.create();
 
 		server.listen();
 

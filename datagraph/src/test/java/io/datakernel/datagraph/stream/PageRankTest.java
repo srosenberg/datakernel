@@ -219,7 +219,7 @@ public class PageRankTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1572);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		final StreamConsumers.ToList<Rank> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<Rank> result2 = new StreamConsumers.ToList<>(eventloop);
 

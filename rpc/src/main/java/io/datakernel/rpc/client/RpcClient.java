@@ -49,7 +49,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class RpcClient implements EventloopService, EventloopJmxMBean {
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
@@ -92,7 +92,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
-	private final ExceptionStats lastProtocolError = new ExceptionStats();
+	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
@@ -341,7 +341,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -445,7 +445,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 	@JmxAttribute(name = "activeConnections")
 	public CountStats getActiveConnectionsCount() {
-		CountStats countStats = new CountStats();
+		CountStats countStats = CountStats.create();
 		countStats.setCount(connections.size());
 		return countStats;
 	}

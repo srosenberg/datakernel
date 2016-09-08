@@ -10,9 +10,9 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.*;
 
 public class PingPongSocketConnectionTest {
@@ -25,7 +25,7 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void test() throws IOException {
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final AbstractServer ppServer = new AbstractServer(eventloop) {
 			@Override

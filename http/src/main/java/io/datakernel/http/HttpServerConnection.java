@@ -16,23 +16,23 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Arrays;
 
+import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 /**
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.

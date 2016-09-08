@@ -55,14 +55,14 @@ public class TestHttpsClient {
 	@Ignore("requires internet connection")
 	@Test
 	public void testClient() throws NoSuchAlgorithmException, ExecutionException, InterruptedException {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
-		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
-				NativeDnsResolver.of(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
 				.withSslEnabled(SSLContext.getDefault(), executor);
 
-		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<Integer> callback = ResultCallbackFuture.create();
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
 		client.send(get(url), 5000, new ResultCallback<HttpResponse>() {

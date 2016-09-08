@@ -79,8 +79,8 @@ public class LogManagerTest {
 		final LocalDate testDate = new LocalDate(0);
 		final String logPartition = "testLog";
 
-		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		final Eventloop eventloop = new Eventloop(timeProvider);
+		final SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
+		final Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf16Serializer());
@@ -166,8 +166,8 @@ public class LogManagerTest {
 
 	@Test
 	public void testSerializationError() throws Exception {
-		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		Eventloop eventloop = new Eventloop(timeProvider);
+		SettableCurrentTimeProvider timeProvider = SettableCurrentTimeProvider.create();
+		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 		LogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		BufferSerializer<TestItem> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestItem.class);

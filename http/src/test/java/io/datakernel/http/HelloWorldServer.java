@@ -18,14 +18,14 @@ package io.datakernel.http;
 
 import io.datakernel.eventloop.Eventloop;
 
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 
 public final class HelloWorldServer {
 	public static final int PORT = 5588;
 	public static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
 	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
-		AsyncHttpServer httpServer = new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
+		AsyncHttpServer httpServer = AsyncHttpServer.create(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.ok200().withBody(HELLO_WORLD);
@@ -36,7 +36,7 @@ public final class HelloWorldServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		AsyncHttpServer server = helloWorldServer(eventloop, PORT);
 

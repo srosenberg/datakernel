@@ -29,10 +29,12 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	private int ops = 0;
 
 	//  creators && builder methods
-	public AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) {
+	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) {
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(channel);
 	}
+
+	public static AsyncUdpSocketImpl create(Eventloop eventloop, DatagramChannel channel) {return new AsyncUdpSocketImpl(eventloop, channel);}
 
 	@Override
 	public void setEventHandler(AsyncUdpSocket.EventHandler eventHandler) {
@@ -89,7 +91,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 			}
 
 			buf.ofTailByteBuffer(buffer);
-			eventHandler.onRead(new UdpPacket(buf, sourceAddress));
+			eventHandler.onRead(UdpPacket.of(buf, sourceAddress));
 		}
 	}
 

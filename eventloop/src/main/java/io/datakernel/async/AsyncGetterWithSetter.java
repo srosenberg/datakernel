@@ -37,9 +37,11 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 	 * Initialize new instance of this class with event loop in which thread will be called
 	 * ResultCallback
 	 */
-	public AsyncGetterWithSetter(Eventloop eventloop) {
+	private AsyncGetterWithSetter(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
+
+	public static <T> AsyncGetterWithSetter<T> create(Eventloop eventloop) {return new AsyncGetterWithSetter<T>(eventloop);}
 
 	private void fireResult() {
 		eventloop.post(new Runnable() {

@@ -84,7 +84,7 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 
 	public DnsClientHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 		this.eventloop = eventloop;
-		this.socket = new AsyncUdpSocketImpl(eventloop, datagramChannel);
+		this.socket = AsyncUdpSocketImpl.create(eventloop, datagramChannel);
 		this.socket.setEventHandler(upstreamEventHandler);
 	}
 
@@ -143,11 +143,11 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 
 		ByteBuf query = DnsMessage.newQuery(domainName, ipv6);
 
-		ListenableResultCallback<DnsQueryResult> callbackList = new ListenableResultCallback<>();
+		ListenableResultCallback<DnsQueryResult> callbackList = ListenableResultCallback.create();
 		callbackList.addListener(callbackWithTimeout);
 		resultHandlers.put(domainName, callbackList);
 
-		UdpPacket queryPacket = new UdpPacket(query, dnsServerAddress);
+		UdpPacket queryPacket = UdpPacket.of(query, dnsServerAddress);
 
 		socket.send(queryPacket);
 

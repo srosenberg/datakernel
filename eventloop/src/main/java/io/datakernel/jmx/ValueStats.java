@@ -50,6 +50,17 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	// fields for aggregation
 	private int addedStats;
 
+	private ValueStats() {
+		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+	}
+
+	public static ValueStats create() {return new ValueStats();}
+
+	public ValueStats withSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+		return this;
+	}
+
 	/**
 	 * Resets stats and sets new parameters
 	 */
@@ -68,14 +79,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastCount = 0;
 		lastValue = 0;
 		lastTimestampMillis = 0L;
-	}
-
-	public ValueStats() {
-		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	}
-
-	public ValueStats(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
 	}
 
 	/**

@@ -16,10 +16,10 @@
 
 package io.datakernel;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,8 +68,8 @@ public class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		eventloop = new Eventloop();
-		server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		eventloop = Eventloop.create();
+		server = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				testRequest(request);
@@ -78,7 +78,7 @@ public class HttpApiTest {
 			}
 		}).withListenPort(PORT);
 
-		client = new AsyncHttpClient(eventloop, NativeDnsResolver.of(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
+		client = AsyncHttpClient.create(eventloop, NativeDnsResolver.create(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		// setup request and response data

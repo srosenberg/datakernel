@@ -23,10 +23,14 @@ import java.util.ArrayList;
  * it will be call listeners methods too. Each listener can react only on one action, than it will be removed from
  * this ListenableCompletionCallback.
  */
-public class ListenableCompletionCallback implements CompletionCallback {
+public final class ListenableCompletionCallback implements CompletionCallback {
 	private ArrayList<CompletionCallback> listeners = new ArrayList<>();
 	private boolean completed = false;
 	private Exception exception;
+
+	private ListenableCompletionCallback() {}
+
+	public static ListenableCompletionCallback create() {return new ListenableCompletionCallback();}
 
 	public void addListener(CompletionCallback callback) {
 		if (completed) {

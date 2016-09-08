@@ -79,7 +79,7 @@ public class LogToCubeTest {
 	@Test
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);

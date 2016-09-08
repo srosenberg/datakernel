@@ -36,7 +36,7 @@ import static org.junit.Assert.*;
 public class StreamSplitterTest {
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -57,7 +57,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testConsumerDisconnectWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -106,7 +106,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),

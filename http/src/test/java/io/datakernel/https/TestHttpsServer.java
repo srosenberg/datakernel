@@ -18,8 +18,8 @@ package io.datakernel.https;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import io.datakernel.async.ParseException;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
@@ -31,9 +31,9 @@ import java.io.File;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.https.SslUtils.*;
-import static io.datakernel.util.ByteBufStrings.wrapAscii;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class TestHttpsServer {
@@ -46,7 +46,7 @@ public class TestHttpsServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executor = newCachedThreadPool();
 
 		AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
@@ -59,7 +59,7 @@ public class TestHttpsServer {
 		KeyManager[] keyManagers = createKeyManagers(new File("./src/test/resources/keystore.jks"), "testtest", "testtest");
 		TrustManager[] trustManagers = createTrustManagers(new File("./src/test/resources/truststore.jks"), "testtest");
 
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, bobServlet)
 				.setSslListenPort(createSslContext("TLSv1", keyManagers, trustManagers, new SecureRandom()), executor, PORT)
 				.withListenPort(5569);
 

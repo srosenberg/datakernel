@@ -48,7 +48,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void test1() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(10, 20, 30, 40));
 		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 14, 14, 0, false);
@@ -78,7 +78,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void test2() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -106,7 +106,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -138,7 +138,7 @@ public class StreamSerializerTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));

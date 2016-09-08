@@ -55,7 +55,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, EventloopJmxMBean {
 	private final Logger logger = getLogger(this.getClass());
 
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS
+			= ServerSocketSettings.create().withBacklog(DEFAULT_BACKLOG);
 
 	private ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
 	private SocketSettings socketSettings = defaultSocketSettings();
@@ -80,10 +81,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventStats accepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats rangeBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats bannedBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats notAllowed = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats accepts = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats rangeBlocked = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats bannedBlocked = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats notAllowed = EventStats.create().withSmoothingWindow(DEFAULT_SMOOTHING_WINDOW);
 
 	// creators & builder methods
 	public AbstractServer(Eventloop eventloop) {

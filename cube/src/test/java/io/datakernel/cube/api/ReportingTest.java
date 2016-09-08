@@ -275,7 +275,7 @@ public class ReportingTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure();
@@ -310,7 +310,7 @@ public class ReportingTest {
 		eventloop.run();
 
 		server = CubeHttpServer.createServer(cube, eventloop, 100, SERVER_PORT);
-		final CompletionCallbackFuture serverStartFuture = new CompletionCallbackFuture();
+		final CompletionCallbackFuture serverStartFuture = CompletionCallbackFuture.create();
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
@@ -321,10 +321,10 @@ public class ReportingTest {
 		new Thread(eventloop).start();
 		serverStartFuture.await();
 
-		clientEventloop = new Eventloop();
-		NativeDnsResolver dnsClient = NativeDnsResolver.of(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
+		clientEventloop = Eventloop.create();
+		NativeDnsResolver dnsClient = NativeDnsResolver.create(clientEventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, TIMEOUT,
 				HttpUtils.inetAddress("8.8.8.8"));
-		httpClient = new AsyncHttpClient(clientEventloop, dnsClient);
+		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);
 		cubeHttpClient = new CubeHttpClient("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
 	}
 
@@ -559,7 +559,7 @@ public class ReportingTest {
 
 	@After
 	public void tearDown() throws Exception {
-		final CompletionCallbackFuture serverStopFuture = new CompletionCallbackFuture();
+		final CompletionCallbackFuture serverStopFuture = CompletionCallbackFuture.create();
 		eventloop.execute(new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
@@ -571,7 +571,7 @@ public class ReportingTest {
 	}
 
 	private static void startBlocking(EventloopService service) throws ExecutionException, InterruptedException {
-		CompletionCallbackFuture future = new CompletionCallbackFuture();
+		CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		service.start(future);
 
 		try {
@@ -582,7 +582,7 @@ public class ReportingTest {
 	}
 
 	private static void stopBlocking(EventloopService service) {
-		CompletionCallbackFuture future = new CompletionCallbackFuture();
+		CompletionCallbackFuture future = CompletionCallbackFuture.create();
 		service.stop(future);
 
 		try {

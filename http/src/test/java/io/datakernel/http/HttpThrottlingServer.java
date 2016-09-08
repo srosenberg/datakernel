@@ -17,11 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.DynamicMBeanFactory;
 import io.datakernel.jmx.JmxMBeans;
-import io.datakernel.util.ByteBufStrings;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -85,7 +85,7 @@ public class HttpThrottlingServer {
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
-		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		return AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				callback.onResult(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
@@ -125,7 +125,7 @@ public class HttpThrottlingServer {
 			return;
 		info(options);
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 		ThrottlingController throttlingController = ThrottlingController.createDefaultThrottlingController(eventloop);
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);

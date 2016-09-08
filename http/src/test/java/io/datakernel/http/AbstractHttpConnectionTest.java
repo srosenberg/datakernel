@@ -1,19 +1,19 @@
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -24,8 +24,8 @@ public class AbstractHttpConnectionTest {
 	public void testMultiLineHeader() throws IOException {
 		final Map<String, String> data = new HashMap<>();
 
-		Eventloop eventloop = new Eventloop();
-		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		Eventloop eventloop = Eventloop.create();
+		final AsyncHttpServer server = AsyncHttpServer.create(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
@@ -34,8 +34,8 @@ public class AbstractHttpConnectionTest {
 		server.withListenPort(PORT);
 		server.listen();
 
-		final AsyncHttpClient client = AsyncHttpClient.of(eventloop,
-				NativeDnsResolver.of(eventloop, new DatagramSocketSettings(), 300, HttpUtils.inetAddress("8.8.8.8")));
+		final AsyncHttpClient client = AsyncHttpClient.create(eventloop,
+				NativeDnsResolver.create(eventloop, DatagramSocketSettings.create(), 300, HttpUtils.inetAddress("8.8.8.8")));
 
 		client.send(HttpRequest.get("http://127.0.0.1:" + PORT), 50000, new ResultCallback<HttpResponse>() {
 			@Override

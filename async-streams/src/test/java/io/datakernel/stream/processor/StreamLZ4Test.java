@@ -69,7 +69,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void test() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -120,7 +120,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testWithoutConsumer() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -178,7 +178,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testRaw() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -187,7 +187,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4Fast() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -196,7 +196,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -205,7 +205,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High10() {
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop, 10);
 
 		doTest(eventloop, compressor);

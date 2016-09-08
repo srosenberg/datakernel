@@ -62,7 +62,7 @@ public class RpcBlockingTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new Eventloop();
+		eventloop = Eventloop.create();
 
 		serverOne = RpcServer.create(eventloop)
 				.withMessageTypes(HelloRequest.class, HelloResponse.class)

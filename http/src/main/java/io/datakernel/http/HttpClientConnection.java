@@ -17,19 +17,19 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
 
+import static io.datakernel.bytebuf.ByteBufStrings.SP;
+import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {

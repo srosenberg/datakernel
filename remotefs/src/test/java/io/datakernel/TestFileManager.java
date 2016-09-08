@@ -59,7 +59,7 @@ public class TestFileManager {
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();
 
-	private Eventloop eventloop = new Eventloop();
+	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path client;
@@ -157,7 +157,7 @@ public class TestFileManager {
 	@Test
 	public void testDoDownloadFailed() throws Exception {
 		FileManager fs = new FileManager(eventloop, executor, storage);
-		ResultCallbackFuture<StreamFileReader> callbackFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<StreamFileReader> callbackFuture = ResultCallbackFuture.create();
 
 		fs.get("no_file.txt", 0, callbackFuture);
 		eventloop.run();
@@ -197,7 +197,7 @@ public class TestFileManager {
 	@Test
 	public void testDeleteFailed() throws Exception {
 		FileManager fs = new FileManager(eventloop, executor, storage);
-		CompletionCallbackFuture callbackFuture = new CompletionCallbackFuture();
+		CompletionCallbackFuture callbackFuture = CompletionCallbackFuture.create();
 
 		fs.delete("no_file.txt", callbackFuture);
 		eventloop.run();
@@ -227,7 +227,7 @@ public class TestFileManager {
 		List<String> expected = asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt");
 		List<String> actual;
 
-		ResultCallbackFuture<List<String>> callbackFuture = new ResultCallbackFuture<>();
+		ResultCallbackFuture<List<String>> callbackFuture = ResultCallbackFuture.create();
 
 		fs.scan(callbackFuture);
 		eventloop.run();

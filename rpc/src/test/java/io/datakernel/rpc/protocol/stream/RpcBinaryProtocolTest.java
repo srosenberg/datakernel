@@ -65,7 +65,7 @@ public class RpcBinaryProtocolTest {
 	public void test() throws Exception {
 		final String testMessage = "Test";
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final RpcClient client = RpcClient.create(eventloop)
 				.withMessageTypes(String.class)
@@ -154,7 +154,7 @@ public class RpcBinaryProtocolTest {
 		BufferSerializer<RpcMessage> serializer = serializerBuilder.create(RpcMessage.class);
 
 		int countRequests = 10;
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 

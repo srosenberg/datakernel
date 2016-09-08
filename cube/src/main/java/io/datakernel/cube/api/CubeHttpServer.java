@@ -34,7 +34,7 @@ public final class CubeHttpServer {
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop,
 	                                           ReportingServiceServlet reportingServiceServlet) {
-		return new AsyncHttpServer(eventloop, createServlet(cube, reportingServiceServlet));
+		return AsyncHttpServer.create(eventloop, createServlet(cube, reportingServiceServlet));
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, int classLoaderCacheSize, int port) {

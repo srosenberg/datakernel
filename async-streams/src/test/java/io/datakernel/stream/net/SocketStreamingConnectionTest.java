@@ -63,7 +63,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -115,7 +115,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
@@ -171,7 +171,7 @@ public final class SocketStreamingConnectionTest {
 			source.add(i);
 		}
 
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {

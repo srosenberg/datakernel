@@ -45,10 +45,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		}
 	};
 
-	public BlockingEventloopExecutor(Eventloop eventloop, int limit) {
+	private BlockingEventloopExecutor(Eventloop eventloop, int limit) {
 		this.eventloop = eventloop;
 		this.limit = limit;
 	}
+
+	public static BlockingEventloopExecutor create(Eventloop eventloop, int limit) {return new BlockingEventloopExecutor(eventloop, limit);}
 
 	public int getLimit() {
 		return limit;
@@ -130,7 +132,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@Override
 	public <T> Future<T> submit(final Runnable runnable, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		post(new Runnable() {
 			@Override
 			public void run() {
@@ -153,7 +155,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@Override
 	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		post(new Runnable() {
 			@Override
 			public void run() {
@@ -177,7 +179,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@Override
 	public <T> Future<T> submit(final Callable<T> callable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		post(new Runnable() {
 			@Override
 			public void run() {
@@ -201,7 +203,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@Override
 	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		post(new Runnable() {
 			@Override
 			public void run() {

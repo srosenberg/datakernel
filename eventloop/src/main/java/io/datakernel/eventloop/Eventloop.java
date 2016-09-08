@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
+import io.datakernel.exception.SimpleException;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -84,7 +85,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private final Map<Class<?>, Object> localMap = new HashMap<>();
 
-	private final CurrentTimeProvider timeProvider;
+	private CurrentTimeProvider timeProvider = CurrentTimeProviderSystem.instance();
 
 	private long timeBeforeSelectorSelect;
 	private long timeAfterSelectorSelect;
@@ -132,26 +133,21 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventloopStats stats = new EventloopStats(DEFAULT_SMOOTHING_WINDOW);
-	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring = false;
 
-	/**
-	 * Creates a new instance of Eventloop with default instance of ByteBufPool
-	 */
-	public Eventloop() {
-		this(CurrentTimeProviderSystem.instance());
+	private Eventloop() {
+		refreshTimestampAndGet();
 	}
 
-	/**
-	 * Creates a new instance of Eventloop with given ByteBufPool and timeProvider
-	 *
-	 * @param timeProvider provider for retrieving time on each cycle of event loop. Useful for unit testing.
-	 */
-	public Eventloop(CurrentTimeProvider timeProvider) {
+	public static Eventloop create() {return new Eventloop();}
+
+	public Eventloop withCurrentTimeProvider(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestampAndGet();
+		return this;
 	}
 
 	/**
@@ -875,7 +871,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final Runnable runnable, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -897,7 +893,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -909,7 +905,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final Callable<T> callable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {
@@ -932,7 +928,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	@Override
 	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
-		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		final ResultCallbackFuture<T> future = ResultCallbackFuture.create();
 		execute(new Runnable() {
 			@Override
 			public void run() {

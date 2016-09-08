@@ -29,8 +29,8 @@ import static org.junit.Assert.assertTrue;
 public class ResultCallbackWithTimeoutTest {
 	@Test
 	public void testTimeout() throws Exception {
-		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		Eventloop eventloop = new Eventloop(timeProvider);
+		SteppingCurrentTimeProvider timeProvider = SteppingCurrentTimeProvider.create(0, 1);
+		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
@@ -51,8 +51,8 @@ public class ResultCallbackWithTimeoutTest {
 
 	@Test
 	public void testResult() throws Exception {
-		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		Eventloop eventloop = new Eventloop(timeProvider);
+		SteppingCurrentTimeProvider timeProvider = SteppingCurrentTimeProvider.create(0, 1);
+		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
@@ -74,8 +74,8 @@ public class ResultCallbackWithTimeoutTest {
 
 	@Test
 	public void testException() throws Exception {
-		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		Eventloop eventloop = new Eventloop(timeProvider);
+		SteppingCurrentTimeProvider timeProvider = SteppingCurrentTimeProvider.create(0, 1);
+		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);

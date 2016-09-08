@@ -18,11 +18,15 @@ package io.datakernel.async;
 
 import java.util.concurrent.*;
 
-public class CompletionCallbackFuture implements Future<Void>, CompletionCallback {
+public final class CompletionCallbackFuture implements Future<Void>, CompletionCallback {
 	private static final Void NOTHING = null;
 
 	private final CountDownLatch latch = new CountDownLatch(1);
 	private Exception exception;
+
+	private CompletionCallbackFuture() {}
+
+	public static CompletionCallbackFuture create() {return new CompletionCallbackFuture();}
 
 	@Override
 	public void onComplete() {

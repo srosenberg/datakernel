@@ -42,10 +42,12 @@ public final class UdpPacket {
 	 * @param inetSocketAddress the address to which the packet should be send or from which it
 	 *                          was received
 	 */
-	public UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
+	private UdpPacket(ByteBuf buf, InetSocketAddress inetSocketAddress) {
 		this.buf = buf;
 		this.inetSocketAddress = inetSocketAddress;
 	}
+
+	public static UdpPacket of(ByteBuf buf, InetSocketAddress inetSocketAddress) {return new UdpPacket(buf, inetSocketAddress);}
 
 	/**
 	 * Returns the data buffer to send or which was received

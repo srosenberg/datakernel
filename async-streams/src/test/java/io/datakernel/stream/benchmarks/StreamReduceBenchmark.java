@@ -93,7 +93,7 @@ public class StreamReduceBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

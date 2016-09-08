@@ -16,19 +16,19 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.exception.ParseException;
 
 import java.net.InetAddress;
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.nullToEmpty;
-import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Represent the HTTP request which {@link AsyncHttpClient} send to {@link AsyncHttpServer}. It must have only one owner in

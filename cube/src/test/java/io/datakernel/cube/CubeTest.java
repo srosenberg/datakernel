@@ -128,7 +128,7 @@ public class CubeTest {
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -174,7 +174,7 @@ public class CubeTest {
 	@Test
 	public void testSimpleFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		final Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = Eventloop.create();
 
 		AggregationStructure aggregationStructure = cubeStructure();
 
@@ -246,7 +246,7 @@ public class CubeTest {
 	@Test
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -282,7 +282,7 @@ public class CubeTest {
 	@Test
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -324,7 +324,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -375,7 +375,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = sophisticatedCubeStructure();
 		Cube cube = newSophisticatedCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -426,7 +426,7 @@ public class CubeTest {
 	@Test
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
@@ -461,7 +461,7 @@ public class CubeTest {
 	@Test
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure();
@@ -499,7 +499,7 @@ public class CubeTest {
 	@Test
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		Eventloop eventloop = new Eventloop();
+		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure cubeStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, cubeStructure);
@@ -514,13 +514,13 @@ public class CubeTest {
 		eventloop.run();
 
 		cube.setLastReloadTimestamp(eventloop.currentTimeMillis());
-		ResultCallbackFuture<Boolean> future = new ResultCallbackFuture<>();
+		ResultCallbackFuture<Boolean> future = ResultCallbackFuture.create();
 		cube.consolidate(100, future);
 
 		eventloop.run();
 		assertEquals(true, future.get());
 
-		future = new ResultCallbackFuture<>();
+		future = ResultCallbackFuture.create();
 		cube.consolidate(100, future);
 
 		eventloop.run();

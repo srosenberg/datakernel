@@ -18,8 +18,8 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.http.*;
-import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
 import java.util.List;
