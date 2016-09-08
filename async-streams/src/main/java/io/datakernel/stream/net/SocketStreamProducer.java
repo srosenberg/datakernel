@@ -26,7 +26,7 @@ import io.datakernel.stream.AbstractStreamProducer;
 final class SocketStreamProducer extends AbstractStreamProducer<ByteBuf> {
 	private final CompletionCallback completionCallback;
 	private final AsyncTcpSocket asyncTcpSocket;
-	protected final ByteBufQueue readQueue = new ByteBufQueue();
+	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 	private boolean readEndOfStream;
 
 	public SocketStreamProducer(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, CompletionCallback completionCallback) {

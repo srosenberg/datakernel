@@ -106,7 +106,7 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(consumer);
 		eventloop.run();
 
-		ByteBufQueue byteQueue = new ByteBufQueue();
+		ByteBufQueue byteQueue = ByteBufQueue.create();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}
@@ -174,7 +174,7 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(consumer);
 		eventloop.run();
 
-		ByteBufQueue byteQueue = new ByteBufQueue();
+		ByteBufQueue byteQueue = ByteBufQueue.create();
 		for (ByteBuf buf : list) {
 			byteQueue.add(buf);
 		}

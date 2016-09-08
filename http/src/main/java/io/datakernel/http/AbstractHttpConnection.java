@@ -46,13 +46,13 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	protected final Eventloop eventloop;
 
 	protected final AsyncTcpSocket asyncTcpSocket;
-	protected final ByteBufQueue readQueue = new ByteBufQueue();
+	protected final ByteBufQueue readQueue = ByteBufQueue.create();
 
 	private boolean closed;
 
 	protected boolean keepAlive = true;
 
-	protected final ByteBufQueue bodyQueue = new ByteBufQueue();
+	protected final ByteBufQueue bodyQueue = ByteBufQueue.create();
 
 	protected static final byte NOTHING = 0;
 	protected static final byte END_OF_STREAM = 1;

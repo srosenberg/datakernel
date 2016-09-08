@@ -26,12 +26,14 @@ public final class ByteBufQueue {
 	private int first = 0;
 	private int last = 0;
 
-	public ByteBufQueue(int capacity) {
+	private ByteBufQueue(int capacity) {
 		this.bufs = new ByteBuf[capacity];
 	}
 
-	public ByteBufQueue() {
-		this(DEFAULT_CAPACITY);
+	public static ByteBufQueue create() {return new ByteBufQueue(DEFAULT_CAPACITY);}
+
+	public ByteBufQueue withCapacity(int capacity) {
+		return new ByteBufQueue(capacity);
 	}
 
 	private int next(int i) {
