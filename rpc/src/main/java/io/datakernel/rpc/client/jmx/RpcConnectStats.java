@@ -25,6 +25,10 @@ public final class RpcConnectStats implements JmxRefreshable {
 	private final EventStats failedConnects = EventStats.create();
 	private final EventStats closedConnects = EventStats.create();
 
+	private RpcConnectStats() {}
+
+	public static RpcConnectStats create() {return new RpcConnectStats();}
+
 	public void reset() {
 		successfulConnects.resetStats();
 		failedConnects.resetStats();

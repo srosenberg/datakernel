@@ -85,7 +85,7 @@ public class RpcMessageSerializeTest {
 	@Test
 	public void testRpcMessage() throws UnknownHostException {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
-		RpcMessage message1 = new RpcMessage(1, messageData1);
+		RpcMessage message1 = RpcMessage.of(1, messageData1);
 
 		RpcMessage message2 = doTest(RpcMessage.class, message1);
 		Assert.assertEquals(message1.getCookie(), message2.getCookie());

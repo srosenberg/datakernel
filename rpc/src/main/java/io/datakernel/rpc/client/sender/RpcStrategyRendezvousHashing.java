@@ -38,8 +38,12 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private HashBucketFunction hashBucketFunction = DEFAULT_BUCKET_HASH_FUNCTION;
 	private int buckets = DEFAULT_BUCKET_CAPACITY;
 
-	public RpcStrategyRendezvousHashing(HashFunction<?> hashFunction) {
+	private RpcStrategyRendezvousHashing(HashFunction<?> hashFunction) {
 		this.hashFunction = checkNotNull(hashFunction);
+	}
+
+	public static RpcStrategyRendezvousHashing create(HashFunction<?> hashFunction) {
+		return new RpcStrategyRendezvousHashing(hashFunction);
 	}
 
 	public RpcStrategyRendezvousHashing withMinActiveShards(int minShards) {
@@ -72,7 +76,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 
 	public RpcStrategyRendezvousHashing putAddresses(List<InetSocketAddress> addresses) {
 		for (InetSocketAddress address : addresses) {
-			shards.put(address, new RpcStrategySingleServer(address));
+			shards.put(address, RpcStrategySingleServer.create(address));
 		}
 		return this;
 	}

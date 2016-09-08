@@ -115,7 +115,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
-		RpcServerConnection connection = new RpcServerConnection(eventloop, this, asyncTcpSocket,
+		RpcServerConnection connection = RpcServerConnection.create(eventloop, this, asyncTcpSocket,
 				messageSerializer, handlers, protocolFactory);
 		add(connection);
 

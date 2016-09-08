@@ -38,10 +38,14 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	private ResultValidator<?> resultValidator;
 	private Exception noValidResultException;
 
-	public RpcStrategyFirstValidResult(RpcStrategyList list) {
+	private RpcStrategyFirstValidResult(RpcStrategyList list) {
 		this.list = list;
 		this.resultValidator = DEFAULT_RESULT_VALIDATOR;
 		this.noValidResultException = null;
+	}
+
+	public static RpcStrategyFirstValidResult create(RpcStrategyList list) {
+		return new RpcStrategyFirstValidResult(list);
 	}
 
 	public RpcStrategyFirstValidResult withResultValidator(ResultValidator<?> resultValidator) {

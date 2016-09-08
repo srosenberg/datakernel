@@ -27,6 +27,10 @@ public final class RpcRequestStats implements JmxRefreshable {
 	private final ValueStats responseTimeStats = ValueStats.create();
 	private final ExceptionStats serverExceptions = ExceptionStats.create();
 
+	private RpcRequestStats() {}
+
+	public static RpcRequestStats create() {return new RpcRequestStats();}
+
 	public void resetStats() {
 		totalRequests.resetStats();
 		successfulRequests.resetStats();

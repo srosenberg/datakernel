@@ -162,7 +162,7 @@ public class RpcBinaryProtocolTest {
 		String testMessage = "Test";
 		List<RpcMessage> sourceList = Lists.newArrayList();
 		for (int i = 0; i < countRequests; i++) {
-			sourceList.add(new RpcMessage(i, testMessage));
+			sourceList.add(RpcMessage.of(i, testMessage));
 		}
 		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(eventloop, sourceList);
 

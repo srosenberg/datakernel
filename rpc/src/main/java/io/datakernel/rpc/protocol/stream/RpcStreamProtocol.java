@@ -45,10 +45,10 @@ final class RpcStreamProtocol implements RpcProtocol {
 	private final SimpleStreamConsumer<RpcMessage> receiver;
 	private final SocketStreamingConnection connection;
 
-	protected RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
-	                            RpcConnection rpcConnection,
-	                            BufferSerializer<RpcMessage> messageSerializer,
-	                            int defaultPacketSize, int maxPacketSize, boolean compression) {
+	private RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                          RpcConnection rpcConnection,
+	                          BufferSerializer<RpcMessage> messageSerializer,
+	                          int defaultPacketSize, int maxPacketSize, boolean compression) {
 		this.rpcConnection = rpcConnection;
 		this.asyncTcpSocket = asyncTcpSocket;
 		sender = SimpleStreamProducer
@@ -99,6 +99,14 @@ final class RpcStreamProtocol implements RpcProtocol {
 
 		deserializer.getOutput().streamTo(receiver);
 		sender.streamTo(serializer.getInput());
+	}
+
+	protected static RpcStreamProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                                          RpcConnection rpcConnection,
+	                                          BufferSerializer<RpcMessage> messageSerializer,
+	                                          int defaultPacketSize, int maxPacketSize, boolean compression) {
+		return new RpcStreamProtocol(eventloop, asyncTcpSocket, rpcConnection, messageSerializer,
+				defaultPacketSize, maxPacketSize, compression);
 	}
 
 	@Override

@@ -88,8 +88,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 	// jmx
 	private boolean monitoring = false;
-	private final RpcRequestStats generalRequestsStats = new RpcRequestStats();
-	private final RpcConnectStats generalConnectsStats = new RpcConnectStats();
+	private final RpcRequestStats generalRequestsStats = RpcRequestStats.create();
+	private final RpcConnectStats generalConnectsStats = RpcConnectStats.create();
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
 	private final ExceptionStats lastProtocolError = ExceptionStats.create();
@@ -130,7 +130,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		// jmx
 		for (InetSocketAddress address : this.addresses) {
 			if (!connectsStatsPerAddress.containsKey(address)) {
-				connectsStatsPerAddress.put(address, new RpcConnectStats());
+				connectsStatsPerAddress.put(address, RpcConnectStats.create());
 			}
 		}
 
@@ -249,7 +249,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			public void onConnect(SocketChannel socketChannel) {
 				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
 				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
-				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
+				RpcClientConnection connection = RpcClientConnection.create(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
 						getSerializer(), protocolFactory);
 				asyncTcpSocket.setEventHandler(connection.getSocketConnection());
@@ -458,7 +458,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 	RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {
-			requestStatsPerClass.put(requestClass, new RpcRequestStats());
+			requestStatsPerClass.put(requestClass, RpcRequestStats.create());
 		}
 		return requestStatsPerClass.get(requestClass);
 	}
