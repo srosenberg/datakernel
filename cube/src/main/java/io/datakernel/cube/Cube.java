@@ -30,7 +30,6 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTracker
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
-import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.api.AttributeResolver;
@@ -61,7 +60,8 @@ import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
 import static io.datakernel.aggregation_db.AggregationStructure.createMapper;
 import static io.datakernel.aggregation_db.util.AsyncResultsTracker.ofMultimap;
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.FieldWithOrdering;
+import static io.datakernel.codegen.Expressions.compareWithOrdering;
 import static java.util.Collections.sort;
 
 /**
@@ -616,24 +616,15 @@ public final class Cube implements EventloopJmxMBean {
 
 	public static Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass, DefiningClassLoader classLoader) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
-		ExpressionComparator comparator = comparator();
+		AsmBuilder<Comparator> builder = AsmBuilder.create(classLoader, Comparator.class);
 		List<CubeQuery.Ordering> orderings = query.getOrderings();
 
+		List<FieldWithOrdering> fields = new ArrayList<>(orderings.size());
 		for (CubeQuery.Ordering ordering : orderings) {
-			boolean isAsc = ordering.isAsc();
-			String field = ordering.getPropertyName();
-			if (isAsc)
-				comparator.add(
-						getter(cast(arg(0), fieldClass), field),
-						getter(cast(arg(1), fieldClass), field));
-			else
-				comparator.add(
-						getter(cast(arg(1), fieldClass), field),
-						getter(cast(arg(0), fieldClass), field));
+			fields.add(new FieldWithOrdering(ordering.getPropertyName(), ordering.isAsc()));
 		}
 
-		builder.withMethod("compare", comparator);
+		builder.withMethod("compare", compareWithOrdering(fieldClass, fields));
 
 		return builder.newInstance();
 	}

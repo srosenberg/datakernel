@@ -34,7 +34,7 @@ public class SerializeStreamTest {
 
 	@Test
 	public void test() throws IOException, SerializeException, DeserializeException {
-		BufferSerializer<String> bufferSerializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader())
+		BufferSerializer<String> bufferSerializer = SerializerBuilder.newDefaultInstance(DefiningClassLoader.create())
 				.create(String.class);
 
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
@@ -212,7 +212,7 @@ public class SerializeStreamTest {
 		TestClass validObj1 = new TestClass("abc");
 		TestClass validObj2 = new TestClass("=xyz=");
 		TestClass invalidObj = new TestClass(null);
-		BufferSerializer<TestClass> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestClass.class);
+		BufferSerializer<TestClass> serializer = SerializerBuilder.newDefaultInstance(DefiningClassLoader.create()).create(TestClass.class);
 		dataOutputStream.serialize(serializer, validObj1, MAX_SIZE_127);
 		try {
 			dataOutputStream.serialize(serializer, invalidObj, MAX_SIZE_127);

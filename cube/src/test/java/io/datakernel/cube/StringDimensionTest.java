@@ -69,7 +69,7 @@ public class StringDimensionTest {
 
 	@Test
 	public void testQuery() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = cubeStructureWithStringDimension();

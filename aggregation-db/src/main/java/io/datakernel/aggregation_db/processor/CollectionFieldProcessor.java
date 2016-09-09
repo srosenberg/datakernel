@@ -17,7 +17,6 @@
 package io.datakernel.aggregation_db.processor;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.VarField;
 
 import java.util.*;
@@ -28,10 +27,10 @@ public final class CollectionFieldProcessor implements FieldProcessor {
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {
-		ExpressionSequence seq = sequence();
-		seq.add(getInitializeExpression(accumulator, accumulatorClass));
-		seq.add(call(accumulator, "addAll", cast(firstValue, Collection.class)));
-		return seq;
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(getInitializeExpression(accumulator, accumulatorClass));
+		expressions.add(call(accumulator, "addAll", cast(firstValue, Collection.class)));
+		return sequence(expressions);
 	}
 
 	@Override
@@ -43,10 +42,10 @@ public final class CollectionFieldProcessor implements FieldProcessor {
 	@Override
 	public Expression getCreateAccumulatorExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                                 VarField firstValue, Class<?> valueClass) {
-		ExpressionSequence seq = sequence();
-		seq.add(getInitializeExpression(accumulator, accumulatorClass));
-		seq.add(call(accumulator, "add", cast(firstValue, Object.class)));
-		return seq;
+		List<Expression> expressions = new ArrayList<>();
+		expressions.add(getInitializeExpression(accumulator, accumulatorClass));
+		expressions.add(call(accumulator, "add", cast(firstValue, Object.class)));
+		return sequence(expressions);
 	}
 
 	@Override

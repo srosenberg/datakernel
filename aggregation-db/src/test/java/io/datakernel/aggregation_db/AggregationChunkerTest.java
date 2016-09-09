@@ -50,7 +50,7 @@ public class AggregationChunkerTest {
 	@Test
 	public void test() throws IOException {
 		final Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(
@@ -145,7 +145,7 @@ public class AggregationChunkerTest {
 	@Test
 	public void testProducerWithError() throws IOException {
 		final Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(
@@ -247,7 +247,7 @@ public class AggregationChunkerTest {
 	@Test
 	public void testStorageConsumerWithError() throws IOException {
 		final Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(

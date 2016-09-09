@@ -227,7 +227,7 @@ class StressClient {
 	}
 
 	void uploadSerializedObject(int i) throws UnknownHostException {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		BufferSerializer<TestObject> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
 				.create(TestObject.class);

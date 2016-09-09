@@ -250,7 +250,7 @@ public class Aggregation implements AggregationOperationTracker {
 		if (partitioningKey == null)
 			return Predicates.alwaysTrue();
 
-		AsmBuilder<BiPredicate> builder = new AsmBuilder<>(classLoader, BiPredicate.class);
+		AsmBuilder<BiPredicate> builder = AsmBuilder.create(classLoader, BiPredicate.class);
 		PredicateDefAnd predicate = and();
 		for (String keyComponent : partitioningKey) {
 			predicate.add(cmpEq(
@@ -560,7 +560,7 @@ public class Aggregation implements AggregationOperationTracker {
 	private static Predicate createNotEqualsPredicate(Class<?> recordClass,
 	                                                  List<AggregationQuery.PredicateNotEquals> notEqualsPredicates,
 	                                                  DefiningClassLoader classLoader) {
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
+		AsmBuilder<Predicate> builder = AsmBuilder.create(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 		for (AggregationQuery.PredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
 			predicateDefAnd.add(cmpNe(
@@ -587,7 +587,7 @@ public class Aggregation implements AggregationOperationTracker {
 			objectsInChunk.add(min);
 		}
 
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
+		AsmBuilder<Predicate> builder = AsmBuilder.create(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.Predicate predicate : predicates.asCollection()) {

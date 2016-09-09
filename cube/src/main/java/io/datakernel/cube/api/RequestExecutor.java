@@ -26,7 +26,9 @@ import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.PredicateDefOr;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
@@ -37,10 +39,7 @@ import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.*;
@@ -185,7 +184,7 @@ public final class RequestExecutor {
 			if (classLoader != null)
 				return classLoader;
 
-			DefiningClassLoader newClassLoader = new DefiningClassLoader(cube.getClassLoader());
+			DefiningClassLoader newClassLoader = DefiningClassLoader.create(cube.getClassLoader());
 			classLoaderCache.put(key, newClassLoader);
 			return newClassLoader;
 		}
@@ -324,7 +323,7 @@ public final class RequestExecutor {
 		}
 
 		Class<QueryResultPlaceholder> createResultClass() {
-			AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(localClassLoader, QueryResultPlaceholder.class);
+			AsmBuilder<QueryResultPlaceholder> builder = AsmBuilder.create(localClassLoader, QueryResultPlaceholder.class);
 			for (String dimension : cubeQueryDimensions) {
 				KeyType keyType = structure.getKeyType(dimension);
 				builder.withField(dimension, keyType.getDataType());
@@ -336,13 +335,13 @@ public final class RequestExecutor {
 			for (Map.Entry<String, Class<?>> nameEntry : attributeTypes.entrySet()) {
 				builder.withField(nameEntry.getKey(), nameEntry.getValue());
 			}
-			ExpressionSequence computeSequence = sequence();
+			List<Expression> computeSequence = new ArrayList<>();
 			for (String computedMeasure : sortedComputedMeasures) {
 				builder.withField(computedMeasure, double.class);
 				computeSequence.add(set(getter(self(), computedMeasure),
 						reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 			}
-			builder.withMethod("computeMeasures", computeSequence);
+			builder.withMethod("computeMeasures", sequence(computeSequence));
 			return builder.defineClass();
 		}
 
@@ -355,21 +354,14 @@ public final class RequestExecutor {
 
 		@SuppressWarnings("unchecked")
 		Comparator<QueryResultPlaceholder> generateComparator() {
-			AsmBuilder<Comparator> builder = new AsmBuilder<>(localClassLoader, Comparator.class);
-			ExpressionComparatorNullable comparator = comparatorNullable();
+			AsmBuilder<Comparator> builder = AsmBuilder.create(localClassLoader, Comparator.class);
 
+			List<FieldWithOrdering> fields = new ArrayList<>(orderings.size());
 			for (CubeQuery.Ordering ordering : orderings) {
-				if (ordering.isAsc())
-					comparator.add(
-							getter(cast(arg(0), resultClass), ordering.getPropertyName()),
-							getter(cast(arg(1), resultClass), ordering.getPropertyName()));
-				else
-					comparator.add(
-							getter(cast(arg(1), resultClass), ordering.getPropertyName()),
-							getter(cast(arg(0), resultClass), ordering.getPropertyName()));
+				fields.add(new FieldWithOrdering(ordering.getPropertyName(), ordering.isAsc()));
 			}
 
-			builder.withMethod("compare", comparator);
+			builder.withMethod("compare", comparatorNullableWithOrdering(resultClass, fields));
 
 			return builder.newInstance();
 		}
@@ -477,7 +469,7 @@ public final class RequestExecutor {
 		}
 
 		TotalsPlaceholder createTotalsPlaceholder() {
-			AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(localClassLoader, TotalsPlaceholder.class);
+			AsmBuilder<TotalsPlaceholder> builder = AsmBuilder.create(localClassLoader, TotalsPlaceholder.class);
 
 			for (String field : cubeQueryStoredMeasures) {
 				FieldType fieldType = structure.getFieldType(field);
@@ -487,8 +479,8 @@ public final class RequestExecutor {
 				builder.withField(computedMeasure, double.class);
 			}
 
-			ExpressionSequence initSequence = sequence();
-			ExpressionSequence accumulateSequence = sequence();
+			List<Expression> initSequence = new ArrayList<>();
+			List<Expression> accumulateSequence = new ArrayList<>();
 			for (String field : cubeQueryStoredMeasures) {
 				FieldType fieldType = structure.getFieldType(field);
 				initSequence.add(fieldType.fieldProcessor().getOnFirstItemExpression(
@@ -498,15 +490,15 @@ public final class RequestExecutor {
 						getter(self(), field), fieldType.getDataType(),
 						getter(cast(arg(0), resultClass), field), fieldType.getDataType()));
 			}
-			builder.withMethod("init", initSequence);
-			builder.withMethod("accumulate", accumulateSequence);
+			builder.withMethod("init", sequence(initSequence));
+			builder.withMethod("accumulate", sequence(accumulateSequence));
 
-			ExpressionSequence computeSequence = sequence();
+			List<Expression> computeSequence = new ArrayList<>();
 			for (String computedMeasure : sortedComputedMeasures) {
 				computeSequence.add(set(getter(self(), computedMeasure),
 						reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 			}
-			builder.withMethod("computeMeasures", computeSequence);
+			builder.withMethod("computeMeasures", sequence(computeSequence));
 
 			return builder.newInstance();
 		}
@@ -518,7 +510,7 @@ public final class RequestExecutor {
 		}
 
 		Class createFilterAttributesClass() {
-			AsmBuilder<Object> builder = new AsmBuilder<>(localClassLoader, Object.class);
+			AsmBuilder<Object> builder = AsmBuilder.create(localClassLoader, Object.class);
 			for (String filterAttribute : filterAttributes) {
 				builder.withField(filterAttribute, attributeTypes.get(filterAttribute));
 			}
@@ -526,7 +518,7 @@ public final class RequestExecutor {
 		}
 
 		StringMatcher createSearchMatcher(Iterable<String> properties) {
-			AsmBuilder<StringMatcher> builder = new AsmBuilder<>(localClassLoader, StringMatcher.class);
+			AsmBuilder<StringMatcher> builder = AsmBuilder.create(localClassLoader, StringMatcher.class);
 
 			PredicateDefOr predicate = or();
 

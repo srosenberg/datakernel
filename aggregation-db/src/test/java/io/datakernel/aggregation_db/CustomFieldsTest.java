@@ -113,7 +113,7 @@ public class CustomFieldsTest {
 	public void test() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KEYS, FIELDS);
 		AggregationStructure structure = new AggregationStructure(

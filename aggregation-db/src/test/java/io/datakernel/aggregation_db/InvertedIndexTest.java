@@ -88,7 +88,7 @@ public class InvertedIndexTest {
 	public void testInvertedIndex() throws Exception {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);

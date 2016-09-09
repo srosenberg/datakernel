@@ -103,7 +103,7 @@ public class CubePartitioningTest {
 	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		Eventloop eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();

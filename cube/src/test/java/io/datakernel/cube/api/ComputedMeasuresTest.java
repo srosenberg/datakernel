@@ -37,9 +37,9 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void test() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression d = divide(multiply(divide("a", "b"), 100), "c");
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+		TestQueryResultPlaceholder resultPlaceholder = AsmBuilder.create(classLoader, TestQueryResultPlaceholder.class)
 				.withField("a", long.class)
 				.withField("b", long.class)
 				.withField("c", double.class)
@@ -60,9 +60,9 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testNullDivision() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression d = divide(multiply(divide("a", "b"), 100), "c");
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+		TestQueryResultPlaceholder resultPlaceholder = AsmBuilder.create(classLoader, TestQueryResultPlaceholder.class)
 				.withField("a", long.class)
 				.withField("b", long.class)
 				.withField("c", double.class)
@@ -82,9 +82,9 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testSqrt() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression c = sqrt(add("a", "b"));
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+		TestQueryResultPlaceholder resultPlaceholder = AsmBuilder.create(classLoader, TestQueryResultPlaceholder.class)
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)
@@ -102,9 +102,9 @@ public class ComputedMeasuresTest {
 
 	@Test
 	public void testSqrtOfNegativeArgument() throws Exception {
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		ReportingDSLExpression c = sqrt(subtract("a", "b"));
-		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+		TestQueryResultPlaceholder resultPlaceholder = AsmBuilder.create(classLoader, TestQueryResultPlaceholder.class)
 				.withField("a", double.class)
 				.withField("b", double.class)
 				.withField("c", double.class)

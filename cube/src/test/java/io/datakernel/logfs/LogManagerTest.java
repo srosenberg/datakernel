@@ -170,7 +170,7 @@ public class LogManagerTest {
 		Eventloop eventloop = Eventloop.create().withCurrentTimeProvider(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 		LogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
-		BufferSerializer<TestItem> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestItem.class);
+		BufferSerializer<TestItem> serializer = SerializerBuilder.newDefaultInstance(DefiningClassLoader.create()).create(TestItem.class);
 		LogManager<TestItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, serializer);
 		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");
 		new StreamProducers.OfIterator<>(eventloop, asList(new TestItem("a"), new TestItem(null),

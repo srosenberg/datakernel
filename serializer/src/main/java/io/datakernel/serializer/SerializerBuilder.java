@@ -64,11 +64,11 @@ public final class SerializerBuilder {
 	}
 
 	public static SerializerBuilder newDefaultInstance(ClassLoader classLoader) {
-		return newDefaultInstance(new DefiningClassLoader(classLoader));
+		return newDefaultInstance(DefiningClassLoader.create(classLoader));
 	}
 
 	public static SerializerBuilder newDefaultInstance(String profile, ClassLoader classLoader) {
-		return newDefaultInstance(new DefiningClassLoader(classLoader)).withProfile(profile);
+		return newDefaultInstance(DefiningClassLoader.create(classLoader)).withProfile(profile);
 	}
 
 	public static SerializerBuilder newDefaultInstance(String profile, DefiningClassLoader definingClassLoader) {
@@ -200,7 +200,7 @@ public final class SerializerBuilder {
 	}
 
 	public static <T> BufferSerializer<T> newDefaultSerializer(Class<T> type, ClassLoader classLoader) {
-		return newDefaultInstance(new DefiningClassLoader(classLoader)).create(type);
+		return newDefaultInstance(DefiningClassLoader.create(classLoader)).create(type);
 	}
 
 	public static <T> BufferSerializer<T> newDefaultSerializer(Class<T> type, DefiningClassLoader definingClassLoader) {
@@ -870,7 +870,7 @@ public final class SerializerBuilder {
 	}
 
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		AsmBuilder<BufferSerializer> asmFactory = new AsmBuilder<>(definingClassLoader, BufferSerializer.class);
+		AsmBuilder<BufferSerializer> asmFactory = AsmBuilder.create(definingClassLoader, BufferSerializer.class);
 		if (saveBytecodePath != null) {
 			asmFactory.setBytecodeSaveDir(saveBytecodePath);
 		}

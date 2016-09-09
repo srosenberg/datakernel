@@ -21,7 +21,6 @@ import com.google.common.collect.Iterables;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -52,22 +51,24 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		Class<?> sourceClass = chunkTypes.get(id);
-		AsmBuilder<Function> factory = new AsmBuilder(classLoader, Function.class);
+		AsmBuilder<Function> factory = AsmBuilder.create(classLoader, Function.class);
 
 		Expression result = let(constructor(recordClass));
-		ExpressionSequence applyDef = sequence(result);
+		List<Expression> expressionSequence = new ArrayList<>();
+		expressionSequence.add(result);
 		for (String key : keys) {
-			applyDef.add(set(
+			expressionSequence.add(set(
 					getter(result, key),
 					getter(cast(arg(0), sourceClass), key)));
 		}
 		for (String metric : fields) {
-			applyDef.add(set(
+			expressionSequence.add(set(
 					getter(result, metric),
 					getter(cast(arg(0), sourceClass), metric)));
 		}
 
-		applyDef.add(result);
+		expressionSequence.add(result);
+		Expression applyDef = sequence(expressionSequence);
 		factory.withMethod("apply", applyDef);
 		Function function = factory.newInstance();
 		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop,

@@ -127,21 +127,32 @@ public class AsmBuilder<T> {
 		}
 	}
 
+	// region builders
+
 	/**
 	 * Creates a new instance of AsmFunctionFactory
 	 *
 	 * @param classLoader class loader
 	 * @param type        type of dynamic class
 	 */
-	public AsmBuilder(DefiningClassLoader classLoader, Class<T> type) {
+	private AsmBuilder(DefiningClassLoader classLoader, Class<T> type) {
 		this(classLoader, type, Collections.EMPTY_LIST);
 	}
 
-	public AsmBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
+	private AsmBuilder(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
 		this.classLoader = classLoader;
 		this.mainClass = mainType;
 		this.otherClasses = types;
 	}
+
+	public static <T> AsmBuilder<T> create(DefiningClassLoader classLoader, Class<T> type) {
+		return new AsmBuilder<T>(classLoader, type);
+	}
+
+	public static <T> AsmBuilder<T> create(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
+		return new AsmBuilder<T>(classLoader, mainType, types);
+	}
+	// endregion
 
 	/**
 	 * Creates a new field for a dynamic class
@@ -264,7 +275,7 @@ public class AsmBuilder<T> {
 	 * @return completed class
 	 */
 	private Class<T> defineNewClass(AsmClassKey key, String newClassName) {
-		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
+		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
 
 		String className;
 		if (newClassName == null) {

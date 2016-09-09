@@ -61,14 +61,14 @@ public class CommonUtils {
 
 	// Codegen
 	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
-		return new AsmBuilder<>(classLoader, FieldGetter.class)
+		return AsmBuilder.create(classLoader, FieldGetter.class)
 				.withMethod("get", getter(cast(arg(0), objClass), propertyName))
 				.newInstance();
 	}
 
 	public static FieldSetter generateSetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName,
 	                                         Class<?> propertyClass) {
-		return new AsmBuilder<>(classLoader, FieldSetter.class)
+		return AsmBuilder.create(classLoader, FieldSetter.class)
 				.withMethod("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
 				.newInstance();
 	}

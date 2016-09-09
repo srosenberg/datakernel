@@ -66,7 +66,7 @@ public class AggregationGroupReducerTest {
 	@Test
 	public void test() throws IOException {
 		final Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
@@ -161,7 +161,7 @@ public class AggregationGroupReducerTest {
 	@Test
 	public void testProducerWithError() throws IOException {
 		final Eventloop eventloop = Eventloop.create();
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);

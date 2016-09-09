@@ -273,7 +273,7 @@ public class ReportingTest {
 	public void setUp() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
-		DefiningClassLoader classLoader = new DefiningClassLoader();
+		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		eventloop = Eventloop.create();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
