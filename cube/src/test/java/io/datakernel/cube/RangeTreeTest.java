@@ -28,7 +28,7 @@ public class RangeTreeTest {
 	@SuppressWarnings("AssertEqualsBetweenInconvertibleTypes")
 	@Test
 	public void testPut() throws Exception {
-		RangeTree<Integer, String> rangeTree = new RangeTree<>();
+		RangeTree<Integer, String> rangeTree = RangeTree.create();
 		rangeTree.put(1, 10, "a");
 		rangeTree.put(3, 8, "b");
 		rangeTree.put(5, 5, "c");
@@ -75,7 +75,7 @@ public class RangeTreeTest {
 
 	@Test
 	public void testRemove() throws Exception {
-		RangeTree<Integer, String> rangeTree = new RangeTree<>();
+		RangeTree<Integer, String> rangeTree = RangeTree.create();
 
 		rangeTree.put(1, 20, "a");
 		rangeTree.put(5, 15, "b");

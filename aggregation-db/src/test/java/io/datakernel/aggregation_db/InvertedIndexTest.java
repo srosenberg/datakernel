@@ -90,9 +90,9 @@ public class InvertedIndexTest {
 		Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		AggregationStructure structure = new AggregationStructure(
+		AggregationStructure structure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", stringKey())
 						.build(),
@@ -100,10 +100,10 @@ public class InvertedIndexTest {
 						.put("documents", intList())
 						.build());
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService,
 				structure, path);
 
-		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure);
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
@@ -127,7 +127,7 @@ public class InvertedIndexTest {
 
 		eventloop.run();
 
-		AggregationQuery query = new AggregationQuery()
+		AggregationQuery query = AggregationQuery.create()
 				.keys(InvertedIndexRecord.KEYS)
 				.fields(InvertedIndexRecord.OUTPUT_FIELDS);
 

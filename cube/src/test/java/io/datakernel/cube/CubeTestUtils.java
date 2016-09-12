@@ -52,7 +52,7 @@ public final class CubeTestUtils {
 	public static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                 AggregationStructure structure,
 	                                                                 Path aggregationsDir) {
-		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
+		return LocalFsChunkStorage.create(eventloop, executor, structure, aggregationsDir);
 	}
 
 	public static <T> LogManager<T> getLogManager(Class<T> logClass, Eventloop eventloop, ExecutorService executor,

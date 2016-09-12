@@ -50,12 +50,12 @@ public class StringDimensionTest {
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		cube.addAggregation("detailedAggregation",
-				new AggregationMetadata(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
+				AggregationMetadata.create(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
 
 	public static AggregationStructure cubeStructureWithStringDimension() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", stringKey())
 						.put("key2", intKey())

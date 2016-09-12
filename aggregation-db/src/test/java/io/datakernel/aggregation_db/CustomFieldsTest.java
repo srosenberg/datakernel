@@ -115,8 +115,8 @@ public class CustomFieldsTest {
 		Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(KEYS, FIELDS);
-		AggregationStructure structure = new AggregationStructure(
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KEYS, FIELDS);
+		AggregationStructure structure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("siteId", intKey())
 						.build(),
@@ -130,10 +130,10 @@ public class CustomFieldsTest {
 						.put("estimatedUniqueUserIdCount", hyperLogLog(1024))
 						.build());
 		Path path = temporaryFolder.newFolder().toPath();
-		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
+		AggregationChunkStorage aggregationChunkStorage = LocalFsChunkStorage.create(eventloop, executorService,
 				structure, path);
 
-		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure);
 
 		StreamProducers.ofIterable(eventloop, asList(new EventRecord(1, 0.34, 1), new EventRecord(2, 0.42, 3),
@@ -152,7 +152,7 @@ public class CustomFieldsTest {
 				new EventRecord(2, 0.85, 50))).streamTo(aggregation.consumer(EventRecord.class, FIELDS, OUTPUT_TO_INPUT_FIELDS));
 		eventloop.run();
 
-		AggregationQuery query = new AggregationQuery()
+		AggregationQuery query = AggregationQuery.create()
 				.keys(KEYS)
 				.fields(FIELDS);
 		StreamConsumers.ToList<QueryResult> listConsumer = StreamConsumers.toList(eventloop);

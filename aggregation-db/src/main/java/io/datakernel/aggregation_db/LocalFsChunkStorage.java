@@ -64,12 +64,18 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param dir             directory where data is saved
 	 */
-	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
-	                           Path dir) {
+	private LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
+	                            Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.structure = structure;
 		this.dir = dir;
+	}
+
+	public static LocalFsChunkStorage create(Eventloop eventloop, ExecutorService executorService,
+	                                         AggregationStructure structure,
+	                                         Path dir) {
+		return new LocalFsChunkStorage(eventloop, executorService, structure, dir);
 	}
 
 	private Path path(long id) {

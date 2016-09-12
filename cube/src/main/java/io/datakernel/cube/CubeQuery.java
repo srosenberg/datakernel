@@ -26,7 +26,7 @@ import java.util.Set;
 import static java.util.Collections.unmodifiableList;
 
 public final class CubeQuery {
-	private AggregationQuery aggregationQuery = new AggregationQuery();
+	private AggregationQuery aggregationQuery = AggregationQuery.create();
 	private List<Ordering> orderings = new ArrayList<>();
 
 	/**
@@ -92,12 +92,12 @@ public final class CubeQuery {
 
 	public CubeQuery(List<String> dimensions, List<String> measures, AggregationQuery.Predicates predicates,
 	                 List<Ordering> orderings) {
-		this.aggregationQuery = new AggregationQuery(dimensions, measures, predicates);
+		this.aggregationQuery = AggregationQuery.create(dimensions, measures, predicates);
 		this.orderings = orderings;
 	}
 
 	public CubeQuery(List<String> dimensions, List<String> measures) {
-		this.aggregationQuery = new AggregationQuery(dimensions, measures);
+		this.aggregationQuery = AggregationQuery.create(dimensions, measures);
 	}
 
 	public AggregationQuery.Predicates getPredicates() {

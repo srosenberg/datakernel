@@ -40,7 +40,7 @@ public final class ReportingServiceServlet extends AbstractAsyncServlet {
 	                               LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		super(eventloop);
 		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
+				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(cube.getStructure()))
 				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
 				.create();
 		this.classLoaderCache = classLoaderCache;

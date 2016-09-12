@@ -95,25 +95,11 @@ public class Aggregation implements AggregationOperationTracker {
 	private final List<AggregationGroupReducer> activeGroupReducers = new ArrayList<>();
 	private final List<AggregationChunker> activeChunkers = new ArrayList<>();
 
-	/**
-	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
-	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
-	 * and uses the specified parameters.
-	 *
-	 * @param eventloop               event loop, in which the aggregation is to run
-	 * @param classLoader             class loader for defining dynamic classes
-	 * @param metadataStorage         storage for aggregations metadata
-	 * @param aggregationChunkStorage storage for data chunks
-	 * @param aggregationMetadata     metadata of the aggregation
-	 * @param structure               structure of an aggregation
-	 * @param aggregationChunkSize    maximum size of aggregation chunk
-	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
-	 */
-	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
-	                   int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
-	                   List<String> partitioningKey) {
+	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                    AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                    AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	                    int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
+	                    List<String> partitioningKey) {
 		checkArgument(partitioningKey == null || (aggregationMetadata.getKeys().containsAll(partitioningKey) &&
 				isPrefix(partitioningKey, aggregationMetadata.getKeys())));
 		this.eventloop = eventloop;
@@ -128,8 +114,36 @@ public class Aggregation implements AggregationOperationTracker {
 		this.sorterBlockSize = sorterBlockSize;
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		this.structure = structure;
-		this.processorFactory = new ProcessorFactory(structure);
+		this.processorFactory = ProcessorFactory.create(structure);
 	}
+
+	private Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                    AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                    AggregationMetadata aggregationMetadata, AggregationStructure structure) {
+		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
+				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
+				DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS, null);
+	}
+
+	/**
+	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
+	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
+	 * and uses the specified parameters.
+	 *
+	 * @param eventloop               event loop, in which the aggregation is to run
+	 * @param classLoader             class loader for defining dynamic classes
+	 * @param metadataStorage         storage for aggregations metadata
+	 * @param aggregationChunkStorage storage for data chunks
+	 * @param aggregationMetadata     metadata of the aggregation
+	 * @param structure               structure of an aggregation
+	 * @param aggregationChunkSize    maximum size of aggregation chunk
+	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
+	 */
+	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                                 AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                                 AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	                                 int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
+	                                 List<String> partitioningKey) {return new Aggregation(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure, aggregationChunkSize, sorterItemsInMemory, sorterBlockSize, maxIncrementalReloadPeriodMillis, partitioningKey);}
 
 	/**
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
@@ -146,13 +160,9 @@ public class Aggregation implements AggregationOperationTracker {
 	 * @param aggregationMetadata     metadata of the aggregation
 	 * @param structure               structure of an aggregation
 	 */
-	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
-	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	                   AggregationMetadata aggregationMetadata, AggregationStructure structure) {
-		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
-				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
-				DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS, null);
-	}
+	public static Aggregation create(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                                 AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                                 AggregationMetadata aggregationMetadata, AggregationStructure structure) {return new Aggregation(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure);}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
 		return newArrayList(filter(getFields(), in(fields)));
@@ -269,12 +279,12 @@ public class Aggregation implements AggregationOperationTracker {
 	 * @return consumer for streaming data to aggregation
 	 */
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass) {
-		return consumer(inputClass, (List) null, null, new AggregationCommitCallback(this));
+		return consumer(inputClass, (List) null, null, AggregationCommitCallback.create(this));
 	}
 
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> fields,
 	                                      Map<String, String> outputToInputFields) {
-		return consumer(inputClass, fields, outputToInputFields, new AggregationCommitCallback(this));
+		return consumer(inputClass, fields, outputToInputFields, AggregationCommitCallback.create(this));
 	}
 
 	/**
@@ -303,7 +313,7 @@ public class Aggregation implements AggregationOperationTracker {
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(), fields,
 				outputToInputFields, classLoader);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
+		return AggregationGroupReducer.create(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
 				outputFields, aggregationClass, createPartitionPredicate(aggregationClass), keyFunction, aggregate,
 				aggregationChunkSize, classLoader, chunksCallback);
 	}
@@ -325,7 +335,7 @@ public class Aggregation implements AggregationOperationTracker {
 
 		List<AggregationChunk> allChunks = aggregationMetadata.findChunks(structure, query.getPredicates(), aggregationFields);
 
-		AggregationQueryPlan queryPlan = new AggregationQueryPlan();
+		AggregationQueryPlan queryPlan = AggregationQueryPlan.create();
 
 		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
 				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan, null, classLoader);
@@ -411,9 +421,9 @@ public class Aggregation implements AggregationOperationTracker {
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields, classLoader);
 
-		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
+		ConsolidationPlan consolidationPlan = ConsolidationPlan.create();
 		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan, classLoader)
-				.streamTo(new AggregationChunker(eventloop, this, getKeys(), fields, resultClass,
+				.streamTo(AggregationChunker.create(eventloop, this, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
 						aggregationChunkSize, classLoader, callback));
 		logger.info("Consolidation plan: {}", consolidationPlan);

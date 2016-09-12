@@ -57,9 +57,13 @@ public class AggregationStructure {
 	 * @param keys   map of aggregation keys (key is key name)
 	 * @param fields map of aggregation fields (key is field name)
 	 */
-	public AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
+	private AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
 		this.keys = new LinkedHashMap<>(keys);
 		this.fields = new LinkedHashMap<>(fields);
+	}
+
+	public static AggregationStructure create(Map<String, KeyType> keys, Map<String, FieldType> fields) {
+		return new AggregationStructure(keys, fields);
 	}
 
 	public Map<String, KeyType> getKeys() {

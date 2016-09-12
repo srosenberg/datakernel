@@ -24,8 +24,8 @@ import static org.junit.Assert.assertEquals;
 public class AggregationCostTest {
 	@Test
 	public void testAggregationCost1() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
 				.key("date")
 				.field("clicks");
 
@@ -34,8 +34,8 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost2() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
 				.key("date")
 				.field("clicks")
 				.eq("date", 1);
@@ -45,8 +45,8 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost3() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
 				.keys(asList("date", "advertiser"))
 				.field("clicks")
 				.eq("date", 1)
@@ -57,8 +57,8 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost4() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
-		AggregationQuery query = new AggregationQuery()
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationQuery query = AggregationQuery.create()
 				.keys(asList("date", "publisher"))
 				.field("clicks")
 				.eq("date", 1)

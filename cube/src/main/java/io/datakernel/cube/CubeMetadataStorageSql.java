@@ -283,7 +283,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 		for (Record record : chunkRecords) {
 			ChunkKey chunkKey = getChunkKey(record, aggregationMetadata, aggregationStructure);
-			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),
@@ -308,7 +308,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				continue;
 
 			ChunkKey chunkKey = getChunkKey(record, aggregationMetadata, aggregationStructure);
-			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+			AggregationChunk chunk = AggregationChunk.create(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
 					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(chunkKey.minKeyArray),

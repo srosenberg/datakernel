@@ -65,7 +65,7 @@ public class CubePartitioningTest {
 	private static final String LOG_NAME = "testlog";
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("date", dateKey())
 						.put("advertiser", intKey())
@@ -88,7 +88,7 @@ public class CubePartitioningTest {
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), asList("date"),
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES), asList("date"),
 				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")

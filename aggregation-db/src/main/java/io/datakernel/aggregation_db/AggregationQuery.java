@@ -28,6 +28,12 @@ public final class AggregationQuery {
 	private List<String> fields = new ArrayList<>();
 	private Predicates predicates = new Predicates();
 
+	public static AggregationQuery create() {return new AggregationQuery();}
+
+	public static AggregationQuery create(List<String> keys, List<String> fields) {return new AggregationQuery(keys, fields);}
+
+	public static AggregationQuery create(List<String> keys, List<String> fields, Predicates predicates) {return new AggregationQuery(keys, fields, predicates);}
+
 	/**
 	 * Represents a mapping between key name and {@code QueryPredicate} instance.
 	 */
@@ -235,15 +241,15 @@ public final class AggregationQuery {
 		}
 	}
 
-	public AggregationQuery() {
+	private AggregationQuery() {
 	}
 
-	public AggregationQuery(List<String> keys, List<String> fields) {
+	private AggregationQuery(List<String> keys, List<String> fields) {
 		this.keys.addAll(keys);
 		this.fields.addAll(fields);
 	}
 
-	public AggregationQuery(List<String> keys, List<String> fields, Predicates predicates) {
+	private AggregationQuery(List<String> keys, List<String> fields, Predicates predicates) {
 		this.keys.addAll(keys);
 		this.fields.addAll(fields);
 		this.predicates = predicates;

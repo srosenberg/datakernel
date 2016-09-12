@@ -68,16 +68,16 @@ public class AggregationGroupReducerTest {
 		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		AggregationStructure structure = new AggregationStructure(
+		AggregationStructure structure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", intList())
 						.build());
-		ProcessorFactory processorFactory = new ProcessorFactory(structure);
+		ProcessorFactory processorFactory = ProcessorFactory.create(structure);
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
@@ -130,7 +130,7 @@ public class AggregationGroupReducerTest {
 			}
 		};
 
-		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
+		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = AggregationGroupReducer.create(eventloop,
 				aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage, aggregationMetadata.getKeys(),
 				aggregationMetadata.getFields(), aggregationClass,
 				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
@@ -163,16 +163,16 @@ public class AggregationGroupReducerTest {
 		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		AggregationStructure structure = new AggregationStructure(
+		AggregationStructure structure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", intList())
 						.build());
-		ProcessorFactory processorFactory = new ProcessorFactory(structure);
+		ProcessorFactory processorFactory = ProcessorFactory.create(structure);
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
@@ -225,7 +225,7 @@ public class AggregationGroupReducerTest {
 			}
 		};
 
-		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
+		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = AggregationGroupReducer.create(eventloop,
 				aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage, aggregationMetadata.getKeys(),
 				aggregationMetadata.getFields(), aggregationClass, Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(),
 				keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);

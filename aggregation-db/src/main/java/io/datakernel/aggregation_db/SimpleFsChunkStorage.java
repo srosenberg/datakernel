@@ -39,11 +39,16 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	private final AggregationStructure structure;
 	private final SimpleFsClient client;
 
-	public SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure structure,
-	                            InetSocketAddress serverAddress) {
+	private SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure structure,
+	                             InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.structure = structure;
 		this.client = SimpleFsClient.create(eventloop, serverAddress);
+	}
+
+	public static SimpleFsChunkStorage create(Eventloop eventloop, AggregationStructure structure,
+	                                          InetSocketAddress serverAddress) {
+		return new SimpleFsChunkStorage(eventloop, structure, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")

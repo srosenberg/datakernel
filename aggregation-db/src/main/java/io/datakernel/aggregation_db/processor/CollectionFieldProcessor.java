@@ -24,6 +24,10 @@ import java.util.*;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class CollectionFieldProcessor implements FieldProcessor {
+	private CollectionFieldProcessor() {}
+
+	public static CollectionFieldProcessor create() {return new CollectionFieldProcessor();}
+
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,
 	                                           VarField firstValue, Class<?> valueClass) {

@@ -33,9 +33,11 @@ import static io.datakernel.codegen.Expressions.*;
 public final class ProcessorFactory {
 	private final AggregationStructure structure;
 
-	public ProcessorFactory(AggregationStructure structure) {
+	private ProcessorFactory(AggregationStructure structure) {
 		this.structure = structure;
 	}
+
+	public static ProcessorFactory create(AggregationStructure structure) {return new ProcessorFactory(structure);}
 
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                                 List<String> fields, DefiningClassLoader classLoader) {

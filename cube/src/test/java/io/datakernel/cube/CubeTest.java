@@ -78,7 +78,7 @@ public class CubeTest {
 				aggregationStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailedAggregation", new AggregationMetadata(asList("key1", "key2"),
+		cube.addAggregation("detailedAggregation", AggregationMetadata.create(asList("key1", "key2"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
@@ -91,13 +91,13 @@ public class CubeTest {
 				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailedAggregation", new AggregationMetadata(asList("key1", "key2", "key3", "key4", "key5"),
+		cube.addAggregation("detailedAggregation", AggregationMetadata.create(asList("key1", "key2", "key3", "key4", "key5"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
 
 	public static AggregationStructure cubeStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", intKey())
 						.put("key2", intKey())
@@ -110,7 +110,7 @@ public class CubeTest {
 	}
 
 	public static AggregationStructure sophisticatedCubeStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", intKey())
 						.put("key2", intKey())
@@ -181,7 +181,7 @@ public class CubeTest {
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
+		AggregationChunkStorage storage = SimpleFsChunkStorage.create(eventloop, aggregationStructure,
 				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 
@@ -465,7 +465,7 @@ public class CubeTest {
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure();
-		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService, aggregationStructure, dir);
+		AggregationChunkStorage storage = LocalFsChunkStorage.create(eventloop, executorService, aggregationStructure, dir);
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube)));

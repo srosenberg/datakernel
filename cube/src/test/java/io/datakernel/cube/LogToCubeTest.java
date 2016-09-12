@@ -65,7 +65,7 @@ public class LogToCubeTest {
 	}
 
 	public static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("pub", intKey())
 						.put("adv", intKey())
@@ -86,8 +86,8 @@ public class LogToCubeTest {
 		AggregationStructure structure = getStructure();
 		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
 		Cube cube = newCube(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage, structure);
-		cube.addAggregation("pub", new AggregationMetadata(asList("pub"), asList("pubRequests")));
-		cube.addAggregation("adv", new AggregationMetadata(asList("adv"), asList("advRequests")));
+		cube.addAggregation("pub", AggregationMetadata.create(asList("pub"), asList("pubRequests")));
+		cube.addAggregation("adv", AggregationMetadata.create(asList("adv"), asList("advRequests")));
 
 		Path dir = temporaryFolder.newFolder().toPath();
 		deleteRecursivelyQuietly(dir);

@@ -52,8 +52,8 @@ public class AggregationChunkerTest {
 		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
+		AggregationStructure aggregationStructure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -116,7 +116,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
+		AggregationChunker aggregationChunker = AggregationChunker.create(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, classLoader, resultCallback);
 
@@ -147,8 +147,8 @@ public class AggregationChunkerTest {
 		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
+		AggregationStructure aggregationStructure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -210,7 +210,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
+		AggregationChunker aggregationChunker = AggregationChunker.create(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, classLoader, resultCallback);
 
@@ -249,8 +249,8 @@ public class AggregationChunkerTest {
 		final Eventloop eventloop = Eventloop.create();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(
+		AggregationMetadata aggregationMetadata = AggregationMetadata.create(KeyValuePair.KEYS, KeyValuePair.FIELDS);
+		AggregationStructure aggregationStructure = AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -318,7 +318,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
+		AggregationChunker aggregationChunker = AggregationChunker.create(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, classLoader, resultCallback);
 

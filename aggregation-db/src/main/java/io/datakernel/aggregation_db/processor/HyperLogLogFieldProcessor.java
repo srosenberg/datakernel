@@ -28,9 +28,11 @@ import static io.datakernel.codegen.Expressions.*;
 public final class HyperLogLogFieldProcessor implements FieldProcessor {
 	private final int registers;
 
-	public HyperLogLogFieldProcessor(int registers) {
+	private HyperLogLogFieldProcessor(int registers) {
 		this.registers = registers;
 	}
+
+	public static HyperLogLogFieldProcessor create(int registers) {return new HyperLogLogFieldProcessor(registers);}
 
 	@Override
 	public Expression getOnFirstItemExpression(VarField accumulator, Class<?> accumulatorClass,

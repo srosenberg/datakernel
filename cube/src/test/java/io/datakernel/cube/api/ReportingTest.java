@@ -142,7 +142,7 @@ public class ReportingTest {
 	}
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(DIMENSIONS, MEASURES);
+		return AggregationStructure.create(DIMENSIONS, MEASURES);
 	}
 
 	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
@@ -155,7 +155,7 @@ public class ReportingTest {
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		Set<String> measures = newHashSet(MEASURES.keySet());
 		measures.remove("revenue");
-		cube.addAggregation("detailed", new AggregationMetadata(newArrayList(DIMENSIONS.keySet()),
+		cube.addAggregation("detailed", AggregationMetadata.create(newArrayList(DIMENSIONS.keySet()),
 				newArrayList(measures)));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;

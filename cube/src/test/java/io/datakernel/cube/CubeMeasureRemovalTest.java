@@ -77,7 +77,7 @@ public class CubeMeasureRemovalTest {
 			.build();
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				KEYS,
 				ImmutableMap.<String, FieldType>builder()
 						.put("impressions", longSum())
@@ -95,9 +95,9 @@ public class CubeMeasureRemovalTest {
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS, LogItem.MEASURES));
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES));
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"), LogItem.MEASURES));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;
 	}
@@ -110,11 +110,11 @@ public class CubeMeasureRemovalTest {
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS,
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS,
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("date", new AggregationMetadata(asList("date"),
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"),
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"),
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"),
 				asList("impressions", "clicks", "conversions", "revenue")));
 		cube.setChildParentRelationships(CHILD_PARENT_RELATIONSHIPS);
 		return cube;

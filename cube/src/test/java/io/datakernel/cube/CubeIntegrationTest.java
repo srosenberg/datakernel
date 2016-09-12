@@ -67,7 +67,7 @@ public class CubeIntegrationTest {
 	private static final String LOG_NAME = "testlog";
 
 	private static AggregationStructure getStructure() {
-		return new AggregationStructure(
+		return AggregationStructure.create(
 				ImmutableMap.<String, KeyType>builder()
 						.put("date", dateKey())
 						.put("advertiser", intKey())
@@ -90,9 +90,9 @@ public class CubeIntegrationTest {
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
-		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
-		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
+		cube.addAggregation("detailed", AggregationMetadata.create(LogItem.DIMENSIONS, LogItem.MEASURES));
+		cube.addAggregation("date", AggregationMetadata.create(asList("date"), LogItem.MEASURES));
+		cube.addAggregation("advertiser", AggregationMetadata.create(asList("advertiser"), LogItem.MEASURES));
 		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")
 				.put("banner", "campaign")

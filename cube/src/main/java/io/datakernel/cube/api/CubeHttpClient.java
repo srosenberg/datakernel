@@ -48,7 +48,7 @@ public final class CubeHttpClient {
 		this.httpClient = httpClient;
 		this.timeout = timeout;
 		this.gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, new QueryPredicatesGsonSerializer(structure))
+				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(structure))
 				.registerTypeAdapter(ReportingQueryResult.class, new ReportingQueryResponseDeserializer(structure, reportingConfiguration))
 				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
 				.create();

@@ -168,7 +168,7 @@ public final class Cube implements EventloopJmxMBean {
 	                           List<String> partitioningKey, int chunkSize) {
 		AggregationMetadataStorage aggregationMetadataStorage =
 				cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
-		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = Aggregation.create(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, chunkSize, sorterItemsInMemory,
 				sorterBlockSize, maxIncrementalReloadPeriodMillis, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
@@ -521,7 +521,7 @@ public final class Cube implements EventloopJmxMBean {
 		Set<DrillDown> drillDowns = newHashSet();
 		Set<List<String>> chains = newHashSet();
 
-		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
+		AggregationQuery query = AggregationQuery.create(newArrayList(dimensions), newArrayList(measures), predicates);
 
 		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
 
@@ -577,7 +577,7 @@ public final class Cube implements EventloopJmxMBean {
 	                                        Set<String> measures) {
 		Set<String> availableMeasures = newHashSet();
 
-		AggregationQuery query = new AggregationQuery(newArrayList(dimensions), newArrayList(measures), predicates);
+		AggregationQuery query = AggregationQuery.create(newArrayList(dimensions), newArrayList(measures), predicates);
 
 		List<String> queryDimensions = getQueryDimensions(dimensions, predicates.asCollection());
 
