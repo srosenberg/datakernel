@@ -31,6 +31,7 @@ import java.lang.reflect.*;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static java.lang.Character.toUpperCase;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 
@@ -189,6 +191,8 @@ public final class SerializerBuilder {
 		addressMap.put(Inet6Address.class, SerializerGenInet6Address.instance());
 		result.withSerializerFor(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap));
 
+		result.withSerializerFor(ByteBuffer.class, new SerializerGenByteBuffer());
+
 		result.withSerializerFor(SerializerClass.class, SerializerClassEx.class, new SerializerClassHandler());
 		result.withSerializerFor(SerializeFixedSize.class, SerializeFixedSizeEx.class, new SerializeFixedSizeHandler());
 		result.withSerializerFor(SerializeVarLength.class, SerializeVarLengthEx.class, new SerializeVarLengthHandler());
@@ -237,6 +241,61 @@ public final class SerializerBuilder {
 
 	public SerializerBuilder withExtraSubclasses(String extraSubclassesId, Class<?>... subclasses) {
 		return withExtraSubclasses(extraSubclassesId, Arrays.asList(subclasses));
+	}
+
+	public SerializerBuilder withByteBuffersSupport(boolean wrapped) {
+		return withSerializerFor(ByteBuffer.class, new SerializerGenBuilderConst(new SerializerGenByteBuffer(wrapped)));
+	}
+
+	public SerializerBuilder withHppcSupport() {
+		registerHppcMaps();
+		registerHppcSets();
+		return this;
+	}
+
+	private void registerHppcMaps() {
+		List<Class<?>> types = asList(
+				byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
+		);
+
+		for (int i = 0; i < types.size(); i++) {
+			Class<?> keyType = types.get(i);
+			String keyTypeName = keyType.getSimpleName();
+			for (Class<?> valueType : types) {
+				String valueTypeName = valueType.getSimpleName();
+				String hppcMapTypeName
+						= "com.carrotsearch.hppc." + capitalize(keyTypeName) + capitalize(valueTypeName) + "Map";
+				Class<?> hppcMapType;
+				try {
+					hppcMapType = Class.forName(hppcMapTypeName, true, definingClassLoader);
+				} catch (ClassNotFoundException e) {
+					throw new IllegalStateException("Cannot load " + e.getClass().getName(), e);
+				}
+				typeMap.put(hppcMapType, SerializerGenHppcMap.serializerGenBuilder(hppcMapType, keyType, valueType));
+			}
+		}
+	}
+
+	private void registerHppcSets() {
+		List<Class<?>> types = asList(
+				byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
+		);
+
+		for (Class<?> valueType : types) {
+			String valueTypeName = valueType.getSimpleName();
+			String hppcSetTypeName = "com.carrotsearch.hppc." + capitalize(valueTypeName) + "Set";
+			Class<?> hppcSetType;
+			try {
+				hppcSetType = Class.forName(hppcSetTypeName, true, definingClassLoader);
+			} catch (ClassNotFoundException e) {
+				throw new IllegalStateException(e);
+			}
+			typeMap.put(hppcSetType, SerializerGenHppcSet.serializerGenBuilder(hppcSetType, valueType));
+		}
+	}
+
+	private static String capitalize(String str) {
+		return String.valueOf(toUpperCase(str.charAt(0))) + str.substring(1);
 	}
 
 	/**

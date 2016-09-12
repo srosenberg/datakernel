@@ -40,7 +40,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		this.nullable = false;
 	}
 
-	public SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
+	private SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
 		this.wrapped = wrapped;
 		this.nullable = nullable;
 	}
