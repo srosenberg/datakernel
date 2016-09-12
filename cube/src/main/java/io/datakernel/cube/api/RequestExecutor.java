@@ -62,15 +62,22 @@ public final class RequestExecutor {
 	private final Resolver resolver;
 	private final LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
 
-	public RequestExecutor(Cube cube, AggregationStructure structure, ReportingConfiguration reportingConfiguration,
-	                       Eventloop eventloop, Resolver resolver,
-	                       LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+	private RequestExecutor(Cube cube, AggregationStructure structure, ReportingConfiguration reportingConfiguration,
+	                        Eventloop eventloop, Resolver resolver,
+	                        LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		this.cube = cube;
 		this.structure = structure;
 		this.reportingConfiguration = reportingConfiguration;
 		this.eventloop = eventloop;
 		this.resolver = resolver;
 		this.classLoaderCache = classLoaderCache;
+	}
+
+	public static RequestExecutor create(Cube cube, AggregationStructure structure,
+	                                     ReportingConfiguration reportingConfiguration,
+	                                     Eventloop eventloop, Resolver resolver,
+	                                     LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+		return new RequestExecutor(cube, structure, reportingConfiguration, eventloop, resolver, classLoaderCache);
 	}
 
 	public void execute(ReportingQuery query, ResultCallback<QueryResult> resultCallback) {
@@ -98,7 +105,7 @@ public final class RequestExecutor {
 		Set<DrillDown> drillDowns;
 		Set<List<String>> chains;
 
-		CubeQuery query = new CubeQuery();
+		CubeQuery query = CubeQuery.create();
 
 		AggregationQuery.Predicates queryPredicates;
 		Map<String, AggregationQuery.Predicate> predicates;
@@ -154,11 +161,11 @@ public final class RequestExecutor {
 			sortedComputedMeasures = asSortedList(computedMeasures);
 
 			query
-					.dimensions(cubeQueryDimensions)
-					.measures(cubeQueryStoredMeasures)
-					.predicates(cubeQueryPredicates);
+					.withDimensions(cubeQueryDimensions)
+					.withMeasures(cubeQueryStoredMeasures)
+					.withPredicates(cubeQueryPredicates);
 
-			localClassLoader = getLocalClassLoader(new ClassLoaderCacheKey(cubeQueryDimensions, cubeQueryPredicates,
+			localClassLoader = getLocalClassLoader(ClassLoaderCacheKey.create(cubeQueryDimensions, cubeQueryPredicates,
 					cubeQueryStoredMeasures, sortedComputedMeasures, attributes));
 			resultClass = createResultClass();
 			StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube();
@@ -401,7 +408,7 @@ public final class RequestExecutor {
 			List<String> filterAttributes = nullOrContains(metadataFields, "filterAttributes") ?
 					this.filterAttributes : null;
 
-			return new QueryResult(results, resultClass, totalsPlaceholder, count, drillDowns, chains, dimensions,
+			return QueryResult.create(results, resultClass, totalsPlaceholder, count, drillDowns, chains, dimensions,
 					attributes, resultMeasures, appliedOrderings, filterAttributesPlaceholder, filterAttributes, fields,
 					metadataFields);
 		}

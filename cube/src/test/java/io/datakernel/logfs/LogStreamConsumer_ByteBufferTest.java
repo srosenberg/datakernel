@@ -125,7 +125,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+				LogStreamConsumer_ByteBuffer.create(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
 						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
@@ -197,7 +197,7 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+				LogStreamConsumer_ByteBuffer.create(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
 						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 

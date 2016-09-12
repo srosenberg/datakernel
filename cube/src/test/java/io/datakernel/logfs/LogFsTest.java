@@ -79,8 +79,8 @@ public class LogFsTest {
 	@Test
 	public void testLocalFs() throws Exception {
 		String logPartition = "p1";
-		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, path);
-		LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, path);
+		LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
@@ -138,8 +138,8 @@ public class LogFsTest {
 		final SimpleFsServer server = createServer(address, path);
 		SimpleFsClient client = createClient(address);
 
-		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LogFileSystem fileSystem = RemoteLogFileSystem.create(eventloop, logName, client);
+		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
@@ -201,8 +201,8 @@ public class LogFsTest {
 		final HashFsServer server = createServer(replica, servers, path);
 		HashFsClient client = createClient(servers);
 
-		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
+		LogFileSystem fileSystem = RemoteLogFileSystem.create(eventloop, logName, client);
+		final LogManagerImpl<String> logManager = LogManagerImpl.create(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer(), DETAILED_DATE_TIME_FORMATTER, 10 * 60 * 1000);
 
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {

@@ -42,16 +42,22 @@ public final class CubeHttpClient {
 	private final int timeout;
 	private final Gson gson;
 
-	public CubeHttpClient(String domain, AsyncHttpClient httpClient, int timeout, AggregationStructure structure,
-	                      ReportingConfiguration reportingConfiguration) {
+	private CubeHttpClient(String domain, AsyncHttpClient httpClient, int timeout, AggregationStructure structure,
+	                       ReportingConfiguration reportingConfiguration) {
 		this.domain = domain.replaceAll("/$", "");
 		this.httpClient = httpClient;
 		this.timeout = timeout;
 		this.gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(structure))
-				.registerTypeAdapter(ReportingQueryResult.class, new ReportingQueryResponseDeserializer(structure, reportingConfiguration))
-				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
+				.registerTypeAdapter(ReportingQueryResult.class, ReportingQueryResponseDeserializer.create(structure, reportingConfiguration))
+				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
 				.create();
+	}
+
+	public static CubeHttpClient create(String domain, AsyncHttpClient httpClient, int timeout,
+	                                    AggregationStructure structure,
+	                                    ReportingConfiguration reportingConfiguration) {
+		return new CubeHttpClient(domain, httpClient, timeout, structure, reportingConfiguration);
 	}
 
 	public void query(ReportingQuery query, final ResultCallback<ReportingQueryResult> callback) {

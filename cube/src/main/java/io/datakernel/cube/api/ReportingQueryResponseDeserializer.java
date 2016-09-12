@@ -33,9 +33,14 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 	private final AggregationStructure structure;
 	private final ReportingConfiguration reportingConfiguration;
 
-	public ReportingQueryResponseDeserializer(AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
+	private ReportingQueryResponseDeserializer(AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
 		this.structure = structure;
 		this.reportingConfiguration = reportingConfiguration;
+	}
+
+	public static ReportingQueryResponseDeserializer create(AggregationStructure structure,
+	                                                        ReportingConfiguration reportingConfiguration) {
+		return new ReportingQueryResponseDeserializer(structure, reportingConfiguration);
 	}
 
 	@Override
@@ -55,7 +60,7 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 		Type listOfStrings = new TypeToken<List<String>>() {}.getType();
 
 		if (json.get(METADATA_FIELD) == null)
-			return new ReportingQueryResult(records, totals, count, null, null, null, null, null, null);
+			return ReportingQueryResult.create(records, totals, count, null, null, null, null, null, null);
 
 		JsonObject jsonMetadata = json.get(METADATA_FIELD).getAsJsonObject();
 		List<String> dimensions = ctx.deserialize(jsonMetadata.get(DIMENSIONS_FIELD), listOfStrings);
@@ -66,7 +71,7 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 				listOfStrings, ctx);
 		List<String> sortedBy = ctx.deserialize(jsonMetadata.get(SORTED_BY_FIELD), listOfStrings);
 
-		return new ReportingQueryResult(records, totals, count, drillDowns, dimensions, attributes, measures,
+		return ReportingQueryResult.create(records, totals, count, drillDowns, dimensions, attributes, measures,
 				filterAttributes, sortedBy);
 	}
 
@@ -83,7 +88,7 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 			List<String> dimensions = ctx.deserialize(jsonDrillDown.getAsJsonObject().get(DIMENSIONS_FIELD),
 					listOfStrings);
 			Set<String> measures = ctx.deserialize(jsonDrillDown.getAsJsonObject().get(MEASURES_FIELD), setOfStrings);
-			drillDowns.add(new DrillDown(dimensions, measures));
+			drillDowns.add(DrillDown.create(dimensions, measures));
 		}
 
 		return drillDowns;

@@ -149,7 +149,7 @@ public class ReportingTest {
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		Cube cube = Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
@@ -162,7 +162,7 @@ public class ReportingTest {
 	}
 
 	private static ReportingConfiguration getReportingConfiguration() {
-		return new ReportingConfiguration()
+		return ReportingConfiguration.create()
 				.addResolvedAttributeForKey("advertiserName", singletonList("advertiser"), String.class, new AdvertiserResolver())
 				.setComputedMeasures(COMPUTED_MEASURES);
 	}
@@ -284,12 +284,12 @@ public class ReportingTest {
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		CubeMetadataStorageSql cubeMetadataStorageSql =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
+				CubeMetadataStorageSql.create(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
 		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(LogItem.class, eventloop, executor, classLoader, logsDir);
-		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+		LogToCubeRunner<LogItem> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 		cube.setReportingConfiguration(reportingConfiguration);
 
@@ -326,20 +326,20 @@ public class ReportingTest {
 				.withTimeout(TIMEOUT)
 				.withDnsServerAddress(HttpUtils.inetAddress("8.8.8.8"));
 		httpClient = AsyncHttpClient.create(clientEventloop, dnsClient);
-		cubeHttpClient = new CubeHttpClient("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
+		cubeHttpClient = CubeHttpClient.create("http://127.0.0.1:" + SERVER_PORT, httpClient, TIMEOUT, structure, reportingConfiguration);
 	}
 
 	@Test
 	public void testQuery() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date", "campaign")
-				.measures("impressions", "clicks", "ctr", "revenue")
-				.filters(new AggregationQuery.Predicates()
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date", "campaign")
+				.withMeasures("impressions", "clicks", "ctr", "revenue")
+				.withFilters(new AggregationQuery.Predicates()
 						.eq("banner", 1)
 						.between("date", 1, 2))
-				.sort(CubeQuery.Ordering.asc("campaign"), CubeQuery.Ordering.asc("ctr"),
+				.withSort(CubeQuery.Ordering.asc("campaign"), CubeQuery.Ordering.asc("ctr"),
 						CubeQuery.Ordering.desc("banner"))
-				.metadataFields("dimensions", "measures", "attributes", "drillDowns", "sortedBy");
+				.withMetadataFields("dimensions", "measures", "attributes", "drillDowns", "sortedBy");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -386,12 +386,12 @@ public class ReportingTest {
 
 	@Test
 	public void testPaginationAndDrillDowns() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date")
-				.measures("impressions", "revenue")
-				.limit(1)
-				.offset(2)
-				.metadataFields("drillDowns");
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date")
+				.withMeasures("impressions", "revenue")
+				.withLimit(1)
+				.withOffset(2)
+				.withMetadataFields("drillDowns");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -418,22 +418,22 @@ public class ReportingTest {
 		assertEquals(4, queryResult[0].getCount());
 
 		Set<DrillDown> drillDowns = newHashSet();
-		drillDowns.add(new DrillDown(singletonList("advertiser"), singleton("impressions")));
-		drillDowns.add(new DrillDown(asList("advertiser", "campaign"), singleton("impressions")));
-		drillDowns.add(new DrillDown(asList("advertiser", "campaign", "banner"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(singletonList("advertiser"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(asList("advertiser", "campaign"), singleton("impressions")));
+		drillDowns.add(DrillDown.create(asList("advertiser", "campaign", "banner"), singleton("impressions")));
 		assertEquals(drillDowns, queryResult[0].getDrillDowns());
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
 	@Test
 	public void testFilterAttributes() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("date")
-				.attributes("advertiserName")
-				.measures("impressions")
-				.limit(0)
-				.filters(new AggregationQuery.Predicates().eq("advertiser", 1))
-				.metadataFields("filterAttributes");
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("date")
+				.withAttributes("advertiserName")
+				.withMeasures("impressions")
+				.withLimit(0)
+				.withFilters(new AggregationQuery.Predicates().eq("advertiser", 1))
+				.withMetadataFields("filterAttributes");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -460,12 +460,12 @@ public class ReportingTest {
 
 	@Test
 	public void testSearchAndFieldsParameter() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.attributes("advertiserName")
-				.measures("clicks")
-				.fields("advertiser", "advertiserName")
-				.search("s")
-				.metadataFields("measures");
+		ReportingQuery query = ReportingQuery.create()
+				.withAttributes("advertiserName")
+				.withMeasures("clicks")
+				.withFields("advertiser", "advertiserName")
+				.withSearch("s")
+				.withMetadataFields("measures");
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);
@@ -497,10 +497,10 @@ public class ReportingTest {
 
 	@Test
 	public void testCustomMeasures() throws Exception {
-		ReportingQuery query = new ReportingQuery()
-				.dimensions("advertiser")
-				.measures("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent")
-				.sort(CubeQuery.Ordering.asc("uniqueUserIdsCount"), CubeQuery.Ordering.asc("advertiser"));
+		ReportingQuery query = ReportingQuery.create()
+				.withDimensions("advertiser")
+				.withMeasures("eventCount", "minRevenue", "maxRevenue", "uniqueUserIdsCount", "uniqueUserPercent")
+				.withSort(CubeQuery.Ordering.asc("uniqueUserIdsCount"), CubeQuery.Ordering.asc("advertiser"));
 
 		final ReportingQueryResult[] queryResult = new ReportingQueryResult[1];
 		startBlocking(httpClient);

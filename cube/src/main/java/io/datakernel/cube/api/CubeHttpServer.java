@@ -25,10 +25,12 @@ import io.datakernel.http.MiddlewareServlet;
 public final class CubeHttpServer {
 	public static final String QUERY_REQUEST_PATH = "/";
 
+	private CubeHttpServer() {}
+
 	private static MiddlewareServlet createServlet(Cube cube, ReportingServiceServlet reportingServiceServlet) {
 		MiddlewareServlet servlet = MiddlewareServlet.create();
 		servlet.get(QUERY_REQUEST_PATH, reportingServiceServlet);
-		servlet.get("/consolidation-debug", new ConsolidationDebugServlet(cube));
+		servlet.get("/consolidation-debug", ConsolidationDebugServlet.create(cube));
 		return servlet;
 	}
 
@@ -38,7 +40,9 @@ public final class CubeHttpServer {
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, int classLoaderCacheSize, int port) {
-		return createServer(cube, eventloop, new ReportingServiceServlet(eventloop, cube,
-				new LRUCache<ClassLoaderCacheKey, DefiningClassLoader>(classLoaderCacheSize))).withListenPort(port);
+		return createServer(cube, eventloop, ReportingServiceServlet.create(eventloop, cube,
+				LRUCache.<ClassLoaderCacheKey, DefiningClassLoader>create(classLoaderCacheSize))).withListenPort(port);
 	}
+
+	public static CubeHttpServer create() {return new CubeHttpServer();}
 }

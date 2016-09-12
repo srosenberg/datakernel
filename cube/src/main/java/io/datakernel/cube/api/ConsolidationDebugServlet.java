@@ -29,10 +29,12 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	private final Gson gson;
 	private final Cube cube;
 
-	public ConsolidationDebugServlet(Cube cube) {
+	private ConsolidationDebugServlet(Cube cube) {
 		this.cube = cube;
 		this.gson = new GsonBuilder().registerTypeAdapter(PrimaryKey.class, new PrimaryKeySerializer()).create();
 	}
+
+	public static ConsolidationDebugServlet create(Cube cube) {return new ConsolidationDebugServlet(cube);}
 
 	public static class PrimaryKeySerializer implements JsonSerializer<PrimaryKey> {
 		@Override

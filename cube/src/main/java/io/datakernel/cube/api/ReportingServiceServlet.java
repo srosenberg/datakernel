@@ -36,15 +36,20 @@ public final class ReportingServiceServlet extends AbstractAsyncServlet {
 	private final HttpRequestHandler handler;
 	private final LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache;
 
-	public ReportingServiceServlet(Eventloop eventloop, Cube cube,
-	                               LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+	private ReportingServiceServlet(Eventloop eventloop, Cube cube,
+	                                LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		super(eventloop);
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.Predicates.class, QueryPredicatesGsonSerializer.create(cube.getStructure()))
-				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
+				.registerTypeAdapter(CubeQuery.Ordering.class, QueryOrderingGsonSerializer.create())
 				.create();
 		this.classLoaderCache = classLoaderCache;
-		this.handler = new HttpRequestHandler(gson, cube, eventloop, classLoaderCache);
+		this.handler = HttpRequestHandler.create(gson, cube, eventloop, classLoaderCache);
+	}
+
+	public static ReportingServiceServlet create(Eventloop eventloop, Cube cube,
+	                                             LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
+		return new ReportingServiceServlet(eventloop, cube, classLoaderCache);
 	}
 
 	@Override

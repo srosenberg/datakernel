@@ -58,7 +58,7 @@ public class LogToCubeTest {
 	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                           CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                           AggregationStructure aggregationStructure) {
-		return new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+		return Cube.create(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				aggregationStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
 				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
@@ -91,14 +91,14 @@ public class LogToCubeTest {
 
 		Path dir = temporaryFolder.newFolder().toPath();
 		deleteRecursivelyQuietly(dir);
-		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, dir);
+		LocalFsLogFileSystem fileSystem = LocalFsLogFileSystem.create(eventloop, executor, dir);
 		BufferSerializer<TestPubRequest> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
 				.create(TestPubRequest.class);
 
-		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
+		LogManager<TestPubRequest> logManager = LogManagerImpl.create(eventloop, fileSystem, bufferSerializer);
 
-		LogToCubeRunner<TestPubRequest> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
+		LogToCubeRunner<TestPubRequest> logToCubeRunner = LogToCubeRunner.create(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
 				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
 
 		new StreamProducers.OfIterator<>(eventloop, asList(
@@ -119,7 +119,7 @@ public class LogToCubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
-		cube.query(TestAdvResult.class, new CubeQuery(asList("adv"), asList("advRequests")))
+		cube.query(TestAdvResult.class, CubeQuery.create(asList("adv"), asList("advRequests")))
 				.streamTo(consumerToList);
 		eventloop.run();
 

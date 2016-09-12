@@ -43,9 +43,9 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final StreamForwarder<T> forwarder;
 	private final Eventloop eventloop;
 
-	public LogStreamProducer(final Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                         String logPartition, LogPosition startPosition, LogFile endFile,
-	                         ResultCallback<LogPosition> positionCallback) {
+	private LogStreamProducer(final Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                          String logPartition, LogPosition startPosition, LogFile endFile,
+	                          ResultCallback<LogPosition> positionCallback) {
 		this.eventloop = eventloop;
 		this.logPartition = logPartition;
 		this.startPosition = startPosition;
@@ -66,6 +66,14 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				new StreamProducers.ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 			}
 		});
+	}
+
+	public static <T> LogStreamProducer<T> create(final Eventloop eventloop, LogFileSystem fileSystem,
+	                                              BufferSerializer<T> serializer, String logPartition,
+	                                              LogPosition startPosition, LogFile endFile,
+	                                              ResultCallback<LogPosition> positionCallback) {
+		return new LogStreamProducer<T>(eventloop, fileSystem, serializer, logPartition,
+				startPosition, endFile, positionCallback);
 	}
 
 	private boolean readFile(LogFile logFile) {
@@ -126,8 +134,8 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 			return startPosition;
 
 		if (currentLogFile.equals(startPosition.getLogFile()))
-			return new LogPosition(currentLogFile, startPosition.getPosition() + currentDecompressor.getInputStreamPosition());
+			return LogPosition.create(currentLogFile, startPosition.getPosition() + currentDecompressor.getInputStreamPosition());
 
-		return new LogPosition(currentLogFile, currentDecompressor.getInputStreamPosition());
+		return LogPosition.create(currentLogFile, currentDecompressor.getInputStreamPosition());
 	}
 }

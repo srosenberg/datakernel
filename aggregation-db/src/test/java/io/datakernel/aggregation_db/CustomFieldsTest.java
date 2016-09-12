@@ -153,8 +153,8 @@ public class CustomFieldsTest {
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
-				.keys(KEYS)
-				.fields(FIELDS);
+				.withKeys(KEYS)
+				.withFields(FIELDS);
 		StreamConsumers.ToList<QueryResult> listConsumer = StreamConsumers.toList(eventloop);
 		aggregation.query(query, QueryResult.class).streamTo(listConsumer);
 		eventloop.run();

@@ -35,9 +35,11 @@ import static io.datakernel.cube.api.HttpJsonConstants.*;
 public final class HttpRequestProcessor implements RequestProcessor<HttpRequest> {
 	private final Gson gson;
 
-	public HttpRequestProcessor(Gson gson) {
+	private HttpRequestProcessor(Gson gson) {
 		this.gson = gson;
 	}
+
+	public static HttpRequestProcessor create(Gson gson) {return new HttpRequestProcessor(gson);}
 
 	@Override
 	public ReportingQuery apply(HttpRequest request) throws ParseException {
@@ -55,7 +57,7 @@ public final class HttpRequestProcessor implements RequestProcessor<HttpRequest>
 		if (dimensions.isEmpty() && attributes.isEmpty())
 			throw new QueryException("At least one dimension or attribute must be specified");
 
-		return new ReportingQuery(dimensions, measures, attributes, predicates, ordering, limit, offset, searchString,
+		return ReportingQuery.create(dimensions, measures, attributes, predicates, ordering, limit, offset, searchString,
 				fields, metadataFields);
 	}
 

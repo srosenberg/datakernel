@@ -128,8 +128,8 @@ public class InvertedIndexTest {
 		eventloop.run();
 
 		AggregationQuery query = AggregationQuery.create()
-				.keys(InvertedIndexRecord.KEYS)
-				.fields(InvertedIndexRecord.OUTPUT_FIELDS);
+				.withKeys(InvertedIndexRecord.KEYS)
+				.withFields(InvertedIndexRecord.OUTPUT_FIELDS);
 
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
 		aggregation.query(query, InvertedIndexQueryResult.class).streamTo(consumerToList);
