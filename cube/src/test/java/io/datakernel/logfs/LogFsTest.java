@@ -196,7 +196,7 @@ public class LogFsTest {
 	@Test
 	public void testHashFs() throws Exception {
 		String logName = "log";
-		Replica replica = new Replica("", new InetSocketAddress(33333), 1.0);
+		Replica replica = Replica.create("", new InetSocketAddress(33333), 1.0);
 		List<Replica> servers = singletonList(replica);
 		final HashFsServer server = createServer(replica, servers, path);
 		HashFsClient client = createClient(servers);
@@ -266,23 +266,23 @@ public class LogFsTest {
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
-		return new SimpleFsServer(eventloop, executor, serverStorage)
+		return SimpleFsServer.create(eventloop, executor, serverStorage)
 				.withListenAddress(address);
 	}
 
 	private HashFsServer createServer(Replica replica, List<Replica> servers, Path serverStorage) {
-		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
+		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
 		localReplica.start(ignoreCompletionCallback());
-		return new HashFsServer(eventloop, localReplica)
+		return HashFsServer.create(eventloop, localReplica)
 				.withListenAddress(replica.getAddress());
 	}
 
 	private HashFsClient createClient(List<Replica> servers) {
-		return new HashFsClient(eventloop, servers)
-				.setMaxRetryAttempts(1);
+		return HashFsClient.create(eventloop, servers)
+				.withMaxRetryAttempts(1);
 	}
 
 	private SimpleFsClient createClient(InetSocketAddress address) {
-		return new SimpleFsClient(eventloop, address);
+		return SimpleFsClient.create(eventloop, address);
 	}
 }

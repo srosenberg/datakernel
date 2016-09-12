@@ -505,10 +505,10 @@ public class SimpleFsIntegrationTest {
 		return expected;
 	}
 
-	private SimpleFsClient createClient(Eventloop eventloop) {return new SimpleFsClient(eventloop, address);}
+	private SimpleFsClient createClient(Eventloop eventloop) {return SimpleFsClient.create(eventloop, address);}
 
 	private SimpleFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		return new SimpleFsServer(eventloop, executor, storage)
+		return SimpleFsServer.create(eventloop, executor, storage)
 				.withListenAddress(address);
 	}
 

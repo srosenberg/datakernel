@@ -40,13 +40,18 @@ import static io.datakernel.hashfs.HashFsResponses.ListOfServers;
 public final class HashFsServer extends FsServer<HashFsServer> {
 	private final LocalReplica localReplica;
 
-	// creators & builder methods
-	public HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
+	// region creators & builder methods
+	private HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
 		super(eventloop, localReplica.getFileManager());
 		this.localReplica = localReplica;
 		this.handlers.put(Alive.class, new AliveMessagingHandler());
 		this.handlers.put(Announce.class, new AnnounceMessagingHandler());
 	}
+
+	public static HashFsServer create(Eventloop eventloop, LocalReplica localReplica) {
+		return new HashFsServer(eventloop, localReplica);
+	}
+	// endregion
 
 	// core
 	@Override

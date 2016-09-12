@@ -17,11 +17,12 @@
 package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
-import io.datakernel.*;
+import io.datakernel.FsClient;
 import io.datakernel.FsCommands.FsCommand;
 import io.datakernel.FsResponses.Err;
 import io.datakernel.FsResponses.FsResponse;
 import io.datakernel.FsResponses.ListOfFiles;
+import io.datakernel.RemoteFsException;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
@@ -30,7 +31,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingWithBinaryStreaming;
@@ -50,24 +50,27 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 	private long baseRetryTimeout = 100L;
 	private int maxRetryAttempts = 3;
 
-	// creators & builder methods
-	public HashFsClient(Eventloop eventloop, List<Replica> bootstrap) {
+	// region creators & builder methods
+	private HashFsClient(Eventloop eventloop, List<Replica> bootstrap) {
 		super(eventloop);
 		check(bootstrap != null && !bootstrap.isEmpty(), "Bootstrap list can't be empty or null");
 		this.bootstrap = bootstrap;
 	}
 
-	public HashFsClient setBaseRetryTimeout(long baseRetryTimeout) {
+	public static HashFsClient create(Eventloop eventloop, List<Replica> bootstrap) {return new HashFsClient(eventloop, bootstrap);}
+
+	public HashFsClient withBaseRetryTimeout(long baseRetryTimeout) {
 		check(baseRetryTimeout > 0, "Base retry timeout should be positive");
 		this.baseRetryTimeout = baseRetryTimeout;
 		return this;
 	}
 
-	public HashFsClient setMaxRetryAttempts(int maxRetryAttempts) {
+	public HashFsClient withMaxRetryAttempts(int maxRetryAttempts) {
 		check(maxRetryAttempts > 0, "Max retry attempts quantity should be positive");
 		this.maxRetryAttempts = maxRetryAttempts;
 		return this;
 	}
+	// endregion
 
 	// establishing connection
 	@Override

@@ -42,10 +42,10 @@ public class TestTimeoutsSimpleFs {
 	public void testUploadTimeout() throws ExecutionException, InterruptedException, IOException {
 		InetSocketAddress address = new InetSocketAddress(7010);
 		Eventloop eventloop = Eventloop.create();
-		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+		SimpleFsClient client = SimpleFsClient.create(eventloop, address);
 
 		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
-		final SimpleFsServer server = new SimpleFsServer(eventloop, serverExecutor, storagePath)
+		final SimpleFsServer server = SimpleFsServer.create(eventloop, serverExecutor, storagePath)
 				.withSocketSettings(SocketSettings.defaultSocketSettings().withReadTimeout(1L))
 				.withAcceptOnce()
 				.withListenPort(7010);

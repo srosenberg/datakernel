@@ -33,8 +33,12 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public final class SimpleFsServer extends FsServer<SimpleFsServer> {
-	public SimpleFsServer(Eventloop eventloop, ExecutorService executor, Path storagePath) {
-		super(eventloop, new FileManager(eventloop, executor, storagePath));
+	private SimpleFsServer(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+		super(eventloop, FileManager.create(eventloop, executor, storagePath));
+	}
+
+	public static SimpleFsServer create(Eventloop eventloop, ExecutorService executor, Path storagePath) {
+		return new SimpleFsServer(eventloop, executor, storagePath);
 	}
 
 	@Override

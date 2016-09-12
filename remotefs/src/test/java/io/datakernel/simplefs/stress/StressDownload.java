@@ -40,7 +40,7 @@ public class StressDownload {
 
 		final int[] failures = new int[1];
 
-		SimpleFsClient client = new SimpleFsClient(eventloop, new InetSocketAddress(5560));
+		SimpleFsClient client = SimpleFsClient.create(eventloop, new InetSocketAddress(5560));
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			FILES.add(createFile());

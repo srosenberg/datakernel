@@ -57,7 +57,7 @@ import static org.junit.Assert.*;
 public class IntegrationSingleNodeTest {
 	private static final byte[] CONTENT = encodeAscii("content");
 
-	private Replica local = new Replica("a", new InetSocketAddress("127.0.0.1", 5569), 1.0);
+	private Replica local = Replica.create("a", new InetSocketAddress("127.0.0.1", 5569), 1.0);
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -345,15 +345,15 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private HashFsClient createClient(Eventloop eventloop) {
-		return new HashFsClient(eventloop, newArrayList(local))
-				.setBaseRetryTimeout(1)
-				.setMaxRetryAttempts(1);
+		return HashFsClient.create(eventloop, newArrayList(local))
+				.withBaseRetryTimeout(1)
+				.withMaxRetryAttempts(1);
 	}
 
 	private HashFsServer createServer(Eventloop eventloop, ExecutorService executor) {
-		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, newArrayList(local), local);
+		LocalReplica localReplica = LocalReplica.create(eventloop, executor, serverStorage, newArrayList(local), local);
 		localReplica.start(ignoreCompletionCallback());
-		return new HashFsServer(eventloop, localReplica)
+		return HashFsServer.create(eventloop, localReplica)
 				.withListenAddress(local.getAddress());
 	}
 }

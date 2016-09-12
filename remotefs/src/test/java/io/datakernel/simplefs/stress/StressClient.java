@@ -56,7 +56,7 @@ class StressClient {
 	private Eventloop eventloop = Eventloop.create();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
-	private SimpleFsClient client = new SimpleFsClient(eventloop, address);
+	private SimpleFsClient client = SimpleFsClient.create(eventloop, address);
 
 	private static Random rand = new Random();
 

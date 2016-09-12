@@ -106,7 +106,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDoUpload() throws IOException {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path inputFile = client.resolve("c.txt");
 
 		fs.save("1/c.txt", new ForwardingResultCallback<StreamFileWriter>(ignoreCompletionCallback()) {
@@ -131,7 +131,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDoDownload() throws IOException {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		final Path outputFile = client.resolve("d.txt");
 
 		fs.get("2/b/d.txt", 0, new ForwardingResultCallback<StreamFileReader>(ignoreResultCallback()) {
@@ -156,7 +156,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDoDownloadFailed() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		ResultCallbackFuture<StreamFileReader> callbackFuture = ResultCallbackFuture.create();
 
 		fs.get("no_file.txt", 0, callbackFuture);
@@ -182,7 +182,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDeleteFile() {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		assertTrue(exists(storage.resolve("2/3/a.txt")));
 
 		fs.delete("2/3/a.txt", ignoreCompletionCallback());
@@ -196,7 +196,7 @@ public class TestFileManager {
 
 	@Test
 	public void testDeleteFailed() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		CompletionCallbackFuture callbackFuture = CompletionCallbackFuture.create();
 
 		fs.delete("no_file.txt", callbackFuture);
@@ -223,7 +223,7 @@ public class TestFileManager {
 
 	@Test
 	public void testListFiles() throws Exception {
-		FileManager fs = new FileManager(eventloop, executor, storage);
+		FileManager fs = FileManager.create(eventloop, executor, storage);
 		List<String> expected = asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt");
 		List<String> actual;
 

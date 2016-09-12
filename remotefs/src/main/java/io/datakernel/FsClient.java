@@ -162,7 +162,7 @@ public abstract class FsClient<S extends FsClient<S>> {
 								logger.trace("received {}", msg);
 								if (msg instanceof Ready) {
 									long size = ((Ready) msg).size;
-									StreamForwarderWithCounter forwarder = new StreamForwarderWithCounter(eventloop, size - startPosition);
+									StreamForwarderWithCounter forwarder = StreamForwarderWithCounter.create(eventloop, size - startPosition);
 									messaging.receiveBinaryStreamTo(forwarder.getInput(), new CompletionCallback() {
 										@Override
 										public void onComplete() {
