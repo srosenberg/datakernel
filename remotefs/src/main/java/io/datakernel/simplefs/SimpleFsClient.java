@@ -17,25 +17,25 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.FsClient;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-
 public final class SimpleFsClient extends FsClient<SimpleFsClient> {
 	private final InetSocketAddress address;
 
-	public SimpleFsClient(Eventloop eventloop, InetSocketAddress address) {
+	private SimpleFsClient(Eventloop eventloop, InetSocketAddress address) {
 		super(eventloop);
 		this.address = address;
+	}
+
+	public static SimpleFsClient create(Eventloop eventloop, InetSocketAddress address) {
+		return new SimpleFsClient(eventloop, address);
 	}
 
 	@Override

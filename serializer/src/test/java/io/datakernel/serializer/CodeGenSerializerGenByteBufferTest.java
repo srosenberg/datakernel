@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
+import io.datakernel.serializer.asm.SerializerGenByteBuffer;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -47,7 +46,6 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(ByteBuffer.class);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
@@ -63,9 +61,10 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
+		boolean wrapped = true;
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withByteBuffersSupport(wrapped)
 				.create(ByteBuffer.class);
 
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
@@ -86,7 +85,6 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -118,9 +116,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
+		boolean wrapped = true;
 		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withSerializerFor(ByteBuffer.class, new SerializerGenByteBuffer(wrapped))
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -173,7 +172,6 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
@@ -207,9 +205,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
 		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 100));
 
+		boolean wrapped = true;
 		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withSerializerFor(ByteBuffer.class, new SerializerGenByteBuffer(wrapped))
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];

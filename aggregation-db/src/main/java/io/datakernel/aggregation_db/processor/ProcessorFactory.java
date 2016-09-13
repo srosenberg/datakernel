@@ -21,10 +21,10 @@ import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.stream.processor.StreamReducers;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,20 +33,23 @@ import static io.datakernel.codegen.Expressions.*;
 public final class ProcessorFactory {
 	private final AggregationStructure structure;
 
-	public ProcessorFactory(AggregationStructure structure) {
+	private ProcessorFactory(AggregationStructure structure) {
 		this.structure = structure;
 	}
 
+	public static ProcessorFactory create(AggregationStructure structure) {return new ProcessorFactory(structure);}
+
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                                 List<String> fields, DefiningClassLoader classLoader) {
-		AsmBuilder<StreamReducers.Reducer> builder = new AsmBuilder<>(classLoader, StreamReducers.Reducer.class);
+		AsmBuilder<StreamReducers.Reducer> builder = AsmBuilder.create(classLoader, StreamReducers.Reducer.class);
 
 		Expression accumulator = let(constructor(outputClass));
-		ExpressionSequence onFirstItemDef = sequence(accumulator);
-		ExpressionSequence onNextItemDef = sequence();
+		List<Expression> onFirstItemDefExpressions = new ArrayList<>();
+		onFirstItemDefExpressions.add(accumulator);
+		List<Expression> onNextItemDefExpressions = new ArrayList<>();
 
 		for (String key : keys) {
-			onFirstItemDef.add(set(
+			onFirstItemDefExpressions.add(set(
 					getter(accumulator, key),
 					getter(cast(arg(2), inputClass), key)));
 		}
@@ -55,13 +58,13 @@ public final class ProcessorFactory {
 			FieldType fieldType = structure.getFieldType(field);
 			Class<?> accumulatorClass = fieldType.getDataType();
 			FieldProcessor fieldProcessor = fieldType.fieldProcessor();
-			onFirstItemDef.add(fieldProcessor
+			onFirstItemDefExpressions.add(fieldProcessor
 					.getOnFirstItemExpression(
 							getter(accumulator, field),
 							accumulatorClass,
 							getter(cast(arg(2), inputClass), field),
 							accumulatorClass));
-			onNextItemDef.add(fieldProcessor
+			onNextItemDefExpressions.add(fieldProcessor
 					.getOnNextItemExpression(
 							getter(cast(arg(3), outputClass), field),
 							accumulatorClass,
@@ -69,13 +72,13 @@ public final class ProcessorFactory {
 							accumulatorClass));
 		}
 
-		onFirstItemDef.add(accumulator);
-		builder.method("onFirstItem", onFirstItemDef);
+		onFirstItemDefExpressions.add(accumulator);
+		builder.withMethod("onFirstItem", sequence(onFirstItemDefExpressions));
 
-		onNextItemDef.add(arg(3));
-		builder.method("onNextItem", onNextItemDef);
+		onNextItemDefExpressions.add(arg(3));
+		builder.withMethod("onNextItem", sequence(onNextItemDefExpressions));
 
-		builder.method("onComplete", call(arg(0), "onData", arg(2)));
+		builder.withMethod("onComplete", call(arg(0), "onData", arg(2)));
 
 		return builder.newInstance();
 	}
@@ -83,14 +86,17 @@ public final class ProcessorFactory {
 	public Aggregate createPreaggregator(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                     List<String> fields, Map<String, String> outputToInputFields,
 	                                     DefiningClassLoader classLoader) {
-		AsmBuilder<Aggregate> builder = new AsmBuilder<>(classLoader, Aggregate.class);
+		AsmBuilder<Aggregate> builder = AsmBuilder.create(classLoader, Aggregate.class);
 
 		Expression accumulator = let(constructor(outputClass));
-		ExpressionSequence createAccumulatorDef = sequence(accumulator);
-		ExpressionSequence accumulateDef = sequence();
+//		ExpressionSequence createAccumulatorDef = sequence(accumulator);
+//		ExpressionSequence accumulateDef = sequence();
+		List<Expression> createAccumulatorDefExpressions = new ArrayList<>();
+		createAccumulatorDefExpressions.add(accumulator);
+		List<Expression> accumulateDefExpressions = new ArrayList<>();
 
 		for (String key : keys) {
-			createAccumulatorDef.add(set(
+			createAccumulatorDefExpressions.add(set(
 					getter(accumulator, key),
 					getter(cast(arg(0), inputClass), key)));
 		}
@@ -99,32 +105,32 @@ public final class ProcessorFactory {
 			String inputField = outputToInputFields != null && outputToInputFields.containsKey(outputField) ?
 					outputToInputFields.get(outputField) : outputField;
 			createAggregateExpressions(accumulator, inputField, inputClass, outputField, outputClass,
-					createAccumulatorDef, accumulateDef);
+					createAccumulatorDefExpressions, accumulateDefExpressions);
 		}
 
-		createAccumulatorDef.add(accumulator);
-		builder.method("createAccumulator", createAccumulatorDef);
+		createAccumulatorDefExpressions.add(accumulator);
+		builder.withMethod("createAccumulator", sequence(createAccumulatorDefExpressions));
 
-		builder.method("accumulate", accumulateDef);
+		builder.withMethod("accumulate", sequence(accumulateDefExpressions));
 
 		return builder.newInstance();
 	}
 
 	private void createAggregateExpressions(Expression accumulator, String inputField, Class<?> inputClass,
 	                                        String outputField, Class<?> outputClass,
-	                                        ExpressionSequence createAccumulatorDef,
-	                                        ExpressionSequence accumulateDef) {
+	                                        List<Expression> createAccumulatorDefExpressions,
+	                                        List<Expression> accumulateDefExpressions) {
 		FieldType fieldType = structure.getFieldType(outputField);
 		Class<?> accumulatorClass = fieldType.getDataType();
 		FieldProcessor fieldProcessor = fieldType.fieldProcessor();
 		Class<?> valueClass = inputField == null ? null : getType(inputClass, inputField);
 
-		createAccumulatorDef.add(fieldProcessor.getCreateAccumulatorExpression(
+		createAccumulatorDefExpressions.add(fieldProcessor.getCreateAccumulatorExpression(
 				getter(accumulator, outputField),
 				accumulatorClass,
 				inputField == null ? null : getter(cast(arg(0), inputClass), inputField),
 				valueClass));
-		accumulateDef.add(fieldProcessor.getAccumulateExpression(
+		accumulateDefExpressions.add(fieldProcessor.getAccumulateExpression(
 				getter(cast(arg(0), outputClass), outputField),
 				accumulatorClass,
 				inputField == null ? null : getter(cast(arg(1), inputClass), inputField),

@@ -33,8 +33,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.*;
 
+import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public class CommonUtils {
 	// Reflection
@@ -61,15 +61,15 @@ public class CommonUtils {
 
 	// Codegen
 	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
-		return new AsmBuilder<>(classLoader, FieldGetter.class)
-				.method("get", getter(cast(arg(0), objClass), propertyName))
+		return AsmBuilder.create(classLoader, FieldGetter.class)
+				.withMethod("get", getter(cast(arg(0), objClass), propertyName))
 				.newInstance();
 	}
 
 	public static FieldSetter generateSetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName,
 	                                         Class<?> propertyClass) {
-		return new AsmBuilder<>(classLoader, FieldSetter.class)
-				.method("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
+		return AsmBuilder.create(classLoader, FieldSetter.class)
+				.withMethod("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
 				.newInstance();
 	}
 
@@ -82,10 +82,11 @@ public class CommonUtils {
 	}
 
 	public static HttpResponse createResponse(String body) {
-		return HttpResponse.create()
-				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUtf8(body))
-				.header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		HttpResponse response = HttpResponse.ok200();
+		response.setContentType(ContentType.of(MediaTypes.JSON));
+		response.setBody(wrapUtf8(body));
+		response.addHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+		return response;
 	}
 
 	public static Set<String> getSetOfStrings(Gson gson, String json) {
