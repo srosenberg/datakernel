@@ -25,7 +25,7 @@ import static io.datakernel.bytebuf.ByteBufStrings.*;
 
 @SuppressWarnings("unused")
 public final class HttpHeaders {
-	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<HttpHeader>(512, 2, HttpHeader.class) {
+	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<HttpHeader>(1024, 2, HttpHeader.class) {
 		@Override
 		protected HttpHeader create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
 			return new HttpHeader(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
@@ -117,6 +117,8 @@ public final class HttpHeaders {
 
 	public static final HttpHeader X_REAL_IP = headers.register("X-Real-IP");
 	public static final HttpHeader X_AUTH_TOKEN = headers.register("X-Auth-Token");
+
+	public static final HttpHeader FORWARDED = headers.register("Forwarded");
 
 	static HttpHeader of(byte[] array, int offset, int length, int lowerCaseHashCode) {
 		return headers.getOrCreate(array, offset, length, lowerCaseHashCode);

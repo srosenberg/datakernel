@@ -24,6 +24,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeDecimal;
@@ -35,6 +36,7 @@ import static io.datakernel.util.StringUtils.splitToList;
  */
 public final class HttpUtils {
 	private static final char COMMA_SEPARATOR = ',';
+	private static final char SEMICOLON_SEPARATOR = ';';
 	private static final char QUERY_SEPARATOR = '&';
 	private static final String ENCODING = "UTF-8";
 
@@ -178,12 +180,32 @@ public final class HttpUtils {
 	 * @param request received request
 	 */
 	public static InetAddress getRealIp(HttpRequest request) {
-		String s = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
-		if (!isNullOrEmpty(s)) {
-			String clientIP = splitToList(COMMA_SEPARATOR, s).iterator().next().trim();
+		String xForwardedFor = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
+		if (!isNullOrEmpty(xForwardedFor)) {
 			try {
+				String clientIP = splitToList(COMMA_SEPARATOR, xForwardedFor).iterator().next().trim();
 				return HttpUtils.inetAddress(clientIP);
 			} catch (Exception ignored) {
+			}
+		} else {
+			String forwardedValue = request.getHeader(HttpHeaders.FORWARDED);
+			if (!isNullOrEmpty(forwardedValue)) {
+				try {
+					String originalClientForwardedValue =
+							splitToList(COMMA_SEPARATOR, forwardedValue).iterator().next().trim();
+					List<String> keyValues = splitToList(SEMICOLON_SEPARATOR, originalClientForwardedValue);
+					for (String keyValue : keyValues) {
+						String keyValueTrimmed = keyValue.trim();
+						if (keyValueTrimmed.substring(0, 4).toLowerCase().equals("for=")) {
+							String value = keyValueTrimmed.substring(4);
+							if (value.startsWith("\"") && value.endsWith("\"")) {
+								value = value.substring(1, value.length() - 1);
+							}
+							return HttpUtils.inetAddress(value);
+						}
+					}
+				} catch (Exception ignored) {
+				}
 			}
 		}
 		return request.getRemoteAddress();
