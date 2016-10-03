@@ -4,4 +4,5 @@ import java.util.Map;
 
 public interface VarMap extends Var {
 	Map<Object, Var> getMap();
+//	VarTypeMap getType();
 }
