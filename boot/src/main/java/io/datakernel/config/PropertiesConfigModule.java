@@ -30,121 +30,132 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Represents an easy-to-use properties module, capable of providing a
+ * {@link Config} instance with properties using various parameters (e.g. file,
+ * filepath or just {@link Properties} object.
+ *
+ * An ease of use and benefits of {@link PropertiesConfigModule} are
+ * noticeable, for example, when {@code Config} is required for instantiating.
+ * In that case creating {@code Config} by hands and passing it to requiring configurable
+ * object can be eliminated by simply passing required object along with config
+ * to a launcher.
+ */
 public final class PropertiesConfigModule extends AbstractModule {
-	private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final List<Provider<Properties>> properties = new ArrayList<>();
-	private File saveFile;
-	private Config root;
+    private final List<Provider<Properties>> properties = new ArrayList<>();
+    private File saveFile;
+    private Config root;
 
-	private PropertiesConfigModule() {
-	}
+    private PropertiesConfigModule() {
+    }
 
-	public static PropertiesConfigModule create() {
-		return new PropertiesConfigModule();
-	}
+    public static PropertiesConfigModule create() {
+        return new PropertiesConfigModule();
+    }
 
-	public static PropertiesConfigModule ofFile(File file) {
-		return PropertiesConfigModule.create().addFile(file);
-	}
+    public static PropertiesConfigModule ofFile(File file) {
+        return PropertiesConfigModule.create().addFile(file);
+    }
 
-	public static PropertiesConfigModule ofFile(String file) {
-		return PropertiesConfigModule.create().addFile(file);
-	}
+    public static PropertiesConfigModule ofFile(String file) {
+        return PropertiesConfigModule.create().addFile(file);
+    }
 
-	public static PropertiesConfigModule ofProperties(Properties properties) {
-		return PropertiesConfigModule.create().addProperties(properties);
-	}
+    public static PropertiesConfigModule ofProperties(Properties properties) {
+        return PropertiesConfigModule.create().addProperties(properties);
+    }
 
-	public PropertiesConfigModule addFile(String file) {
-		addFile(new File(file), false);
-		return this;
-	}
+    public PropertiesConfigModule addFile(String file) {
+        addFile(new File(file), false);
+        return this;
+    }
 
-	public PropertiesConfigModule addFile(File file) {
-		addFile(file, false);
-		return this;
-	}
+    public PropertiesConfigModule addFile(File file) {
+        addFile(file, false);
+        return this;
+    }
 
-	public PropertiesConfigModule addOptionalFile(String file) {
-		addFile(new File(file), true);
-		return this;
-	}
+    public PropertiesConfigModule addOptionalFile(String file) {
+        addFile(new File(file), true);
+        return this;
+    }
 
-	public PropertiesConfigModule addOptionalFile(File file) {
-		addFile(file, true);
-		return this;
-	}
+    public PropertiesConfigModule addOptionalFile(File file) {
+        addFile(file, true);
+        return this;
+    }
 
-	private PropertiesConfigModule addFile(final File file, final boolean optional) {
-		properties.add(new Provider<Properties>() {
-			@Override
-			public Properties get() {
-				try (InputStream fis = new BufferedInputStream(new FileInputStream(file))) {
-					Properties property = new Properties();
-					property.load(fis);
-					return property;
-				} catch (IOException e) {
-					if (optional) {
-						logger.warn("Can't load properties file: {}", file);
-						return null;
-					} else {
-						throw new IllegalArgumentException(e);
-					}
-				}
-			}
+    private PropertiesConfigModule addFile(final File file, final boolean optional) {
+        properties.add(new Provider<Properties>() {
+            @Override
+            public Properties get() {
+                try (InputStream fis = new BufferedInputStream(new FileInputStream(file))) {
+                    Properties property = new Properties();
+                    property.load(fis);
+                    return property;
+                } catch (IOException e) {
+                    if (optional) {
+                        logger.warn("Can't load properties file: {}", file);
+                        return null;
+                    } else {
+                        throw new IllegalArgumentException(e);
+                    }
+                }
+            }
 
-			;
-		});
-		return this;
-	}
+            ;
+        });
+        return this;
+    }
 
-	public PropertiesConfigModule addProperties(Properties properties) {
-		this.properties.add(Providers.of(properties));
-		return this;
-	}
+    public PropertiesConfigModule addProperties(Properties properties) {
+        this.properties.add(Providers.of(properties));
+        return this;
+    }
 
-	public PropertiesConfigModule saveResultingConfigTo(File file) {
-		this.saveFile = file;
-		return this;
-	}
+    public PropertiesConfigModule saveResultingConfigTo(File file) {
+        this.saveFile = file;
+        return this;
+    }
 
-	public PropertiesConfigModule saveResultingConfigTo(String file) {
-		return saveResultingConfigTo(new File(file));
-	}
+    public PropertiesConfigModule saveResultingConfigTo(String file) {
+        return saveResultingConfigTo(new File(file));
+    }
 
-	private class ConfigSaveService implements BlockingService {
-		@Override
-		public void start() throws Exception {
-			logger.info("Saving resulting config to {}", saveFile);
-			root.saveToPropertiesFile(saveFile);
-		}
+    private class ConfigSaveService implements BlockingService {
+        @Override
+        public void start() throws Exception {
+            logger.info("Saving resulting config to {}", saveFile);
+            root.saveToPropertiesFile(saveFile);
+        }
 
-		@Override
-		public void stop() throws Exception {
-		}
-	}
+        @Override
+        public void stop() throws Exception {
+        }
+    }
 
-	@Override
-	protected void configure() {
-		if (saveFile != null) {
-			bind(ConfigSaveService.class).toInstance(new ConfigSaveService());
-		}
-	}
+    @Override
+    protected void configure() {
+        if (saveFile != null) {
+            bind(ConfigSaveService.class).toInstance(new ConfigSaveService());
+        }
+    }
 
-	@Provides
-	@Singleton
-	Config provideConfig() {
-		List<Config> configs = new ArrayList<>();
-		for (Provider<Properties> propertiesProvider : properties) {
-			Properties properties = propertiesProvider.get();
-			if (properties != null) {
-				Config config = Config.ofProperties(properties);
-				configs.add(config);
-			}
-		}
-		root = Config.union(configs);
-		return root;
-	}
+    @Provides
+    @Singleton
+    Config provideConfig() {
+        List<Config> configs = new ArrayList<>();
+        for (Provider<Properties> propertiesProvider : properties) {
+            Properties properties = propertiesProvider.get();
+            if (properties != null) {
+                Config config = Config.ofProperties(properties);
+                configs.add(config);
+            }
+        }
+        root = Config.union(configs);
+        return root;
+    }
 
 }
