@@ -383,7 +383,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	/**
-	 * Creates the new ServiceGraph without  circular dependencies and intermediate nodes
+	 * Creates the new ServiceGraph without circular dependencies and intermediate nodes
 	 *
 	 * @param injector injector for building the graphs of objects
 	 * @return created ServiceGraph
