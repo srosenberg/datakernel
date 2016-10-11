@@ -28,15 +28,52 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 /**
- * Represents properties in tree form. The tree path represents a key of
- * some property. The value of property is stored in the last node of the tree
- * path.
+ * Represents properties in tree form and contains methods that allow to work
+ * with config tree. Provides convenient static factory methods for
+ * instantiating, persisting and modifying a {@code Config}. The {@code Config}
+ * can be instantiated with a given {@link Properties} object, file or path to
+ * file with properties.
+ * <p>
+ * The property consists of a key and a value. The tree path can represent
+ * either a whole key or several chunks of some property's key. Key parts must
+ * be separated using "." delimiter. The value of the property is stored in the
+ * last node of the tree path,represented by a whole key.
+ * <p>
+ * In addition, there is a helpful {@link ConfigConverter} interface along with
+ * {@link ConfigConverters} class, which provides a lot of handy converter
+ * implementations.
+ * <p>
+ * For example, consider a config instance, which stores several properties:
+ * <pre>
+ * Config config = Config.create(); //create a config
  *
- * Provides convenient static factory methods for instantiating, persisting and
- * modifying a {@code Config}. The {@code Config} can be instantiated with
- * given {@code Properties} object, file or path to file with properties.
+ * String key1 = "socket_addr";
+ * String key2 = "is_available";
+ * String key3 = "connections_count";
  *
- * Also there are methods that allow to work with {@code Config} tree.
+ * config.set(property1Key, "250.200.100.50:10000");
+ * config.set(property2Key, "true");
+ * config.set(property3Key, "10");
+ * </pre>
+ * Next code snippet demonstrates the convenience of config converters:
+ * <pre>
+ * //instantiating converters (static import may be used instead)
+ * ConfigConverter<InetSocketAddress> isac = ConfigConverters.ofInetSocketAddress();
+ * ConfigConverter<Boolean> bc = ConfigConverters.ofBoolean();
+ * ConfigConverter<Integer> ic= ConfigConverters.ofBoolean();
+ *
+ * //will return an InetSocketAddress object (250.200.100.50:10000)
+ * config.get(isac, property1Key);
+ *
+ * //will return Boolean true
+ * config.get(bc, property2Key);
+ *
+ * //will return Integer 10
+ * config.get(ic, property3Key);
+ * </pre>
+ *
+ * @see ConfigConverter
+ * @see ConfigConverters
  */
 @SuppressWarnings("unchecked")
 public final class Config {
@@ -50,7 +87,6 @@ public final class Config {
     private final Config parent;
     private String value;
     private String defaultValue;
-
     private boolean accessed;
     private boolean modified;
 
@@ -67,7 +103,7 @@ public final class Config {
     }
 
     /**
-     * Creates a {@link Config} with properties in specified object.
+     * Creates a config with properties, stored in specified object.
      *
      * @param properties config properties
      * @return config with given properties
@@ -82,10 +118,11 @@ public final class Config {
     }
 
     /**
-     * Creates a {@link Config} with properties contained in the file.
+     * Creates a config with properties contained in the file.
      *
-     * @param propertiesFile file containing properties
+     * @param propertiesFile file with properties
      * @return config with properties from file
+     * @throws RuntimeException if an input or output exception occures
      */
     public static Config ofProperties(File propertiesFile) {
         final Properties properties = new Properties();
@@ -98,27 +135,38 @@ public final class Config {
     }
 
     /**
-     * Returns a {@link Config} with properties from a file on the specified path
+     * Creates a config with properties from a file on the specified path.
      *
      * @param propertiesFile path to properties file
      * @return config with properties from file
+     * @throws RuntimeException if an input or output exception occured
      */
     public static Config ofProperties(String propertiesFile) {
         return ofProperties(propertiesFile, false);
     }
 
+    /**
+     * Creates a  with properties from a file on the specified
+     * filepath.
+     *
+     * @param propertiesFile path to properties file
+     * @return config with properties from file
+     * @throws RuntimeException if an input or output exception occured
+     */
     public static Config ofProperties(String propertiesFile, boolean optional) {
         final File file = new File(propertiesFile);
         return ofProperties(file, optional);
     }
 
     /**
-     * Creates a {@link Config} from a given file if file exists, otherwise
-     * instantiates a blank object.
+     * Creates a config from a given file if file exists. In case of
+     * file absence returns blank config depending on optional if optional is
+     * true or throws {@code RuntimeException} otherwise.
      *
-     * @param file file containing properties
-     * @param optional default object creation flag
-     * @return config
+     * @param file     file containing properties
+     * @param optional defines behaviour if file doesn't exist
+     * @return config with properties from file or blank config
+     * @throws RuntimeException if an input or output exception occured
      */
     public static Config ofProperties(File file, boolean optional) {
         if (!file.exists() && optional) {
@@ -128,21 +176,21 @@ public final class Config {
     }
 
     /**
-     * Creates a single {@link Config}, consisting of specified configs.
+     * Creates a single config, consisting of specified configs.
      *
-     * @param configs set of configs
-     * @return single {@link Config}
+     * @param configs set of configs to unite
+     * @return single config
      */
     public static Config union(Config... configs) {
         return doUnion(null, asList(configs));
     }
 
     /**
-     * Creates a single {@link Config} object, consisting of configs, contained
-     * in collection.
+     * Creates a single config object, consisting of configs, contained
+     * in specified collection.
      *
      * @param configs collection of configs
-     * @return single {@code Config} object
+     * @return single config
      */
     public static Config union(Collection<Config> configs) {
         if (configs.size() == 1)
@@ -293,7 +341,7 @@ public final class Config {
      *
      * @param path path to a node in the {@code Config} tree
      * @return config node by specified path
-     *         current config node if specified path is empty
+     * current config node if specified path is empty
      */
     public Config ensureChild(String path) {
         if (path.isEmpty())
@@ -312,10 +360,11 @@ public final class Config {
     }
 
     /**
-     * Returns a {@code Config} node which corresponds to the specified path.
+     * Returns a config tree node which corresponds to the specified path.
+     * Marks node as accessed.
      *
-     * @param path path to required {@code Config} node
-     * @return config node from tree
+     * @param path path in the config tree
+     * @return config tree node
      */
     synchronized public Config getChild(String path) {
         final Config config = ensureChild(path);
@@ -341,7 +390,7 @@ public final class Config {
     }
 
     /**
-     * Returns a sequence of config's path components separated by "."
+     * Returns a tree path to this config. Returned path's chunks are separated by "."
      *
      * @return key of config property
      */
@@ -359,9 +408,9 @@ public final class Config {
     }
 
     /**
-     * Returns a value of a config and marks this node as accessed.
+     * Returns a value of the property and marks it as accessed.
      *
-     * @return value of a config
+     * @return value of the property
      */
     synchronized public String get() {
         accessed = true;
@@ -369,12 +418,12 @@ public final class Config {
     }
 
     /**
-     * Assigns a default value of config. Returns either value or default
-     * value of a config and marks it as accessed.
+     * Assigns the default value of the property. Returns either value
+     * or default value of the property.
      *
      * @param defaultValue default value of a property
-     * @return value if it is not null
-     *         default value otherwise
+     * @return value if it is not null; default value otherwise
+     * @throws IllegalArgumentException in attempt to override default value
      */
     synchronized public String get(String defaultValue) {
         if (this.defaultValue != null) {
@@ -407,18 +456,44 @@ public final class Config {
      * Sets property's value on given path and marks it as modified.
      * Creates non-existent nodes on the specified tree path.
      *
-     * @param path path to property's value in config tree
+     * @param path  path to property's value in config tree
      * @param value value of config property
      */
     synchronized public void set(String path, String value) {
         ensureChild(path).set(value);
     }
 
+    /**
+     * Returns a value of tree node on specified path and converts it using
+     * converter. A {@link ConfigConverters} class has a lot of handy
+     * implementations of converters.
+     *
+     * @param converter config converter
+     * @param path      path to property's value in config tree
+     * @param <T>       a type of property value
+     * @return a value of property on the tree path
+     * @see ConfigConverter
+     * @see ConfigConverters
+     */
     synchronized public <T> T get(ConfigConverter<T> converter, String path) {
         checkNotNull(converter);
         return converter.get(ensureChild(path));
     }
 
+    /**
+     * Acts like {@link #get(String)} and converts result using specified
+     * converter.
+     * <p>
+     * {@link ConfigConverters} class has a lot of handy
+     * implementations of converters.
+     *
+     * @param converter config converter
+     * @param path      path to property's value in config tree
+     * @param <T>       a type of property value
+     * @return a value of property on the tree path
+     * @see ConfigConverter
+     * @see ConfigConverters
+     */
     synchronized public <T> T get(ConfigConverter<T> converter, String path, T defaultValue) {
         checkNotNull(converter);
         checkNotNull(defaultValue);
@@ -426,12 +501,12 @@ public final class Config {
     }
 
     /**
-     * Checks if there is a value assigned to a node and marks node found on
-     * given path as accessed. Creates non-existent nodes of the specified tree path.
+     * Checks if there is a value assigned to a node and marks node on given
+     * path as accessed. Creates non-existent nodes of the specified tree path.
      *
      * @param path path to required {@code Config} node
-     * @return true if value is not null
-     *         false otherwise
+     * @return true if value is not null;
+     * false otherwise
      */
     synchronized public boolean hasValue(String path) {
         Config child = ensureChild(path);
@@ -440,10 +515,27 @@ public final class Config {
     }
 
     /**
+     * Checks for existence of subsequent parts of property's key and marks the
+     * node on the specified tree path as accessed.
+     * <p>
+     * Let's assume that a {@link Config config} object has some properties:
+     * <pre>
+     * composite.property.example.integer=0;
+     * composite.property.example.character=c;
+     * composite.property.value=0;
+     * </pre>
+     * The results of invocation will be the following:
+     * <pre>
+     * config.hasSection("composite.property"); //true
+     * config.hasSection("composite.property.example"); //true
+     * config.hasSection("composite.property.value"); //false
+     * </pre>
+     * The result of the last method invocation is false because reached leaf
+     * node has assigned value.
      *
-     *
-     * @param path
-     * @return
+     * @param path path to required {@code Config} node
+     * @return true if node on the specified path has children and {@code null} value;
+     * false otherwise
      */
     synchronized public boolean hasSection(String path) {
         Config child = ensureChild(path);

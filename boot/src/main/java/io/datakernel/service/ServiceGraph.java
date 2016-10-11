@@ -214,7 +214,7 @@ public class ServiceGraph {
 	}
 
 	/**
-	 * Stops services from  the service graph
+	 * Stops services from the service graph
 	 */
 	synchronized public ListenableFuture<?> startFuture() {
 		List<Object> circularDependencies = findCircularDependencies();
@@ -226,7 +226,7 @@ public class ServiceGraph {
 	}
 
 	/**
-	 * Stops services from  the service graph
+	 * Stops services from the service graph
 	 */
 	synchronized public ListenableFuture<?> stopFuture() {
 		Set<Object> leafNodes = difference(union(services.keySet(), backwards.keySet()), forwards.keySet());
