@@ -36,14 +36,10 @@ import static org.slf4j.LoggerFactory.getLogger;
  *     <li>running</li>
  *     <li>stopping services</li>
  * </ul>
- *
- * Wiring phase mostly depends on Google Guice's object-graph.
- *
- * Starting services relies on internal {@link ServiceGraph} object.
- *
- * After aforementioned steps each service is running.
- *
- * Finally, launcher does is stopping its services.
+ * <p>Wiring phase mostly depends on Google Guice's object-graph.</p>
+ * <p>Starting services relies on internal {@link ServiceGraph} object.</p>
+ * <p>After aforementioned steps each service is running.</p>
+ * <p>Finally, launcher is stopping its services.</p>
  */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());

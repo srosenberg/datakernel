@@ -43,8 +43,6 @@ import static java.util.Collections.emptyList;
  * are able to make bilateral conversions between data type an its string
  * representation.
  *
- * For example consider
- *
  */
 @SuppressWarnings("unused, WeakerAccess")
 public final class ConfigConverters {
@@ -182,6 +180,10 @@ public final class ConfigConverters {
         };
     }
 
+    /**
+     *
+     * @return
+     */
     public static ConfigConverterSingle<InetSocketAddress> ofInetSocketAddress() {
         return new ConfigConverterSingle<InetSocketAddress>() {
             @Override
