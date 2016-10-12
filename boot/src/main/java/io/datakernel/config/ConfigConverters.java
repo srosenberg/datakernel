@@ -39,10 +39,31 @@ import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
 /**
- * Provides comprehensive converters for different data types. Such converters
- * are able to make bilateral conversions between data type an its string
- * representation.
- *
+ * Provides comprehensive static factory methods returning converters for
+ * different data types.
+ * <p>
+ * Available converters are listed below:
+ * <ul>
+ *     <li>
+ *         Wrappers for primitives:
+ *         {@link #ofByte()}, {@link #ofInteger()}, {@link #ofLong()},
+ *          {@link #ofFloat()}, {@link #ofDouble()}, {@link #ofBoolean()}.
+ *     </li>
+ *     <li>
+ *         Often used standard classes:
+ *         {@link #ofEnum(Class)}, {@link #ofString()},
+ *          {@link #ofInetAddress()}, {@link #ofList(ConfigConverterSingle)},
+ *          {@link #ofList(ConfigConverterSingle, CharSequence)},
+ *          {@link #ofInetAddress()}, {@link #ofInetSocketAddress()}.
+ *     </li>
+ *     <li>
+ *         Helpful classes from DataKernel framework:
+ *         {@link #ofMemSize()}, {@link #ofServerSocketSettings()},
+ *          {@link #ofSocketSettings()}, {@link #ofDatagramSocketSettings()}
+ *     </li>
+ * </ul>
+ * <p>
+ * Custom converters can be created using {@link ConfigConverterSingle}.
  */
 @SuppressWarnings("unused, WeakerAccess")
 public final class ConfigConverters {
@@ -180,10 +201,6 @@ public final class ConfigConverters {
         };
     }
 
-    /**
-     *
-     * @return
-     */
     public static ConfigConverterSingle<InetSocketAddress> ofInetSocketAddress() {
         return new ConfigConverterSingle<InetSocketAddress>() {
             @Override

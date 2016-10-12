@@ -46,9 +46,8 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
- * Runs services in a proper way after analyzing Google Guice's dependency graph.
- * Analysis comprises considering all dependencies from Guice and determining
- * which of them can be treated as {@link Service}s.
+ * Stores the dependency graph of services. Primarily used by
+ * {@link ServiceGraphModule}.
  */
 public class ServiceGraph {
 

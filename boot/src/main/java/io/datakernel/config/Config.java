@@ -37,7 +37,7 @@ import static java.util.Arrays.asList;
  * The property consists of a key and a value. The tree path can represent
  * either a whole key or several chunks of some property's key. Key parts must
  * be separated using "." delimiter. The value of the property is stored in the
- * last node of the tree path,represented by a whole key.
+ * last node of the tree path, represented by a whole key.
  * <p>
  * In addition, there is a helpful {@link ConfigConverter} interface along with
  * {@link ConfigConverters} class, which provides a lot of handy converter
@@ -159,9 +159,9 @@ public final class Config {
     }
 
     /**
-     * Creates a config from a given file if file exists. In case of
-     * file absence returns blank config depending on optional if optional is
-     * true or throws {@code RuntimeException} otherwise.
+     * Creates a config from a given file if file exists. In case of file
+     * absence returns blank config if optional is true or throws
+     * {@code RuntimeException} otherwise.
      *
      * @param file     file containing properties
      * @param optional defines behaviour if file doesn't exist

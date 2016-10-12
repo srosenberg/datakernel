@@ -50,6 +50,11 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
+/**
+ * An RPC-client service with event loop and provides methods to set
+ * diverse settings (for example {@link #withStrategy(RpcStrategy)} sets load
+ * balancing strategy of the RPC client.
+ */
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 	public static final long DEFAULT_CONNECT_TIMEOUT = 10 * 1000L;
@@ -124,6 +129,12 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		}
 	}
 
+	/**
+	 * Creates default client.
+	 *
+	 * @param eventloop client's eventloop
+	 * @return the RPC client
+	 */
 	@SuppressWarnings("ConstantConditions")
 	public static RpcClient create(final Eventloop eventloop) {
 		checkNotNull(eventloop);
@@ -143,6 +154,12 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				nullSslContext, nullSslExecutor);
 	}
 
+	/**
+	 * Creates a client that uses provided socket // TODO: 12.10.16
+	 *
+	 * @param socketSettings
+	 * @return the RPC client
+	 */
 	public RpcClient withSocketSettings(SocketSettings socketSettings) {
 		checkNotNull(socketSettings);
 		return new RpcClient(
@@ -173,6 +190,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				sslContext, sslExecutor);
 	}
 
+	/**
+	 * Creates a client with some strategy. Consider some ready-to-use
+	 * strategies from {@link RpcStrategy}.
+	 *
+	 * @param requestSendingStrategy
+	 * @return the RPC client
+	 */
 	public RpcClient withStrategy(RpcStrategy requestSendingStrategy) {
 		checkNotNull(requestSendingStrategy);
 		return new RpcClient(
@@ -198,6 +222,12 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
 	}
 
+	/**
+	 * Waits for a specified time before connecting.
+	 *
+	 * @param connectTimeoutMillis time before connecting.
+	 * @return the RPC client
+	 */
 	public RpcClient withConnectTimeout(long connectTimeoutMillis) {
 		return new RpcClient(
 				eventloop, socketSettings, messageTypes, serializerBuilder,
@@ -230,9 +260,9 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	/**
-	 * Start RpcClient in case of absence of connections
+	 * Starts client in case of absence of connections
 	 *
-	 * @return
+	 * @return the RPC client
 	 */
 	public RpcClient withForceStart() {
 		return new RpcClient(

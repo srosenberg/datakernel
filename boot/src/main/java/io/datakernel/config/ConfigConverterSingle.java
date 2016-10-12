@@ -20,55 +20,57 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 /**
+ * Such converters are able to make bilateral conversions between data type and
+ * its string representation.
+ * <p>
  * Provides an ability to create custom implementations of converters by simply
  * extending this class and overriding {@link #toString(T)} and
  * {@link #fromString(String)} which define how do converters actually convert
  * a specific data type.
  * <p>
- * A {@link ConfigConverters} class provides convenient implementations for
- * different often used data types.
+ * There are a lot of converters implemented in {@link ConfigConverters} class.
  *
  * @param <T> data type for conversion
  * @see ConfigConverters
  */
 public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 
-	protected abstract T fromString(String string);
+    protected abstract T fromString(String string);
 
-	protected abstract String toString(T item);
+    protected abstract String toString(T item);
 
-	/**
-	 * Returns a T-type value of a property, represented by a given config.
-	 *
-	 * @param config a config instance which represents a property
-	 * @return value of the property
-	 */
-	@Override
-	public final T get(Config config) {
-		checkState(config.getChildren().isEmpty());
-		String string = config.get();
-		checkNotNull(string, "Config %s not found", config);
-		return fromString(string);
-	}
+    /**
+     * Returns a T-type value of a property, represented by a given config.
+     *
+     * @param config a config instance which represents a property
+     * @return value of the property
+     */
+    @Override
+    public final T get(Config config) {
+        checkState(config.getChildren().isEmpty());
+        String string = config.get();
+        checkNotNull(string, "Config %s not found", config);
+        return fromString(string);
+    }
 
-	/**
-	 * Returns a T-type value of a property, represented by a given config.
-	 * Assigns the default value of the property.
-	 *
-	 * @param config a config instance which represents a property
-	 * @param defaultValue default value of the property
-	 * @return value of the property
-	 */
-	@Override
-	public final T get(Config config, T defaultValue) {
-		checkState(config.getChildren().isEmpty());
-		String defaultString = toString(defaultValue);
-		String string = config.get(defaultString);
-		checkNotNull(string);
-		string = string.trim();
-		T result = fromString(string);
-		checkNotNull(result);
-		config.set(toString(result));
-		return result;
-	}
+    /**
+     * Returns a T-type value of a property, represented by a given config.
+     * Assigns the default value of the property.
+     *
+     * @param config       a config instance which represents a property
+     * @param defaultValue default value of the property
+     * @return value of the property
+     */
+    @Override
+    public final T get(Config config, T defaultValue) {
+        checkState(config.getChildren().isEmpty());
+        String defaultString = toString(defaultValue);
+        String string = config.get(defaultString);
+        checkNotNull(string);
+        string = string.trim();
+        T result = fromString(string);
+        checkNotNull(result);
+        config.set(toString(result));
+        return result;
+    }
 }
