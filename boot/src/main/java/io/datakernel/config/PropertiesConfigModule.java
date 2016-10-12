@@ -33,13 +33,17 @@ import java.util.Properties;
 /**
  * Represents an easy-to-use properties module, capable of providing a
  * {@link Config} instance with properties using various parameters (e.g. file,
- * filepath or just {@link Properties} object.
- *
+ * filepath or just {@code Properties} object.
+ * <p>
  * An ease of use and benefits of {@link PropertiesConfigModule} are
- * noticeable, for example, when {@code Config} is required for instantiating.
- * In that case creating {@code Config} by hands and passing it to requiring configurable
- * object can be eliminated by simply passing required object along with config
- * to a launcher.
+ * noticeable, for example, when {@link Config} is required for instantiating
+ * some application. In this case, the complexity of creating a {@link Config}
+ * by hands and passing it to requiring configurable object can be eliminated
+ * by simply passing required object along with config to an appropriate
+ * launcher, which will do the job for
+ * you.
+ *
+ * @see io.datakernel.launcher.Launcher Launcher
  */
 public final class PropertiesConfigModule extends AbstractModule {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());

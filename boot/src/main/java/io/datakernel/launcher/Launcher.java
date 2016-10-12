@@ -28,7 +28,7 @@ import java.util.List;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
- * Integrates all components together and manages application lifecycle by
+ * Integrates all modules together and manages application lifecycle by
  * passing several steps:
  * <ul>
  *     <li>wiring modules</li>
@@ -36,10 +36,10 @@ import static org.slf4j.LoggerFactory.getLogger;
  *     <li>running</li>
  *     <li>stopping services</li>
  * </ul>
- * <p>Wiring phase mostly depends on Google Guice's object-graph.</p>
- * <p>Starting services relies on internal {@link ServiceGraph} object.</p>
- * <p>After aforementioned steps each service is running.</p>
- * <p>Finally, launcher is stopping its services.</p>
+ * <p>Wiring phase mostly depends on Google Guice's object-graph.
+ * <p>Starting services relies on internal {@link ServiceGraph} object.
+ * <p>After aforementioned steps each service is running.
+ * <p>Finally, launcher stops its services.
  */
 public abstract class Launcher {
 	protected final Logger logger = getLogger(this.getClass());
