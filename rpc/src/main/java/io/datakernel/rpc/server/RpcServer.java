@@ -44,7 +44,32 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Arrays.asList;
 
 /**
- *
+ * An RPC server that works asynchronously. This server uses fast serializers
+ * and custom optimized communication protocol, which improves application
+ * performance.
+ * <p>
+ * In order to set up a server it's mandatory to create it using
+ * {@link #create(Eventloop)}, indicate a types of messages, and specify
+ * an appropriate {@link RpcRequestHandler request handlers} for that types.
+ * <p>
+ * {@link RpcRequestHandler} is responsible for processing requests according to business
+ * logic and passing result to callback.
+ * <p>
+ * There are two ways of starting a server:
+ * <ul>
+ *     <li>
+ *         Manually: set up the server and call {@code listen()}
+ *     </li>
+ *     <li>
+ *         Using {@code Launcher} and {@code ServiceGraph}: create a module for
+ *         your RPC server and pass it to a launcher along with
+ *         {@code ServiceGraph}.
+ *     </li>
+ * </ul>
+ * The usage of second approach simplifies the development significantly,
+ * especially when a number of modules growth.
+ * <p>
+ * An RPC server has a lot of builder methods which adjusts a server.
  */
 public final class RpcServer extends AbstractServer<RpcServer> {
 	private final Logger logger;
@@ -126,11 +151,23 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				.withSocketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
 
+	/**
+	 * Creates a server with capability of specified message types processing.
+	 *
+	 * @param messageTypes classes of messages processed by a server
+	 * @return server instance of
+	 */
 	public RpcServer withMessageTypes(Class<?>... messageTypes) {
 		checkNotNull(messageTypes);
 		return withMessageTypes(asList(messageTypes));
 	}
 
+	/**
+	 * Creates a server with capability of specified message types processing.
+	 *
+	 * @param messageTypes a list of message types processed by a server
+	 * @return server instance of
+	 */
 	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
 		checkNotNull(messageTypes);
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
@@ -160,6 +197,16 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return withProtocol(streamProtocol(defaultPacketSize, maxPacketSize, compression));
 	}
 
+	/**
+	 * Adds handler for a specified request-response pair.
+	 *
+	 * @param requestClass
+	 * @param responseClass
+	 * @param handler
+	 * @param <I> class of request
+	 * @param <O> class of response
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	public <I, O> RpcServer withHandler(Class<I> requestClass, Class<O> responseClass, RpcRequestHandler<I, O> handler) {
 		handlers.put(requestClass, handler);

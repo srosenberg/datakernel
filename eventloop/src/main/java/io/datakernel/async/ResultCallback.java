@@ -19,8 +19,8 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 
 /**
- * This callback's interface contains two methods sendResult and fireException.
- * The async operation must call either sendResult or fireException when it is complete.
+ * This callback's interface contains two methods setResult and onResult.
+ * The async operation must call either setResult or onResult when it is complete.
  *
  * @param <T> type of result
  */

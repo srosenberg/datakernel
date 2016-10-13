@@ -201,6 +201,16 @@ public final class ConfigConverters {
         };
     }
 
+    /**
+     * Creates a converter of {@link InetSocketAddress}. This address may
+     * include IP address or hostname and port number. Conversion to string
+     * creates a string with IP address regardless of whether a host part of an
+     * address was represented by a hostname or IP address.
+     * <p>
+     *
+     *
+     * @return converter of {@code InetSocketAddress}
+     */
     public static ConfigConverterSingle<InetSocketAddress> ofInetSocketAddress() {
         return new ConfigConverterSingle<InetSocketAddress>() {
             @Override
@@ -232,6 +242,16 @@ public final class ConfigConverters {
         };
     }
 
+    /**
+     * Creates a converter capable to convert a list. Provide a concrete
+     * {@code ConfigConverter<T>} for objects in list and char sequence of
+     * separators.
+     *
+     * @param elementConverter converter of list objects type
+     * @param separators sequence of separators of config property
+     * @param <T> type of objects in list
+     * @return converter of list
+     */
     public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
         final ConfigConverterSingle<T> elementConverter1 = elementConverter;
         final CharSequence separators1 = separators;
@@ -331,6 +351,11 @@ public final class ConfigConverters {
         };
     }
 
+    /**
+     * Creates a converter of {@link DatagramSocketSettings}.
+     *
+     * @return converter of provided type
+     */
     public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
         return new ConfigConverter<DatagramSocketSettings>() {
             @Override
@@ -354,6 +379,14 @@ public final class ConfigConverters {
         };
     }
 
+    /**
+     * Creates a converter of {@link InetAddressRange}. An InetAddressRange supports a lot
+     * of range types, including CIDR, standalone and ranges of addresses. Take
+     * a look at {@link InetAddressRange#parse(String) parse(String)} for
+     * details.
+     *
+     * @return converter of provided type
+     */
     public static ConfigConverterSingle<InetAddressRange> ofInetAddressRange() {
         return new ConfigConverterSingle<InetAddressRange>() {
             @Override
