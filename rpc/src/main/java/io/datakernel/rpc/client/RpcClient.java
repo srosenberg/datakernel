@@ -50,9 +50,8 @@ import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
 /**
- * An RPC-client service with event loop and provides methods to set
- * diverse settings (for example {@link #withStrategy(RpcStrategy)} sets load
- * balancing strategy of the RPC client.
+ * Sends requests to the specified servers according to defined strategy.
+ *
  */
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
