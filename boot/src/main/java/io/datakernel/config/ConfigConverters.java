@@ -246,8 +246,8 @@ public final class ConfigConverters {
      * separators.
      *
      * @param elementConverter converter of list objects type
-     * @param separators       sequence of separators of config property
-     * @param <T>              type of objects in list
+     * @param separators sequence of separators of config property
+     * @param <T> type of objects in list
      * @return converter of list
      */
     public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
