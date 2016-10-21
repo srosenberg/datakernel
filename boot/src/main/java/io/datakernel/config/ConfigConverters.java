@@ -206,8 +206,6 @@ public final class ConfigConverters {
      * include IP address or hostname and port number. Conversion to string
      * creates a string with IP address regardless of whether a host part of an
      * address was represented by a hostname or IP address.
-     * <p>
-     *
      *
      * @return converter of {@code InetSocketAddress}
      */
@@ -248,8 +246,8 @@ public final class ConfigConverters {
      * separators.
      *
      * @param elementConverter converter of list objects type
-     * @param separators sequence of separators of config property
-     * @param <T> type of objects in list
+     * @param separators       sequence of separators of config property
+     * @param <T>              type of objects in list
      * @return converter of list
      */
     public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {

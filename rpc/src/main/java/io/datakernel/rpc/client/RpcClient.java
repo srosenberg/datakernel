@@ -180,6 +180,13 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 				sslContext, sslExecutor);
 	}
 
+	/**
+	 * Crates a client with serializer builder. A serializer builder is used
+	 * for creating fast serializers in runtime.
+	 *
+	 * @param serializerBuilder
+	 * @return the RPC client
+	 */
 	public RpcClient withSerializerBuilder(SerializerBuilder serializerBuilder) {
 		checkNotNull(serializerBuilder);
 		return new RpcClient(
