@@ -159,6 +159,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
 
+	// region temp
+	// TODO(vmykhalko): remove next lines
+	private boolean readRarely = false;
+	private double probability;
+	public void setReadRarely(boolean flag, double probability) {
+		this.readRarely = flag;
+		this.probability = probability;
+	}
+	// endregion
+
 	public Eventloop withThreadName(String threadName) {
 		return new Eventloop(timeProvider, threadName, threadPriority, throttlingController, fatalErrorHandler);
 	}
@@ -569,9 +579,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * @param key key of this action.
 	 */
 	private void onRead(SelectionKey key) {
-		assert inEventloopThread();
-		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
-		handler.onReadReady();
+
+
+		if (!readRarely || Math.random() < probability) {
+			assert inEventloopThread();
+			NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+			handler.onReadReady();
+		} else {
+			// skip reading this time
+		}
+
 	}
 
 	/**
