@@ -81,7 +81,8 @@ public class HelloWorldGuiceTest {
 		@Singleton
 		@Named("PrimaryEventloop")
 		Eventloop primaryEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+//			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create();
 		}
 
 		@Provides
@@ -94,7 +95,8 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Worker
 		Eventloop workerEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+//			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+			return Eventloop.create();
 		}
 
 		@Provides
@@ -156,6 +158,18 @@ public class HelloWorldGuiceTest {
 	}
 
 	public static void main(String[] args) throws Exception {
+		ByteBuf buf = ByteBufPool.allocate(10_000);
+
+		Thread.sleep(1000);
+		ByteBuf buf2 = ByteBufPool.allocate(1_000);
+		buf2.write(new byte[]{'a', 'b', 'c'});
+
+		Thread.sleep(1000);
+		ByteBuf buf3 = ByteBufPool.allocate(10_000);
+		buf3.write(new byte[]{'a', 'b', 'c'});
+		buf3.readByte();
+
+
 		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule(), JmxModule.create());
 
 		// jmx
@@ -172,6 +186,11 @@ public class HelloWorldGuiceTest {
 		} finally {
 			serviceGraph.stopFuture().get();
 		}
+
+
+		System.out.println(buf);
+		System.out.println(buf2);
+		System.out.println(buf3);
 	}
 
 }
