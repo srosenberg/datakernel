@@ -20,6 +20,7 @@ import io.datakernel.util.ConcurrentStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.Integer.numberOfLeadingZeros;
 
@@ -30,7 +31,7 @@ public final class ByteBufPool {
 	private static int maxSize = 1 << 30;
 
 	private static final ConcurrentStack<ByteBuf>[] slabs = createSlabs(NUMBER_SLABS);
-	private static final int[] created = new int[NUMBER_SLABS];
+	private static final AtomicInteger[] created = createCountersIfAssertionsEnabled(NUMBER_SLABS);
 
 	private ByteBufPool() {}
 
@@ -47,7 +48,7 @@ public final class ByteBufPool {
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
-			created[index]++;
+			assert created[index].incrementAndGet() != 0;
 		}
 		return buf;
 	}
@@ -73,8 +74,15 @@ public final class ByteBufPool {
 	public static void clear() {
 		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; i++) {
 			slabs[i].clear();
-			created[i] = 0;
 		}
+		assert clearCreatedCounters();
+	}
+
+	private static boolean clearCreatedCounters() {
+		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; i++) {
+			created[i].set(0);
+		}
+		return true;
 	}
 
 	private static ConcurrentStack<ByteBuf>[] createSlabs(int numberOfSlabs) {
@@ -84,6 +92,21 @@ public final class ByteBufPool {
 			slabs[i] = new ConcurrentStack<>();
 		}
 		return slabs;
+	}
+
+	private static AtomicInteger[] createCountersIfAssertionsEnabled(int numberOfSlabs) {
+		AtomicInteger[] result = null;
+		//noinspection AssertWithSideEffects
+		assert (result = createCounters(numberOfSlabs)) != null;
+		return result;
+	}
+
+	private static AtomicInteger[] createCounters(int amount) {
+		AtomicInteger[] counters = new AtomicInteger[amount];
+		for (int i = 0; i < counters.length; i++) {
+			counters[i] = new AtomicInteger(0);
+		}
+		return counters;
 	}
 
 	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newTailRemaining) {
@@ -128,16 +151,24 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems() {
+		if (ByteBufPool.created == null) {
+			throw new IllegalStateException("This stats are only available when assertions are enabled");
+		}
+
 		int items = 0;
-		for (int n : created) {
-			items += n;
+		for (AtomicInteger counter : created) {
+			items += counter.get();
 		}
 		return items;
 	}
 
 	public static int getCreatedItems(int slab) {
+		if (ByteBufPool.created == null) {
+			throw new IllegalStateException("This stats are only available when assertions are enabled");
+		}
+
 		assert slab >= 0 && slab < slabs.length;
-		return created[slab];
+		return created[slab].get();
 	}
 
 	public static int getPoolItems(int slab) {
@@ -154,6 +185,10 @@ public final class ByteBufPool {
 	}
 
 	public static String getPoolItemsString() {
+		if (ByteBufPool.created == null) {
+			throw new IllegalStateException("This stats are only available when assertions are enabled");
+		}
+
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; ++i) {
 			int createdItems = ByteBufPool.getCreatedItems(i);
