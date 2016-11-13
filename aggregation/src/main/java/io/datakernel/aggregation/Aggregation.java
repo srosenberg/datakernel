@@ -29,6 +29,9 @@ import io.datakernel.async.*;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.ErrorIgnoringTransformer;
 import io.datakernel.stream.StreamConsumer;
@@ -59,14 +62,15 @@ import static java.util.Collections.singletonList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation implements IAggregation, AggregationOperationTracker {
+public class Aggregation implements IAggregation, AggregationOperationTracker, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 	private static final Joiner JOINER = Joiner.on(", ");
 
-	public static final int DEFAULT_AGGREGATION_CHUNK_SIZE = 1_000_000;
+	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;
 	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
 	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
 	public static final int DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
+	public static final int DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE = 1000;
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
@@ -76,28 +80,24 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	private final AggregationMetadata metadata;
 
 	private final Map<String, FieldType> keyTypes = new LinkedHashMap<>();
-	private final Map<String, FieldType> fieldTypes = new LinkedHashMap<>();
+	private final Map<String, FieldType> measureTypes = new LinkedHashMap<>();
 	private final List<String> partitioningKey = new ArrayList<>();
-	private final Map<String, Measure> fieldAggregateFunctions = new LinkedHashMap<>();
+	private final Map<String, Measure> measures = new LinkedHashMap<>();
 
 	private final AggregationPredicate.FieldAccessor predicateKeyConverters = new AggregationPredicate.FieldAccessor() {
 		@Override
 		public Object toInternalValue(String field, Object value) {
 			return keyTypes.get(field).toInternalValue(value);
 		}
-
-		@Override
-		public Object toValue(String field, Object internalValue) {
-			return keyTypes.get(field).toValue(internalValue);
-		}
 	};
 
 	// settings
-	private int aggregationChunkSize = DEFAULT_AGGREGATION_CHUNK_SIZE;
+	private int chunkSize = DEFAULT_CHUNK_SIZE;
 	private int sorterItemsInMemory = DEFAULT_SORTER_ITEMS_IN_MEMORY;
 	private int sorterBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
 	private int maxIncrementalReloadPeriodMillis = DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS;
 	private boolean ignoreChunkReadingExceptions = false;
+	private int maxChunksToConsolidate = DEFAULT_MAX_CHUNKS_TO_CONSOLIDATE;
 
 	// state
 	private int lastRevisionId;
@@ -141,7 +141,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	}
 
 	public Aggregation withChunkSize(int chunkSize) {
-		this.aggregationChunkSize = chunkSize;
+		this.chunkSize = chunkSize;
 		return this;
 	}
 
@@ -165,6 +165,11 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		return this;
 	}
 
+	public Aggregation withMaxChunksToConsolidate(int maxChunksToConsolidate) {
+		this.maxChunksToConsolidate = maxChunksToConsolidate;
+		return this;
+	}
+
 	public Aggregation withKey(String keyId, FieldType type) {
 		checkArgument(!keyTypes.containsKey(keyId));
 		keyTypes.put(keyId, type);
@@ -179,9 +184,9 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	}
 
 	public Aggregation withMeasure(String measureId, Measure aggregateFunction) {
-		checkArgument(!fieldTypes.containsKey(measureId));
-		fieldTypes.put(measureId, aggregateFunction.getFieldType());
-		fieldAggregateFunctions.put(measureId, aggregateFunction);
+		checkArgument(!measureTypes.containsKey(measureId));
+		measureTypes.put(measureId, aggregateFunction.getFieldType());
+		measures.put(measureId, aggregateFunction);
 		return this;
 	}
 
@@ -189,6 +194,18 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		for (String measureId : measures.keySet()) {
 			withMeasure(measureId, measures.get(measureId));
 		}
+		return this;
+	}
+
+	public Aggregation withIgnoredMeasure(String measureId, FieldType measureType) {
+		checkArgument(!measureTypes.containsKey(measureId));
+		measureTypes.put(measureId, measureType);
+		return this;
+	}
+
+	public Aggregation withIgnoredMeasures(Map<String, FieldType> measureTypes) {
+		checkArgument(intersection(this.measureTypes.keySet(), measureTypes.keySet()).isEmpty());
+		this.measureTypes.putAll(measureTypes);
 		return this;
 	}
 
@@ -207,33 +224,34 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	}
 
 	public List<String> getFields() {
-		return newArrayList(fieldTypes.keySet());
+		return newArrayList(measures.keySet());
 	}
 
 	public Map<String, FieldType> getKeyTypes() {
 		return keyTypes;
 	}
 
-	public Map<String, FieldType> getFieldTypes() {
-		return fieldTypes;
+	public Map<String, FieldType> getMeasureTypes() {
+		return measureTypes;
 	}
 
-	public Measure getFieldAggregateFunction(String field) {
-		return fieldAggregateFunctions.get(field);
+	public Measure getMeasure(String field) {
+		return measures.get(field);
 	}
 
 	public FieldType getKeyType(String key) {
 		return keyTypes.get(key);
 	}
 
-	public FieldType getFieldType(String field) {
-		return fieldTypes.get(field);
+	public FieldType getMeasureType(String field) {
+		return measureTypes.get(field);
 	}
 
 	public List<String> getPartitioningKey() {
 		return partitioningKey;
 	}
 
+	@VisibleForTesting
 	public AggregationMetadata getMetadata() {
 		return metadata;
 	}
@@ -276,7 +294,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 				this, getKeys(), outputFields,
 				aggregationClass,
 				createPartitionPredicate(aggregationClass, getPartitioningKey(), classLoader),
-				keyFunction, aggregate, aggregationChunkSize, classLoader, chunksCallback);
+				keyFunction, aggregate, chunkSize, classLoader, chunksCallback);
 	}
 
 	@Override
@@ -295,7 +313,13 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass, DefiningClassLoader classLoader) {
+	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass, DefiningClassLoader queryClassLoader) {
+		ClassLoader cl;
+		for (cl = queryClassLoader; cl != null; cl = cl.getParent()) {
+			if (cl == this.classLoader)
+				break;
+		}
+		checkArgument(cl != null, "Unrelated queryClassLoader");
 		List<String> aggregationFields = newArrayList(filter(query.getResultFields(), in(getFields())));
 
 		List<AggregationChunk> allChunks = metadata.findChunks(query.getPredicate(), aggregationFields);
@@ -303,29 +327,11 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		AggregationQueryPlan queryPlan = AggregationQueryPlan.create();
 
 		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
-				aggregationFields, outputClass, query.getPredicate(), allChunks, queryPlan, null, classLoader);
-
-		StreamProducer queryResultProducer = streamProducer;
-
-//		List<AggregationQuery.PredicateNotEquals> notEqualsPredicates = getNotEqualsPredicates(query.getPredicates());
-
-//		for (String key : resultKeys) {
-//			Object restrictedValue = types.getKeyType(key).getRestrictedValue();
-//			if (restrictedValue != null)
-//				notEqualsPredicates.add(new AggregationQuery.PredicateNotEquals(key, restrictedValue));
-//		}
-
-//		if (!notEqualsPredicates.isEmpty()) {
-//			StreamFilter streamFilter = StreamFilter.create(eventloop,
-//					createNotEqualsPredicate(outputClass, notEqualsPredicates, classLoader));
-//			streamProducer.streamTo(streamFilter.getInput());
-//			queryResultProducer = streamFilter.getOutput();
-//			queryPlan.setPostFiltering(true);
-//		}
+				aggregationFields, outputClass, query.getPredicate(), allChunks, queryPlan, null, queryClassLoader);
 
 		logger.info("Query plan for {} in aggregation {}: {}", query, this, queryPlan);
 
-		return queryResultProducer;
+		return streamProducer;
 	}
 
 	private <T> StreamProducer<T> getOrderedStream(StreamProducer<T> rawStream, Class<T> resultClass,
@@ -376,7 +382,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 				.streamTo(new AggregationChunker<>(eventloop, this,
 						this, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass, getPartitioningKey(), classLoader),
-						aggregationChunkStorage, metadataStorage, aggregationChunkSize, classLoader, callback));
+						aggregationChunkStorage, metadataStorage, chunkSize, classLoader, callback));
 		logger.info("Consolidation plan: {}", consolidationPlan);
 	}
 
@@ -386,7 +392,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 	                                                   List<AggregationChunk> individualChunks,
 	                                                   AggregationQueryPlan queryPlan,
 	                                                   ConsolidationPlan consolidationPlan,
-	                                                   DefiningClassLoader classLoader) {
+	                                                   DefiningClassLoader queryClassLoader) {
 		Set<String> fieldsSet = newHashSet(fields);
 		individualChunks = newArrayList(individualChunks);
 		Collections.sort(individualChunks, new Comparator<AggregationChunk>() {
@@ -416,7 +422,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 				List<String> sequenceFields = chunks.get(0).getFields();
 				Set<String> requestedFieldsInSequence = intersection(fieldsSet, newLinkedHashSet(sequenceFields));
 
-				Class<?> chunksClass = createRecordClass(this, getKeys(), sequenceFields, this.classLoader);
+				Class<?> chunksClass = createRecordClass(this, getKeys(), sequenceFields, classLoader);
 
 				producersFields.add(sequenceFields);
 				producersClasses.add(chunksClass);
@@ -424,9 +430,9 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 				List<AggregationChunk> sequentialChunkGroup = newArrayList(chunks);
 
 				boolean sorted = false;
-				StreamProducer producer = sequentialProducer(predicate, sequentialChunkGroup, chunksClass, classLoader);
+				StreamProducer producer = sequentialProducer(predicate, sequentialChunkGroup, chunksClass, queryClassLoader);
 				if (sortingRequired(requestedKeys, getKeys())) {
-					producer = getOrderedStream(producer, chunksClass, requestedKeys, sequenceFields, this.classLoader);
+					producer = getOrderedStream(producer, chunksClass, requestedKeys, sequenceFields, classLoader);
 					sorted = true;
 				}
 				producers.add(producer);
@@ -446,7 +452,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		}
 
 		return mergeProducers(queryKeys, requestedKeys, fields, resultClass, producers, producersFields,
-				producersClasses, queryPlan, classLoader);
+				producersClasses, queryPlan, queryClassLoader);
 	}
 
 	private <T> StreamProducer<T> mergeProducers(List<String> queryKeys, List<String> requestedKeys, List<String> fields,
@@ -488,20 +494,20 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 
 	private StreamProducer sequentialProducer(final AggregationPredicate predicate,
 	                                          List<AggregationChunk> individualChunks, final Class<?> sequenceClass,
-	                                          final DefiningClassLoader classLoader) {
+	                                          final DefiningClassLoader queryClassLoader) {
 		checkArgument(!individualChunks.isEmpty());
 		AsyncIterator<StreamProducer<Object>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
 				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
 					@Override
 					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
-						producerCallback.setResult(chunkReaderWithFilter(predicate, chunk, sequenceClass, classLoader));
+						producerCallback.setResult(chunkReaderWithFilter(predicate, chunk, sequenceClass, queryClassLoader));
 					}
 				});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 
 	private StreamProducer chunkReaderWithFilter(AggregationPredicate predicate, AggregationChunk chunk,
-	                                             Class<?> chunkRecordClass, DefiningClassLoader classLoader) {
+	                                             Class<?> chunkRecordClass, DefiningClassLoader queryClassLoader) {
 		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(this, getKeys(), chunk.getFields(),
 				chunkRecordClass, chunk.getChunkId(), this.classLoader);
 		StreamProducer chunkProducer = chunkReader;
@@ -513,7 +519,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		if (predicate == null || predicate == AggregationPredicates.alwaysTrue())
 			return chunkProducer;
 		StreamFilter streamFilter = StreamFilter.create(eventloop,
-				createPredicate(chunkRecordClass, predicate, classLoader));
+				createPredicate(chunkRecordClass, predicate, queryClassLoader));
 		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();
 	}
@@ -530,12 +536,12 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		return metadata.findOverlappingChunks().size();
 	}
 
-	public void consolidateMinKey(final int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
+	public void consolidateMinKey(final ResultCallback<Boolean> callback) {
 		loadChunks(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				List<AggregationChunk> chunks = metadata.findChunksForConsolidationMinKey(maxChunksToConsolidate,
-						aggregationChunkSize);
+						chunkSize);
 				consolidate(chunks, callback);
 			}
 
@@ -548,7 +554,7 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		});
 	}
 
-	public void consolidateHotSegment(final int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
+	public void consolidateHotSegment(final ResultCallback<Boolean> callback) {
 		loadChunks(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -677,27 +683,31 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		return metadata.getConsolidationDebugInfo();
 	}
 
-	// visible for testing
+	@VisibleForTesting
 	public void setLastReloadTimestamp(long lastReloadTimestamp) {
 		this.lastReloadTimestamp = lastReloadTimestamp;
 	}
 
 	// jmx
 
+	@JmxAttribute
 	public int getMaxIncrementalReloadPeriodMillis() {
 		return maxIncrementalReloadPeriodMillis;
 	}
 
+	@JmxAttribute
 	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
-	public int getAggregationChunkSize() {
-		return aggregationChunkSize;
+	@JmxAttribute
+	public int getChunkSize() {
+		return chunkSize;
 	}
 
-	public void setAggregationChunkSize(int chunkSize) {
-		this.aggregationChunkSize = chunkSize;
+	@JmxAttribute
+	public void setChunkSize(int chunkSize) {
+		this.chunkSize = chunkSize;
 		for (AggregationChunker chunker : activeChunkers) {
 			chunker.setChunkSize(chunkSize);
 		}
@@ -706,36 +716,54 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		}
 	}
 
+	@JmxAttribute
 	public int getSorterItemsInMemory() {
 		return sorterItemsInMemory;
 	}
 
+	@JmxAttribute
 	public void setSorterItemsInMemory(int sorterItemsInMemory) {
 		this.sorterItemsInMemory = sorterItemsInMemory;
 	}
 
+	@JmxAttribute
 	public int getSorterBlockSize() {
 		return sorterBlockSize;
 	}
 
+	@JmxAttribute
 	public void setSorterBlockSize(int sorterBlockSize) {
 		this.sorterBlockSize = sorterBlockSize;
 	}
 
+	@JmxAttribute
 	public boolean isIgnoreChunkReadingExceptions() {
 		return ignoreChunkReadingExceptions;
 	}
 
+	@JmxAttribute
 	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
 		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
 	}
 
+	@JmxAttribute
+	public int getMaxChunksToConsolidate() {
+		return maxChunksToConsolidate;
+	}
+
+	@JmxAttribute
+	public void setMaxChunksToConsolidate(int maxChunksToConsolidate) {
+		this.maxChunksToConsolidate = maxChunksToConsolidate;
+	}
+
+	@JmxOperation
 	public void flushBuffers() {
 		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
 			groupReducer.flush();
 		}
 	}
 
+	@JmxAttribute
 	public int getBuffersSize() {
 		int size = 0;
 		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
@@ -764,5 +792,13 @@ public class Aggregation implements IAggregation, AggregationOperationTracker {
 		activeGroupReducers.remove(groupReducer);
 	}
 
+	@Override
+	public String toString() {
+		return "{" + keyTypes.keySet() + " " + measures.keySet() + '}';
+	}
 
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
 }
