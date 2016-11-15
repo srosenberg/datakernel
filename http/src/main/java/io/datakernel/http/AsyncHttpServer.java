@@ -18,10 +18,8 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.InetAddressRange;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.*;
 import io.datakernel.exception.ParseException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -33,12 +31,64 @@ import io.datakernel.util.MemSize;
 import javax.net.ssl.SSLContext;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.jmx.MBeanFormat.formatDuration;
 
+/**
+ * A server which works asynchronously. An instance of {@code AsyncHttpServer}
+ * can be created by calling {@link #create(Eventloop, AsyncServlet)} method
+ * and providing an {@link Eventloop} instance and an implementation of
+ * {@link AsyncServlet}.
+ * <p>
+ * The creation of asynchronous http server implies few steps:
+ * <ol>
+ *     <li>Create an {@code eventloop} for a server</li>
+ *     <li>Create a servlet, which will respond to received request</li>
+ *     <li>Create a server with these instances</li>
+ * </ol>
+ * For example, consider an {@code AsyncHttpServer} with default
+ * {@code eventloop} and anonymous implementation of {@code AsyncServlet}.
+ * <pre>
+ * <code>final {@link Eventloop Eventloop} eventloop = Eventloop.create();
+ * final {@link AsyncServlet AsyncServlet} servlet = new AsyncServlet() {
+ *    {@literal @}Override
+ *     public void serve({@link HttpRequest HttpRequest} request, final {@link ResultCallback ResultCallback<HttpResponse>} callback) {
+ *     	final HttpResponse response = HttpResponse.ok200().withBody(ByteBufStrings.encodeAscii("Hello, client!"));
+ *     		eventloop.post(new Runnable() {
+ *		   {@literal @}Override
+ *  		    public void run() {
+ *  		    System.out.println("Request body: " + request.getBody().toString());
+ *     			callback.setResult(response);
+ *     		    }
+ *  		});
+ * 	}
+ * };
+ * AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(40000);
+ * server.listen();
+ * eventloop.run(); //eventloop runs in current thread
+ * </code>
+ * </pre>
+ * Now server is ready for accepting requests and responding to clients with
+ * <pre>"Hello, client!"</pre> message. For the sake of code simplicity, a standard Java
+ * {@link Socket} will be used to send a request.
+ * <pre>
+ * <code>//create a new thread for eventloop
+ * Socket socket = new Socket();
+ * socket.connect(new InetSocketAddress(40000));
+ * {@link HttpRequest HttpRequest} request = HttpRequest.post("http://127.0.0.1:" + 40000)
+ * 	.withBody("Java socket request".getBytes());
+ * socket.getOutputStream().write(request.toByteBuf().array());
+ * server.closeFuture().get();
+ * socket.close();
+ * </code>
+ * </pre>
+ * It's easy to create a client for this example using
+ * {@link AsyncHttpClient} or send a request with, for example, {@link AsyncTcpSocketImpl}.
+ */
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final long DEFAULT_KEEP_ALIVE_MILLIS = 30 * 1000L;
 

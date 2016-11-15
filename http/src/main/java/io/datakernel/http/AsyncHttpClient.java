@@ -17,6 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.async.*;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -43,6 +45,45 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.jmx.MBeanFormat.formatDuration;
 import static io.datakernel.util.Preconditions.checkState;
 
+/**
+ * A client which works asynchronously. It's responsibility is to send requests
+ * to the specified server. Client's work is based on {@link Eventloop}, which
+ * must be provided when calling {@link #create(Eventloop)} method. There are
+ * a lot of methods applicable for configuring a client:
+ * <ul>
+ * <li>{@link #withSocketSettings(SocketSettings)}</li>
+ * <li>{@link #withMaxHttpMessageSize(int)} and overloaded
+ * {@link #withMaxHttpMessageSize(MemSize)}</li>
+ * <li>{@link #withLogger(Logger)}</li>
+ * <li>{@link #withKeepAliveTimeMillis(long)} or
+ * {@link #withNoKeepAlive()}</li>
+ * <li>{@link #withDnsClient(IAsyncDnsClient)}</li>
+ * <li>{@link #withSslEnabled(SSLContext, ExecutorService)}</li>
+ * </ul>
+ * Assuming that some server (e.g. an {@link AsyncHttpServer async http server}
+ * example) runs on port {@code 40000}, the code for creating an asynchronous
+ * client is straightforward:
+ * <pre>
+ *     <code>final {@link Eventloop Eventloop} eventloop = Eventloop.create();
+ *     final AsyncHttpClient client = AsyncHttpClient.create(eventloop);
+ *     {@link HttpRequest HttpRequest} r = HttpRequest.get("http://127.0.0.1:" + 40000);
+ *     final int timeout = 1000;
+ *     client.send(r, timeout, new {@link ResultCallback}{@code <HttpResponse>()} {
+ *       {@literal @}Override
+ *     	public void onResult(final {@link HttpResponse} result) {
+ *     	     System.out.println({@link ByteBufStrings#decodeAscii}(result.getBody());
+ *     	     client.close();
+ *        }
+ *
+ *       {@literal @}Override
+ *     	public void onException(Exception exception) {
+ *     	     client.close();
+ *        }
+ *     });
+ *     eventloop.run();
+ *     </code>
+ * </pre>
+ */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
@@ -528,7 +569,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		private final HttpClientConnection connection;
 
 		public MonitorRequestDurationCallback(ResultCallback<HttpResponse> actualCallback,
-		                                      HttpClientConnection connection) {
+											  HttpClientConnection connection) {
 			this.actualCallback = actualCallback;
 			this.connection = connection;
 		}
