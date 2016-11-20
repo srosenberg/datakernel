@@ -27,10 +27,12 @@ import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
+import io.datakernel.rpc.client.sender.RpcStrategies;
 import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
+import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.util.MemSize;
@@ -51,7 +53,25 @@ import static io.datakernel.util.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
 /**
- * Sends requests to the specified servers according to defined strategy.
+ * Sends requests to the specified servers according to defined
+ * {@link RpcStrategy} strategy. Strategies, represented in
+ * {@link RpcStrategies} satisfy most cases.
+ * //TODO 21.11.2016 several ways to create a client
+ * <p>
+ * Example. Consider a client which sends a {@code Request} and receives a
+ * {@code Response} from some {@link RpcServer}. To implement such kind of
+ * client its necessary to
+ * <pre>
+ * <code>//create eventloop
+ * Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+ *
+ * InetSocketAddress address = new InetSocketAddress("localhost", 40000);
+ * //create client with eventloop
+ * RpcClient client = RpcClient.create(eventloop).withMessageTypes(Request.class, Response.class)
+ * 				.withStrategy(RpcStrategies.server(address));
+ * //TODO 21.11.2016 add Request and Response classes examples. add sendRequest example.
+ * </code>
+ * </pre>
  *
  */
 public final class RpcClient implements IRpcClient, EventloopService, EventloopJmxMBean {
@@ -154,7 +174,7 @@ public final class RpcClient implements IRpcClient, EventloopService, EventloopJ
 	}
 
 	/**
-	 * Creates a client that uses provided socket // TODO: 12.10.16
+	 * Creates a client that uses provided socket settings.
 	 *
 	 * @param socketSettings
 	 * @return the RPC client

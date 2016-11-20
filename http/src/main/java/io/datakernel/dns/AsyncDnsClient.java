@@ -42,6 +42,21 @@ import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
+/**
+ * An implementation of DNS client which resolves IP addresses.
+ * <p>
+ * Example of usage:
+ * <code>
+ *     <pre>
+ * Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
+ * //an address of the DNS server
+ * InetSocketAddress GOOGLE_DNS = new InetSocketAddress("8.8.8.8", 53);
+ * //create an instance
+ * AsyncDnsClient dnsClient = AsyncDnsClient.create(eventloop).withTimeout(5000_L).withDnsServerAddress(GOOGLE_DNS);
+ * //TODO 20.11.2016
+ *     </pre>
+ * </code>
+ */
 public final class AsyncDnsClient implements IAsyncDnsClient, EventloopJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(AsyncDnsClient.class);
 

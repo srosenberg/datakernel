@@ -47,8 +47,8 @@ import static io.datakernel.jmx.MBeanFormat.formatDuration;
  * The creation of asynchronous http server implies few steps:
  * <ol>
  *     <li>Create an {@code eventloop} for a server</li>
- *     <li>Create a servlet, which will respond to received request</li>
- *     <li>Create a server with these instances</li>
+ *     <li>Create a {@code servlet}, which will respond to received request</li>
+ *     <li>Create a {@code server} with these instances</li>
  * </ol>
  * For example, consider an {@code AsyncHttpServer} with default
  * {@code eventloop} and anonymous implementation of {@code AsyncServlet}.

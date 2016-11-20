@@ -70,6 +70,7 @@ import static java.util.Arrays.asList;
  * especially when a number of modules growth.
  * <p>
  * An RPC server has a lot of builder methods which adjusts a server.
+ * //TODO 21.11.2016 add server example, which works with RpcClient example
  */
 public final class RpcServer extends AbstractServer<RpcServer> {
 	private final Logger logger;

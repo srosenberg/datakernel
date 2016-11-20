@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.
- * Receives {@link HttpRequest},  creates {@link HttpResponse} and sends it.
+ * Receives {@link HttpRequest}, creates {@link HttpResponse} and sends it.
  */
 public interface AsyncServlet {
 	/**

@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.*;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.IAsyncDnsClient;
