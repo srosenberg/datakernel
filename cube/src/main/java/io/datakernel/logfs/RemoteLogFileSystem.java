@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.FsClient;
+import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -34,15 +34,15 @@ public final class RemoteLogFileSystem extends AbstractLogFileSystem {
 
 	private final Eventloop eventloop;
 	private final String logName;
-	private final FsClient client;
+	private final RemoteFsClient client;
 
-	private RemoteLogFileSystem(Eventloop eventloop, String logName, FsClient client) {
+	private RemoteLogFileSystem(Eventloop eventloop, String logName, RemoteFsClient client) {
 		this.eventloop = eventloop;
 		this.logName = logName;
 		this.client = client;
 	}
 
-	public static RemoteLogFileSystem create(Eventloop eventloop, String logName, FsClient client) {
+	public static RemoteLogFileSystem create(Eventloop eventloop, String logName, RemoteFsClient client) {
 		return new RemoteLogFileSystem(eventloop, logName, client);
 	}
 

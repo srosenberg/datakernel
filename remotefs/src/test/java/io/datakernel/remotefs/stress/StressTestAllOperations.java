@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.stress;
 
-import java.util.List;
+import java.io.IOException;
 
-interface HashingStrategy {
-	List<Replica> sortReplicas(String file, List<Replica> replicas);
+public class StressTestAllOperations {
+	// first should start server form StressServer, then call main as many times as you like
+	public static void main(String[] args) throws IOException {
+		StressClient client = new StressClient();
+		client.setup();
+		client.start(100, 360_000);
+	}
 }

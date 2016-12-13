@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs.stress;
+package io.datakernel.remotefs.stress;
 
 import com.google.common.base.Charsets;
+import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.IgnoreCompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -26,7 +27,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -57,7 +57,7 @@ class StressClient {
 	private Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
-	private SimpleFsClient client = SimpleFsClient.create(eventloop, address);
+	private RemoteFsClient client = RemoteFsClient.create(eventloop, address);
 
 	private static Random rand = new Random();
 
