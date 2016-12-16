@@ -122,7 +122,7 @@ public class AsyncHttpServerTest {
 		}
 
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n");
-		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\n/abc"); // ?
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc"); // ?
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		assertTrue(socket.isClosed());
@@ -181,7 +181,7 @@ public class AsyncHttpServerTest {
 
 		socket.connect(new InetSocketAddress(port));
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\n\r\n");
-		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\n/abc");
+		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\n/abc");
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
@@ -213,13 +213,26 @@ public class AsyncHttpServerTest {
 		socket.connect(new InetSocketAddress(port));
 
 		for (int i = 0; i < 100; i++) {
-			writeByRandomParts(socket, "GET /abc HTTP1.1\r\nConnection: Keep-Alive\r\nHost: localhost\r\n\r\n"
-					+ "GET /123456 HTTP1.1\r\nConnection: Keep-Alive\r\nHost: localhost\r\n\r\n");
+			writeByRandomParts(socket, "GET /abc HTTP/1.1\r\nConnection: Keep-Alive\r\nHost: localhost\r\n\r\n"
+					+ "GET /123456 HTTP/1.1\r\nHost: localhost\r\n\r\n" +
+					"POST /post1 HTTP/1.1\r\n" +
+					"Host: localhost\r\n" +
+					"Content-Length: 8\r\n" +
+					"Content-Type: application/json\r\n\r\n" +
+					"{\"at\":2}" +
+					"POST /post2 HTTP/1.1\r\n" +
+					"Host: localhost\r\n" +
+					"Content-Length: 8\r\n" +
+					"Content-Type: application/json\r\n\r\n" +
+					"{\"at\":2}" +
+					"");
 		}
 
 		for (int i = 0; i < 100; i++) {
 			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 4\r\n\r\n/abc");
 			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 7\r\n\r\n/123456");
+			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 6\r\n\r\n/post1");
+			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 6\r\n\r\n/post2");
 		}
 
 		server.closeFuture().await();

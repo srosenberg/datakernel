@@ -47,7 +47,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
 
-	protected boolean keepAlive = true;
+	protected boolean keepAlive;
 
 	protected final ByteBufQueue bodyQueue = new ByteBufQueue();
 

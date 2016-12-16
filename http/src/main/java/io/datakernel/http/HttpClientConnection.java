@@ -37,7 +37,9 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
+
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeaders.Value CONNECTION_CLOSE = HttpHeaders.asBytes(CONNECTION, "close");
 
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;
@@ -55,6 +57,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
+		this.keepAlive = true;
 	}
 
 	@Override
@@ -187,9 +190,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpRequest(HttpRequest httpRequest) {
-		if (keepAlive) {
-			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
-		}
+		httpRequest.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE : CONNECTION_CLOSE);
 		ByteBuf buf = httpRequest.write();
 		write(buf);
 	}

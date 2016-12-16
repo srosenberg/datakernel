@@ -37,7 +37,9 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
+
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeaders.Value CONNECTION_CLOSE = HttpHeaders.asBytes(CONNECTION, "close");
 
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
@@ -76,6 +78,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		super(eventloop, socketChannel, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = getRemoteSocketAddress().getAddress();
+		this.keepAlive = false;
 	}
 
 	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
@@ -139,6 +142,15 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 
 		request.url(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
+		line.advance(i);
+
+		keepAlive = false;
+		if (line.remaining() > 8) {
+			if (line.peek(1) == 'H' && line.peek(2) == 'T' && line.peek(3) == 'T' && line.peek(4) == 'P'
+					&& line.peek(5) == '/' && line.peek(6) == '1' && line.peek(7) == '.') {
+				keepAlive = (line.peek(8) == '1'); // keep-alive for HTTP/1.1
+			}
+		}
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
@@ -158,9 +170,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void writeHttpResult(HttpResponse httpResponse) {
-		if (keepAlive) {
-			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
-		}
+		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE : CONNECTION_CLOSE);
 		ByteBuf buf = httpResponse.write();
 		httpResponse.recycleBufs();
 		write(buf);
@@ -213,7 +223,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	protected void reset() {
 		reading = FIRSTLINE;
 		readInterest(true);
-		keepAlive = false;
 		if (request != null) {
 			request.recycleBufs();
 			request = null;
