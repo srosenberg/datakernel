@@ -26,10 +26,9 @@ import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
-import static io.datakernel.http.HttpHeaders.CONNECTION;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
-import static io.datakernel.util.ByteBufStrings.SP;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * It represents server connection. It can receive requests from clients and respond to them with async servlet.
@@ -40,6 +39,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 	private static final HttpHeaders.Value CONNECTION_CLOSE = HttpHeaders.asBytes(CONNECTION, "close");
+
+	private static final byte[] EXPECT_100_CONTINUE = encodeAscii("100-continue");
+	private static final byte[] EXPECT_RESPONSE_CONTINUE = encodeAscii("HTTP/1.1 100 Continue\r\n\r\n");
 
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
@@ -65,6 +67,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private AsyncHttpServlet servlet;
+
+	private boolean httpStatusContinue;
 
 	/**
 	 * Creates a new instance of HttpServerConnection
@@ -166,6 +170,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
+		if (header == EXPECT) {
+			if (equalsLowerCaseAscii(EXPECT_100_CONTINUE, value.array(), value.position(), value.remaining())) {
+				httpStatusContinue = true;
+				write(ByteBuf.wrap(EXPECT_RESPONSE_CONTINUE));
+			}
+		}
 		request.addHeader(header, value);
 	}
 
@@ -173,6 +183,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		httpResponse.addHeader(keepAlive ? CONNECTION_KEEP_ALIVE : CONNECTION_CLOSE);
 		ByteBuf buf = httpResponse.write();
 		httpResponse.recycleBufs();
+		httpStatusContinue = false;
 		write(buf);
 	}
 
@@ -247,6 +258,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onWriteFlushed() {
 		assert isRegistered();
+
+		if (httpStatusContinue) {
+			return;
+		}
+
 		if (keepAlive) {
 			reset();
 			if (readQueue.hasRemaining()) {
