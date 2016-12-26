@@ -19,72 +19,110 @@ package io.datakernel.bytebuf;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Integer.toHexString;
 
-public final class ByteBufFormatter {
+public final class BytesHexFormatter {
 	private final boolean offsetColumn;
 	private final boolean asciiColumn;
 	private final int maxBytesPerLine;
 	private final int maxBytesPerColumn;
+	private final int maxHeadBytes;
+	private final int maxTailBytes;
 	private final char nonPrintable;
 	private final String columnSeparator;
 
 	// region builders
-	public ByteBufFormatter(boolean offsetColumn, boolean asciiColumn,
-	                        int maxBytesPerLine, int maxBytesPerColumn,
-	                        char nonPrintable, String columnSeparator) {
+
+	public BytesHexFormatter(boolean offsetColumn, boolean asciiColumn,
+	                         int maxBytesPerLine, int maxBytesPerColumn,
+	                         int maxHeadBytes, int maxTailBytes,
+	                         char nonPrintable, String columnSeparator) {
 		this.offsetColumn = offsetColumn;
 		this.asciiColumn = asciiColumn;
 		this.maxBytesPerLine = maxBytesPerLine;
 		this.maxBytesPerColumn = maxBytesPerColumn;
+		this.maxHeadBytes = maxHeadBytes;
+		this.maxTailBytes = maxTailBytes;
 		this.nonPrintable = nonPrintable;
 		this.columnSeparator = columnSeparator;
 	}
 
-	public static ByteBufFormatter create() {
-		return new ByteBufFormatter(true, true, 16, 8, '.', "  ");
+	public static BytesHexFormatter create() {
+		return new BytesHexFormatter(true, true, 16, 8, 512, 512, '.', "  ");
 	}
 
-	public ByteBufFormatter withOffsetColumn(boolean offsetColumn) {
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+	public BytesHexFormatter withOffsetColumn(boolean offsetColumn) {
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
 	}
 
-	public ByteBufFormatter withAsciiColumn(boolean asciiColumn) {
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+	public BytesHexFormatter withAsciiColumn(boolean asciiColumn) {
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
 	}
 
-	public ByteBufFormatter withMaxBytesPerLine(int maxBytesPerLine) {
+	public BytesHexFormatter withMaxLine(int bytes) {
 		checkArgument(maxBytesPerLine > 0, "max bytes per line must be greater than zero");
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+		return new BytesHexFormatter(offsetColumn, asciiColumn, bytes, maxBytesPerColumn,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
 	}
 
-	public ByteBufFormatter withMaxBytesPerColumn(int maxBytesPerColumn) {
+	public BytesHexFormatter withMaxColumn(int bytes) {
 		checkArgument(maxBytesPerColumn > 0, "max bytes per column must be greater than zero");
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, bytes,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
 	}
 
-	public ByteBufFormatter withNonPrintable(char nonPrintable) {
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+	public BytesHexFormatter withNonPrintable(char nonPrintable) {
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
 	}
 
-	public ByteBufFormatter withColumnSeparator(String columnSeparator) {
-		return new ByteBufFormatter(
-				offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn, nonPrintable, columnSeparator);
+	public BytesHexFormatter withColumnSeparator(String columnSeparator) {
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				maxHeadBytes, maxTailBytes, nonPrintable, columnSeparator);
+	}
+
+	public BytesHexFormatter withMaxHead(int bytes) {
+		checkArgument(bytes >= 0, "max head bytes cannot be negative");
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				bytes, maxTailBytes, nonPrintable, columnSeparator);
+	}
+
+	public BytesHexFormatter withMaxTail(int bytes) {
+		checkArgument(bytes >= 0, "max tail bytes cannot be negative");
+		return new BytesHexFormatter(offsetColumn, asciiColumn, maxBytesPerLine, maxBytesPerColumn,
+				maxHeadBytes, bytes, nonPrintable, columnSeparator);
 	}
 	// endregion
 
-	public String format(ByteBuf buf) {
-		return format(buf.array(), buf.readPosition(), buf.readRemaining());
-	}
-
-	public String format(ByteBuf buf, int maxBytes) {
-		return format(buf.array(), buf.readPosition(), Math.min(buf.readRemaining(), maxBytes));
+	public String format(byte[] bytes) {
+		return format(bytes, 0, bytes.length);
 	}
 
 	public String format(byte[] bytes, int offset, int length) {
+		if (length <= maxHeadBytes + maxTailBytes) {
+			return format(bytes, offset, length, 0);
+		} else {
+			String head = format(bytes, offset, maxHeadBytes, 0);
+			String tail = format(bytes, offset + (length - maxTailBytes), maxTailBytes, length - maxTailBytes);
+
+			if (head.isEmpty()) {
+				return tail;
+			}
+
+			if (tail.isEmpty()) {
+				return head;
+			}
+
+			String skip = String.format("Skipped %d bytes out of %d", length - (maxHeadBytes + maxTailBytes), length);
+			return head + "\n" + skip + "\n" + tail;
+		}
+	}
+
+	public String format(byte[] bytes, int offset, int length, int addressShift) {
+		if (length == 0) {
+			return "";
+		}
+
 		int offsetColumnLength = Math.max(4, toHexString(length).length());
 		StringBuilder allLines = new StringBuilder();
 
@@ -97,7 +135,7 @@ public final class ByteBufFormatter {
 				line = new StringBuilder();
 
 				if (offsetColumn) {
-					String hexOffset = toHexString(i).toUpperCase();
+					String hexOffset = toHexString(addressShift + i).toUpperCase();
 					line.append(leftPad(hexOffset, '0', offsetColumnLength));
 					line.append(columnSeparator);
 				}
@@ -108,7 +146,7 @@ public final class ByteBufFormatter {
 
 			byte b = bytes[offset + i];
 
-			if (bytesInLine % maxBytesPerColumn != 0) { // if it's
+			if (bytesInLine % maxBytesPerColumn != 0) {
 				hex.append(' ');
 			}
 			hex.append(byteToHex(b));
@@ -137,9 +175,6 @@ public final class ByteBufFormatter {
 
 			if (bytesInLine % maxBytesPerColumn == 0) {
 				hex.append(columnSeparator);
-				if (asciiColumn) {
-					ascii.append(columnSeparator);
-				}
 			}
 		}
 
@@ -155,7 +190,7 @@ public final class ByteBufFormatter {
 				(maxBytesPerLine / maxBytesPerColumn - (maxBytesPerLine % maxBytesPerColumn == 0 ? 1 : 0));
 		int columns = maxBytesPerLine / maxBytesPerColumn + (maxBytesPerLine % maxBytesPerColumn != 0 ? 1 : 0);
 		int hexLen = (maxBytesPerLine * 3 - columns) + separatorsLen;
-		int asciiLen = maxBytesPerLine + separatorsLen;
+		int asciiLen = maxBytesPerLine;
 
 		line.append(rightPad(hex.toString(), ' ', hexLen));
 		if (asciiColumn) {
@@ -175,7 +210,7 @@ public final class ByteBufFormatter {
 	}
 
 	private char formatByte(byte b) {
-		return b > 32 && b < 127 ? (char) b : nonPrintable;
+		return b > 31 && b < 127 ? (char) b : nonPrintable;
 	}
 
 	private static String leftPad(String str, char symbol, int targetSize) {
