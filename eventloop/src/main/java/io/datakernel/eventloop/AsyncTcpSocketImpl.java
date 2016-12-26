@@ -31,7 +31,7 @@ import java.util.ArrayDeque;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings({"WeakerAccess", "AssertWithSideEffects"})
-public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
+public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler, AsyncTcpSocketDebug {
 	public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 16 * 1024;
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 	private static final int MAX_MERGE_SIZE = 16 * 1024;
@@ -57,6 +57,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private ScheduledRunnable checkWriteTimeout;
 
 	private AsyncTcpSocketContract contractChecker;
+
+	private static PacketDebugger packetDebugger;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
@@ -128,6 +130,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				}
 			});
 		}
+	}
+
+	public static void setPacketDebugger(PacketDebugger packetDebugger) {
+		AsyncTcpSocketImpl.packetDebugger = packetDebugger;
 	}
 
 	// timeouts management
@@ -234,6 +240,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return;
 		}
 
+		if (packetDebugger != null) {
+			packetDebugger.onRead(this, buf);
+		}
 		assert contractChecker.onRead();
 		socketEventHandler.onRead(buf);
 	}
@@ -295,6 +304,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
 			channel.write(bufferToSend);
+			if (packetDebugger != null) {
+				recordWriteEvent(bufToSend, bufferToSend);
+			}
 			bufToSend.ofReadByteBuffer(bufferToSend);
 
 			if (bufToSend.canRead()) {
@@ -317,6 +329,18 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			socketEventHandler.onWrite();
 		} else {
 			writeInterest(true);
+		}
+	}
+
+	private void recordWriteEvent(ByteBuf bufToSend, ByteBuffer bufferToSend) {
+		boolean partialFlush = bufferToSend.remaining() > 0;
+		if (partialFlush) {
+			int bytesFlushed = bufToSend.readRemaining() - bufferToSend.remaining();
+			int readPos = bufToSend.readPosition();
+			ByteBuf flushedBuf = ByteBuf.wrap(bufToSend.array(), readPos, readPos + bytesFlushed);
+			packetDebugger.onWrite(this, flushedBuf, true);
+		} else {
+			packetDebugger.onWrite(this, bufToSend, false);
 		}
 	}
 
@@ -389,6 +413,16 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} catch (IOException ignored) {
 			throw new AssertionError("I/O error occurs or channel closed");
 		}
+	}
+
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@Override
+	public EventHandler getEventHandler() {
+		return socketEventHandler;
 	}
 
 	public SocketChannel getSocketChannel() {
