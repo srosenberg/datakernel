@@ -30,46 +30,63 @@ public final class ByteBufRegistry {
 	private static final ConcurrentHashMap<ByteBufWrapper, ByteBufMetaInfo> activeByteBufs = new ConcurrentHashMap<>();
 	private static AtomicInteger counter = new AtomicInteger(0);
 
+	private static volatile boolean storeByteBufs = false;
 	private static volatile boolean storeStackTrace = false;
 
 	private ByteBufRegistry() {}
 
 	// region public api
+	public static void clearRegistry() {
+		activeByteBufs.clear();
+	}
+
 	public static Map<ByteBufWrapper, ByteBufMetaInfo> getActiveByteBufs() {
 		return activeByteBufs;
+	}
+
+	public static boolean getStoreStackTrace() {
+		return storeStackTrace;
 	}
 
 	public static void setStoreStackTrace(boolean store) {
 		storeStackTrace = store;
 	}
 
-	public static boolean getStoreStackTrace() {
-		return storeStackTrace;
+	public static boolean getStoreByteBufs() {
+		return storeByteBufs;
+	}
+
+	public static void setStoreByteBufs(boolean store) {
+		storeByteBufs = store;
 	}
 	// endregion
 
 	public static boolean recordAllocate(ByteBuf buf) {
-		int current = counter.incrementAndGet();
-		if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
-			clearEmptyWrappers();
-		}
+		if (storeByteBufs) {
+			int current = counter.incrementAndGet();
+			if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
+				clearEmptyWrappers();
+			}
 
-		StackTraceElement[] stackTrace = null;
-		if (storeStackTrace) {
-			// TODO(vmykhalko): maybe use new Exception().getStackTrace instead ? according to performance issues
-			StackTraceElement[] fullStackTrace = Thread.currentThread().getStackTrace();
-			// remove stack trace lines that stand for registration method calls
-			stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
+			StackTraceElement[] stackTrace = null;
+			if (storeStackTrace) {
+				// TODO(vmykhalko): maybe use new Exception().getStackTrace instead ? according to performance issues
+				StackTraceElement[] fullStackTrace = Thread.currentThread().getStackTrace();
+				// remove stack trace lines that stand for registration method calls
+				stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
+			}
+			long timestamp = System.currentTimeMillis();
+			ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp);
+			activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
 		}
-		long timestamp = System.currentTimeMillis();
-		ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp);
-		activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
 
 		return true;
 	}
 
 	public static boolean recordRecycle(ByteBuf buf) {
-		activeByteBufs.remove(new ByteBufWrapper(buf));
+		if (storeByteBufs) {
+			activeByteBufs.remove(new ByteBufWrapper(buf));
+		}
 
 		return true;
 	}
