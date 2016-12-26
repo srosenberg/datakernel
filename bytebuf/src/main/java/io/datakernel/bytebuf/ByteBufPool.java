@@ -217,6 +217,10 @@ public final class ByteBufPool {
 
 		void setOldestByteBufs_settings_StoreStackTrace(boolean flag);
 
+		boolean getOldestByteBufs_settings_StoreByteBufs();
+
+		void setOldestByteBufs_settings_StoreByteBufs(boolean flag);
+
 		int getOldestByteBufs_settings_MaxBytesInContent();
 
 		void setOldestByteBufs_settings_MaxBytesInContent(int bytes);
@@ -226,6 +230,8 @@ public final class ByteBufPool {
 		void setOldestByteBufs_settings_MaxByteBufsToShow(int bufs);
 
 		int getTotalActiveByteBufs();
+
+		void clearRegistry();
 	}
 
 	public static final class ByteBufJmxInfo {
@@ -383,6 +389,16 @@ public final class ByteBufPool {
 		}
 
 		@Override
+		public boolean getOldestByteBufs_settings_StoreByteBufs() {
+			return ByteBufRegistry.getStoreByteBufs();
+		}
+
+		@Override
+		public void setOldestByteBufs_settings_StoreByteBufs(boolean flag) {
+			ByteBufRegistry.setStoreByteBufs(flag);
+		}
+
+		@Override
 		public int getOldestByteBufs_settings_MaxBytesInContent() {
 			return maxBytesInContent;
 		}
@@ -411,6 +427,11 @@ public final class ByteBufPool {
 		@Override
 		public int getTotalActiveByteBufs() {
 			return ByteBufRegistry.getActiveByteBufs().size();
+		}
+
+		@Override
+		public void clearRegistry() {
+			ByteBufRegistry.clearRegistry();
 		}
 	}
 
