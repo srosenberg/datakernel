@@ -753,6 +753,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return tick;
 	}
 
+	public int getGlobalTick() {
+		assert inEventloopThread();
+		return (int) (tick >> 32);
+	}
+
+	public int getLocalTick() {
+		assert inEventloopThread();
+		return (int) (tick);
+	}
+
 	/**
 	 * Posts a new task to the beginning of localTasks.
 	 * This method is recommended, since task will be executed as soon as possible without invalidating CPU cache.

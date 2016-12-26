@@ -28,6 +28,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import javax.net.ssl.SSLException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
@@ -36,7 +37,7 @@ import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
 @SuppressWarnings("AssertWithSideEffects")
-public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
+public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler, AsyncTcpSocketDebug {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Eventloop eventloop;
@@ -56,6 +57,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocketContract contractChecker;
 	private boolean closed = false;
+
+	private static PacketDebugger packetDebugger;
 
 	// region builders
 	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
@@ -89,6 +92,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		return new AsyncSslSocket(eventloop, asyncTcpSocket, engine, executor);
 	}
 	// endregion
+
+	public static void setPacketDebugger(PacketDebugger packetDebugger) {
+		AsyncSslSocket.packetDebugger = packetDebugger;
+	}
 
 	@Override
 	public void onRegistered() {
@@ -262,6 +269,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			throw e;
 		}
 
+		if (packetDebugger != null) {
+			recordWriteEvent(srcBuffer, app2engine);
+		}
+
 		app2engine.ofReadByteBuffer(srcBuffer);
 		app2engine = recycleIfEmpty(app2engine);
 
@@ -272,6 +283,18 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			dstBuf.recycle();
 		}
 		return result;
+	}
+
+	private void recordWriteEvent(ByteBuffer buffer, ByteBuf buf) {
+		boolean partialFlush = buffer.remaining() > 0;
+		if (partialFlush) {
+			int bytesFlushed = buf.readRemaining() - buffer.remaining();
+			int readPos = buf.readPosition();
+			ByteBuf flushedBuf = ByteBuf.wrap(buf.array(), readPos, readPos + bytesFlushed);
+			packetDebugger.onWrite(this, flushedBuf, true);
+		} else {
+			packetDebugger.onWrite(this, buf, false);
+		}
 	}
 
 	private void executeTasks() {
@@ -350,6 +373,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
 
+			if (packetDebugger != null) {
+				packetDebugger.onRead(this, readBuf);
+			}
 			assert contractChecker.onRead();
 			downstreamEventHandler.onRead(readBuf);
 		}
@@ -364,4 +390,18 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		}
 	}
 
+	@Override
+	public Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@Override
+	public EventHandler getEventHandler() {
+		return downstreamEventHandler;
+	}
+
+	@Override
+	public SocketChannel getSocketChannel() {
+		return upstream instanceof AsyncTcpSocketImpl ? ((AsyncTcpSocketImpl) upstream).getSocketChannel() : null;
+	}
 }
