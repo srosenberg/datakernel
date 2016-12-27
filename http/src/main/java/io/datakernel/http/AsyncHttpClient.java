@@ -218,8 +218,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		connection.keepAlivePoolByAddress.removeNode(connection.keepAlivePoolByAddressNode);
 		if (connection.keepAlivePoolByAddress.isEmpty()) {
 			keepAlivePoolsByAddresses.remove(connection.remoteAddress);
-			connection.keepAlivePoolByAddress = null;
 		}
+		connection.keepAlivePoolByAddress = null;
 		connection.keepAliveTimestamp = 0L;
 	}
 
