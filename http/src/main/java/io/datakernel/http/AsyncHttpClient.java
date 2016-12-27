@@ -80,6 +80,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private final Map<HttpClientConnection, UrlWithTimestamp> currentRequestToSendTime = new HashMap<>();
 	private boolean monitorCurrentRequestsDuration = false;
 
+	int activeConnections = 0;
+	int openedConnections = 0;
+	int closedConnections = 0;
+
 	private int inetAddressIdx = 0;
 
 	public static AsyncHttpClient create(Eventloop eventloop) {
@@ -182,6 +186,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 
 	void returnToPool(final HttpClientConnection connection) {
+//		activeConnections--;
+
 		assert !connection.isClosed();
 		assert !connection.isInPool();
 		if (closed || keepAliveTimeMillis == 0) {
@@ -194,6 +200,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return;
 		}
 
+		activeConnections--;
 		ExposedLinkedList<HttpClientConnection> addressPool = connection.keepAlivePoolByAddress;
 		if (addressPool == null) {
 			addressPool = keepAlivePoolsByAddresses.get(connection.remoteAddress);
@@ -281,6 +288,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocketImpl.register();
 
+
+				openedConnections++;
 				sendRequest(connection, request, timeoutTime, callback);
 			}
 
@@ -298,6 +307,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		// jmx
+		activeConnections++;
+
 		ResultCallback<HttpResponse> responseCallback = callback;
 		if (monitorCurrentRequestsDuration) {
 			currentRequestToSendTime.put(
@@ -393,14 +404,49 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public List<String> getAddressConnections() {
 		if (keepAlivePoolsByAddresses.isEmpty())
 			return null;
-		List<String> result = new ArrayList<>();
-		result.add("SocketAddress,ConnectionsCount");
+
+
+		List<AddressConnections> addConns = new ArrayList<>(keepAlivePoolsByAddresses.size());
+
 		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : keepAlivePoolsByAddresses.entrySet()) {
 			InetSocketAddress address = entry.getKey();
-			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
-			result.add(address + "," + connections.size());
+			int conns = entry.getValue().size();
+			addConns.add(new AddressConnections(address, conns));
 		}
+
+		Collections.sort(addConns, new Comparator<AddressConnections>() {
+			@Override
+			public int compare(AddressConnections o1, AddressConnections o2) {
+				return o2.getConnections() - o1.getConnections();
+			}
+		});
+
+		List<String> result = new ArrayList<>();
+		result.add("SocketAddress     ConnectionsCount");
+
+		for (AddressConnections addConn : addConns) {
+			result.add(addConn.getAddress() + "     " + addConn.getConnections());
+		}
+
 		return result;
+	}
+
+	private static final class AddressConnections {
+		private final InetSocketAddress address;
+		private final int connections;
+
+		public AddressConnections(InetSocketAddress address, int connections) {
+			this.address = address;
+			this.connections = connections;
+		}
+
+		public InetSocketAddress getAddress() {
+			return address;
+		}
+
+		public int getConnections() {
+			return connections;
+		}
 	}
 
 	@JmxAttribute(description = "all requests that were sent (both successful and failed)")
@@ -480,6 +526,31 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			formattedDurations.add(line);
 		}
 		return formattedDurations;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getOpenConnectionEvents() {
+		return openedConnections;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getCloseConnectionEvents() {
+		return closedConnections;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getCurrentlyOpenConnections() {
+		return openedConnections - closedConnections;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getActiveConnections() {
+		return activeConnections;
+	}
+
+	@JmxAttribute
+	public int getActiveConnectionsAndCachedConnections() {
+		return activeConnections + keepAlivePool.size();
 	}
 
 	private static final class UrlWithTimestamp {

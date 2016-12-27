@@ -46,6 +46,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	ExposedLinkedList<HttpClientConnection> keepAlivePoolByAddress;
 	final ExposedLinkedList.Node<HttpClientConnection> keepAlivePoolByAddressNode = new ExposedLinkedList.Node<>(this);
 
+	private boolean isInPoolNow = false;
+
 	// jmx
 	private String lastRequestUrl;
 
@@ -202,6 +204,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param callback callback for handling result
 	 */
 	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
+		isInPoolNow = false;
+
 		this.callback = callback;
 		writeHttpRequest(request);
 
@@ -239,6 +243,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	@Override
 	protected final void returnToPool() {
 		super.returnToPool();
+
+		isInPoolNow = true;
+
 		httpClient.returnToPool(this);
 	}
 
@@ -256,6 +263,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onClosed() {
 		assert callback == null;
 		super.onClosed();
+
+		httpClient.closedConnections++;
+
+		if (!isInPoolNow) {
+			httpClient.activeConnections--;
+		}
+
+
 		bodyQueue.clear();
 		if (response != null) {
 			response.recycleBufs();
