@@ -18,7 +18,6 @@ package io.datakernel.async;
 
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,22 +27,16 @@ import static io.datakernel.jmx.MBeanFormat.formatDuration;
 public final class CallbackRegistry {
 	private static final ConcurrentHashMap<Object, CallbackMetaData> REGISTRY = new ConcurrentHashMap<>();
 
-	private static volatile boolean storeCallbacks = false;
 	private static volatile boolean storeStackTrace = false;
 
 	// region public api
 	public static void register(Object callback) {
-		// TODO(vmykhalko): move "if" inside assert
-		if (storeCallbacks) {
-			assert registerIfAssertionsEnabled(callback) : "Callback " + callback + " has already been registered";
-		}
+		assert registerIfAssertionsEnabled(callback) : "Callback " + callback + " has already been registered";
 
 	}
 
 	public static void complete(Object callback) {
-		if (storeCallbacks) {
-			assert REGISTRY.remove(callback) != null : "Callback " + callback + " has already been completed";
-		}
+		assert REGISTRY.remove(callback) != null : "Callback " + callback + " has already been completed";
 	}
 
 	public static boolean getStoreStackTrace() {
@@ -52,18 +45,6 @@ public final class CallbackRegistry {
 
 	public static void setStoreStackTrace(boolean store) {
 		storeStackTrace = store;
-	}
-
-	public static boolean getStoreCallbacks() {
-		return storeCallbacks;
-	}
-
-	public static void setStoreCallbacks(boolean store) {
-		storeCallbacks = store;
-	}
-
-	public static void clearRegistry() {
-		REGISTRY.clear();
 	}
 	// endregion
 
@@ -162,16 +143,6 @@ public final class CallbackRegistry {
 		}
 
 		@JmxAttribute
-		public boolean getStoreCallbacks() {
-			return CallbackRegistry.getStoreCallbacks();
-		}
-
-		@JmxAttribute
-		public void setStoreCallbacks(boolean store) {
-			CallbackRegistry.setStoreCallbacks(store);
-		}
-
-		@JmxAttribute
 		public int getMaxCallbacksToShow() {
 			return maxCallbacksToShow;
 		}
@@ -187,11 +158,6 @@ public final class CallbackRegistry {
 		@JmxAttribute
 		public int getTotalActiveCallbacks() {
 			return CallbackRegistry.REGISTRY.size();
-		}
-
-		@JmxOperation
-		public void clearRegistry() {
-			CallbackRegistry.clearRegistry();
 		}
 
 		private static List<Map.Entry<Object, CallbackMetaData>> sortByTimestamp(Map<Object, CallbackMetaData> map) {
