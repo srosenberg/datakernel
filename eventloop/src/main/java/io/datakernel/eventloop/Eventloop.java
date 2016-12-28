@@ -19,10 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.exception.SimpleException;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.*;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
@@ -135,6 +132,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventloopStats stats = EventloopStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final ConcurrentCallsStats concurrentCallsStats = ConcurrentCallsStats.create(DEFAULT_SMOOTHING_WINDOW);
+
+	private long socketsCreated = 0;
+	private long socketsClosed = 0;
 
 	private boolean monitoring = false;
 
@@ -1288,5 +1288,28 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 		stats.setSmoothingWindow(smoothingWindow);
 		concurrentCallsStats.setSmoothingWindow(smoothingWindow);
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public long getSocketsCreated() {
+		return socketsCreated;
+	}
+
+	@JmxAttribute
+	public long getSocketsClosed() {
+		return socketsClosed;
+	}
+
+	@JmxAttribute
+	public long getSocketsActive() {
+		return socketsCreated - socketsClosed;
+	}
+
+	void recordSocketCloseEvent() {
+		socketsClosed++;
+	}
+
+	void recordSocketCreateEvent() {
+		socketsCreated++;
 	}
 }

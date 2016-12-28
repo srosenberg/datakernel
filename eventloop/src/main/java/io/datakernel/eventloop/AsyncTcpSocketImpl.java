@@ -95,6 +95,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		this.eventloop = checkNotNull(eventloop);
 		this.channel = checkNotNull(socketChannel);
 
+		eventloop.recordSocketCreateEvent();
+
 		assert (this.contractChecker = AsyncTcpSocketContract.create()) != null;
 	}
 	// endregion
@@ -345,6 +347,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private void closeChannel() {
 		if (channel == null) return;
 		try {
+			eventloop.recordSocketCloseEvent();
 			channel.close();
 		} catch (IOException e) {
 			eventloop.recordIoError(e, toString());
