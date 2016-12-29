@@ -1295,12 +1295,12 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return socketsCreated;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public long getSocketsClosed() {
 		return socketsClosed;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public long getSocketsActive() {
 		return socketsCreated - socketsClosed;
 	}

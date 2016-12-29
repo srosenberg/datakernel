@@ -77,6 +77,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final Map<HttpServerConnection, UrlWithTimestamp> currentRequestHandlingStart = new HashMap<>();
 	private boolean monitorCurrentRequestsHandlingDuration = false;
 
+	long connectionsCreated;
+	long connectionsClosed;
+
+	private int leakedSocketChannelTotal;
+	private final int maxleakedSocketChannelErrorsSize = 100;
+	private final List<String> leakedSocketChannelErrors = new LinkedList<>();
+
 	// region builders
 	private AsyncHttpServer(Eventloop eventloop,
 	                        ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
@@ -196,6 +203,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
+		connectionsCreated++;
 		return HttpServerConnection.create(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				this, servlet, keepAlivePool, headerChars, maxHttpMessageSize);
@@ -415,5 +423,39 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		public int compareTo(UrlWithDuration other) {
 			return -Integer.compare(duration, other.duration);
 		}
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public long getConnectionsCreated() {
+		return connectionsCreated;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public long getConnectionsClosed() {
+		return connectionsClosed;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public long getConnectionsActive() {
+		return connectionsCreated - connectionsClosed;
+	}
+
+	// TODO(vmykhalko): remove
+	void addLeakedSocketChannelError(String errMsg) {
+		leakedSocketChannelTotal++;
+		leakedSocketChannelErrors.add(errMsg);
+		if (leakedSocketChannelErrors.size() > maxleakedSocketChannelErrorsSize) {
+			leakedSocketChannelErrors.remove(0);
+		}
+	}
+
+	@JmxAttribute
+	public List<String> getLeakedSocketChannelErrors() {
+		return leakedSocketChannelErrors;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getLeakedSocketChannelTotal() {
+		return leakedSocketChannelTotal;
 	}
 }

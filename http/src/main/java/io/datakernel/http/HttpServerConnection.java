@@ -20,6 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 
@@ -319,11 +320,26 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
+		server.connectionsClosed++;
 	}
 
 	@Override
 	protected void onHttpProtocolError(ParseException e) {
 		// jmx
 		server.recordHttpProtocolError();
+	}
+
+	// TODO(vmykhalko): remove
+	@Override
+	protected void finalize() throws Throwable {
+		try {
+			AsyncTcpSocketImpl socket = (AsyncTcpSocketImpl)asyncTcpSocket;
+			if (socket.getSocketChannel().isOpen()) {
+				String msg = "HttpServerConnection. SocketChannel leak. " + toString();
+				server.addLeakedSocketChannelError(msg);
+			}
+		} catch (Throwable e) {
+			super.finalize();
+		}
 	}
 }
