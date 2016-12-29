@@ -328,18 +328,4 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		// jmx
 		server.recordHttpProtocolError();
 	}
-
-	// TODO(vmykhalko): remove
-	@Override
-	protected void finalize() throws Throwable {
-		try {
-			AsyncTcpSocketImpl socket = (AsyncTcpSocketImpl)asyncTcpSocket;
-			if (socket.getSocketChannel().isOpen()) {
-				String msg = "HttpServerConnection. SocketChannel leak. " + toString();
-				server.addLeakedSocketChannelError(msg);
-			}
-		} catch (Throwable e) {
-			super.finalize();
-		}
-	}
 }

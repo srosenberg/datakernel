@@ -80,10 +80,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	long connectionsCreated;
 	long connectionsClosed;
 
-	private int leakedSocketChannelTotal;
-	private final int maxleakedSocketChannelErrorsSize = 100;
-	private final List<String> leakedSocketChannelErrors = new LinkedList<>();
-
 	// region builders
 	private AsyncHttpServer(Eventloop eventloop,
 	                        ServerSocketSettings serverSocketSettings, SocketSettings socketSettings,
@@ -438,24 +434,5 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public long getConnectionsActive() {
 		return connectionsCreated - connectionsClosed;
-	}
-
-	// TODO(vmykhalko): remove
-	void addLeakedSocketChannelError(String errMsg) {
-		leakedSocketChannelTotal++;
-		leakedSocketChannelErrors.add(errMsg);
-		if (leakedSocketChannelErrors.size() > maxleakedSocketChannelErrorsSize) {
-			leakedSocketChannelErrors.remove(0);
-		}
-	}
-
-	@JmxAttribute
-	public List<String> getLeakedSocketChannelErrors() {
-		return leakedSocketChannelErrors;
-	}
-
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getLeakedSocketChannelTotal() {
-		return leakedSocketChannelTotal;
 	}
 }

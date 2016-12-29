@@ -306,18 +306,4 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", poolNode=" + poolNode +
 				'}';
 	}
-
-	// TODO(vmykhalko): remove
-	@Override
-	protected void finalize() throws Throwable {
-		try {
-			AsyncTcpSocketImpl socket = (AsyncTcpSocketImpl)asyncTcpSocket;
-			if (socket.getSocketChannel().isOpen()) {
-				String msg = "HttpClientConnection. SocketChannel leak. " + toString();
-				httpClient.addLeakedSocketChannelError(msg);
-			}
-		} catch (Throwable e) {
-			super.finalize();
-		}
-	}
 }
