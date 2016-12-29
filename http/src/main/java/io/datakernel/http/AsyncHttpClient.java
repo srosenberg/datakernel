@@ -84,6 +84,10 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	int openedConnections = 0;
 	int closedConnections = 0;
 
+	private int leakedSocketChannelTotal;
+	private final int maxleakedSocketChannelErrorsSize = 100;
+	private final List<String> leakedSocketChannelErrors = new LinkedList<>();
+
 	private int inetAddressIdx = 0;
 
 	public static AsyncHttpClient create(Eventloop eventloop) {
@@ -615,5 +619,24 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			currentRequestToSendTime.remove(connection);
 			actualCallback.setException(exception);
 		}
+	}
+
+	// TODO(vmykhalko): remove
+	void addLeakedSocketChannelError(String errMsg) {
+		leakedSocketChannelTotal++;
+		leakedSocketChannelErrors.add(errMsg);
+		if (leakedSocketChannelErrors.size() > maxleakedSocketChannelErrorsSize) {
+			leakedSocketChannelErrors.remove(0);
+		}
+	}
+
+	@JmxAttribute
+	public List<String> getLeakedSocketChannelErrors() {
+		return leakedSocketChannelErrors;
+	}
+
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getLeakedSocketChannelTotal() {
+		return leakedSocketChannelTotal;
 	}
 }

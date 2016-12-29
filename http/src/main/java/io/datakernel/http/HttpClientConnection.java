@@ -21,6 +21,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 
@@ -304,5 +305,19 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", poolTimestamp=" + keepAliveTimestamp +
 				", poolNode=" + poolNode +
 				'}';
+	}
+
+	// TODO(vmykhalko): remove
+	@Override
+	protected void finalize() throws Throwable {
+		try {
+			AsyncTcpSocketImpl socket = (AsyncTcpSocketImpl)asyncTcpSocket;
+			if (socket.getSocketChannel().isOpen()) {
+				String msg = "HttpClientConnection. SocketChannel leak. " + toString();
+				httpClient.addLeakedSocketChannelError(msg);
+			}
+		} catch (Throwable e) {
+			super.finalize();
+		}
 	}
 }
