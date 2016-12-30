@@ -245,11 +245,12 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.readPosition(), value.readRemaining());
 		} else if (header == TRANSFER_ENCODING) {
 			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.readPosition(), value.readRemaining());
-		} else if (header == CONTENT_ENCODING) {
-			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining());
-		} else if (header == ACCEPT_ENCODING) {
-			shouldGzip = contains(value, CONTENT_ENCODING_GZIP);
 		}
+//		else if (header == CONTENT_ENCODING) {
+//			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.readPosition(), value.readRemaining());
+//		} else if (header == ACCEPT_ENCODING) {
+//			shouldGzip = contains(value, CONTENT_ENCODING_GZIP);
+//		}
 	}
 
 	private boolean contains(ByteBuf value, byte[] bytes) {

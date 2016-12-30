@@ -24,6 +24,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -45,6 +46,7 @@ public class TestGzipProcessor {
 	private static final int TIMEOUT = 500;
 	private static final String TEST_PHRASE = "I grant! I've never seen a goddess go. My mistress, when she walks, treads on the ground";
 
+	@Ignore
 	@Test
 	public void testEncodeDecode() throws ParseException {
 		ByteBuf actual = fromGzip(toGzip(wrapAscii(TEST_PHRASE)));
@@ -53,6 +55,7 @@ public class TestGzipProcessor {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testGzippedCommunicationBetweenClientServer() throws IOException, ParseException, ExecutionException, InterruptedException {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
@@ -98,6 +101,7 @@ public class TestGzipProcessor {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void recycleByteBufInCaseOfBadInput() {
 		final ByteBuf badBuf = ByteBufPool.allocate(100);
