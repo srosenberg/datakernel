@@ -24,6 +24,7 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
+import io.datakernel.util.ExposedLinkedList;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
+	public static final int DEFAULT_SCHEDULE_PRECISION = 1;
 
 	private static volatile FatalErrorHandler globalFatalErrorHandler = FatalErrorHandlers.ignoreAllErrors();
 
@@ -69,13 +71,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	/**
 	 * Collection of scheduled tasks that are scheduled at particular timestamp.
 	 */
-	private final PriorityQueue<ScheduledRunnable> scheduledTasks = new PriorityQueue<>();
+	private final SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> scheduledTasks = new TreeMap<>();
 
 	/**
 	 * Collection of background tasks,
 	 * which mean that if eventloop contains only background tasks, it will be closed
 	 */
-	private final PriorityQueue<ScheduledRunnable> backgroundTasks = new PriorityQueue<>();
+	private final SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> backgroundTasks = new TreeMap<>();
 
 	/**
 	 * Count of concurrent operations in other threads, non-zero value prevents event loop from termination.
@@ -234,7 +236,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private boolean isKeepAlive() {
 		if (breakEventloop)
 			return false;
-		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
+		return !localTasks.isEmpty() || countScheduledTasks(scheduledTasks) > 0 || !concurrentTasks.isEmpty()
 				|| concurrentOperationsCount.get() > 0
 				|| keepAlive || !selector.keys().isEmpty();
 	}
@@ -322,17 +324,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		return Math.min(DEFAULT_EVENT_TIMEOUT, timeout);
 	}
 
-	private long getTimeBeforeExecution(PriorityQueue<ScheduledRunnable> taskQueue) {
-		while (!taskQueue.isEmpty()) {
-			ScheduledRunnable first = taskQueue.peek();
-			assert first != null; // unreachable condition
-			if (first.isCancelled()) {
-				taskQueue.poll();
-				continue;
-			}
-			return first.getTimestamp() - currentTimeMillis();
-		}
-		return DEFAULT_EVENT_TIMEOUT;
+	private long getTimeBeforeExecution(SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> tasks) {
+		return tasks.isEmpty() ? DEFAULT_EVENT_TIMEOUT : tasks.firstKey() - currentTimeMillis();
 	}
 
 	/**
@@ -466,42 +459,42 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		executeScheduledTasks(backgroundTasks);
 	}
 
-	private void executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
+	private void executeScheduledTasks(SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> tasks) {
 		int newRunnables = 0;
 		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
-		for (; ; ) {
-			ScheduledRunnable peeked = taskQueue.peek();
-			if (peeked == null)
-				break;
-			if (peeked.isCancelled()) {
-				taskQueue.poll();
-				continue;
-			}
-			if (peeked.getTimestamp() >= currentTimeMillis()) {
+		while (!tasks.isEmpty()) {
+			long minTimestamp = tasks.firstKey();
+
+			if (minTimestamp >= currentTimeMillis()) {
 				break;
 			}
-			ScheduledRunnable polled = taskQueue.poll();
-			assert polled == peeked;
 
-			Runnable runnable = polled.getRunnable();
-			if (sw != null) {
-				sw.reset();
-				sw.start();
+			ExposedLinkedList<ScheduledRunnable> bucket = tasks.remove(minTimestamp);
+
+			// TODO(vmykhalko): add iterator for ExposedLinkedList ?
+			while (bucket.size() > 0) {
+				ScheduledRunnable schTask = bucket.removeFirstValue();
+				schTask.node = null;
+				Runnable runnable = schTask.getRunnable();
+				if (sw != null) {
+					sw.reset();
+					sw.start();
+				}
+
+				try {
+					runnable.run();
+					tick++;
+					schTask.complete();
+					if (sw != null)
+						stats.updateScheduledTaskDuration(runnable, sw);
+				} catch (Throwable e) {
+					recordFatalError(e, runnable);
+				}
+
+				newRunnables++;
 			}
-
-			try {
-				runnable.run();
-				tick++;
-				polled.complete();
-				if (sw != null)
-					stats.updateScheduledTaskDuration(runnable, sw);
-			} catch (Throwable e) {
-				recordFatalError(e, runnable);
-			}
-
-			newRunnables++;
 		}
 		stats.updateScheduledTasksStats(newRunnables, swTotal);
 	}
@@ -793,8 +786,11 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	@Override
 	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
-		assert inEventloopThread();
-		return addScheduledTask(timestamp, runnable, false);
+		return schedule(timestamp, DEFAULT_SCHEDULE_PRECISION, runnable);
+	}
+
+	public ScheduledRunnable schedule(long timestamp, int precision, Runnable runnable) {
+		return addScheduledTask(timestamp, precision, runnable, scheduledTasks);
 	}
 
 	/**
@@ -808,15 +804,37 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	@Override
 	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
-		assert inEventloopThread();
-		return addScheduledTask(timestamp, runnable, true);
+		return scheduleBackground(timestamp, DEFAULT_SCHEDULE_PRECISION, runnable);
 	}
 
-	private ScheduledRunnable addScheduledTask(long timestamp, Runnable runnable, boolean background) {
-		ScheduledRunnable scheduledRunnable = ScheduledRunnable.create(timestamp, runnable);
-		PriorityQueue<ScheduledRunnable> taskQueue = background ? backgroundTasks : scheduledTasks;
-		taskQueue.offer(scheduledRunnable);
-		return scheduledRunnable;
+	public ScheduledRunnable scheduleBackground(long timestamp, int precision, Runnable runnable) {
+		return addScheduledTask(timestamp, precision, runnable, backgroundTasks);
+	}
+
+	private ScheduledRunnable addScheduledTask(long timestamp, int precision, Runnable runnable,
+	                                           SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> tasks) {
+		assert inEventloopThread();
+
+		long rounded = ceilMod(timestamp, precision);
+		ExposedLinkedList<ScheduledRunnable> bucket = ensureEntry(rounded, tasks);
+		ScheduledRunnable schTask = new ScheduledRunnable(rounded, runnable, bucket);
+		bucket.addLastNode(schTask.node);
+		return schTask;
+	}
+
+	private ExposedLinkedList<ScheduledRunnable> ensureEntry(long key,
+	                                                         SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> map) {
+		ExposedLinkedList<ScheduledRunnable> value = map.get(key);
+		if (value == null) {
+			value = ExposedLinkedList.create();
+			map.put(key, value);
+		}
+		return value;
+	}
+
+	public long ceilMod(long value, long modulo) {
+		long remainder = value % modulo;
+		return remainder == 0 ? value : value - remainder + modulo;
 	}
 
 	/**
@@ -1126,6 +1144,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		globalFatalErrorHandler = checkNotNull(handler);
 	}
 
+	private int countScheduledTasks(Map<Long, ExposedLinkedList<ScheduledRunnable>> tasks) {
+		int total = 0;
+		for (ExposedLinkedList<ScheduledRunnable> bucket : tasks.values()) {
+			total += bucket.size();
+		}
+		return total;
+	}
+
 	// JMX
 	@JmxOperation(description = "enable monitoring " +
 			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
@@ -1243,7 +1269,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			reducer = JmxReducers.JmxReducerSum.class
 	)
 	public int getCurrentScheduledTasks() {
-		return scheduledTasks.size();
+		return countScheduledTasks(scheduledTasks);
 	}
 
 	@JmxAttribute(
@@ -1251,7 +1277,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			reducer = JmxReducers.JmxReducerSum.class
 	)
 	public int getCurrentBackgroundTasks() {
-		return backgroundTasks.size();
+		return countScheduledTasks(backgroundTasks);
 	}
 
 	@JmxAttribute(

@@ -17,15 +17,16 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.AsyncCancellable;
+import io.datakernel.util.ExposedLinkedList;
+import io.datakernel.util.ExposedLinkedList.Node;
 
-public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
-	/**
-	 * The time after which this runnable will be executed
-	 */
-	private final long timestamp;
+public final class ScheduledRunnable implements AsyncCancellable {
+	private long timestamp;  // TODO(vmykhalko): is timestamp really needed here?
 	private Runnable runnable;
-	private boolean cancelled;
 	private boolean complete;
+	private boolean cancelled;
+	Node<ScheduledRunnable> node = new ExposedLinkedList.Node<>(this);
+	private final ExposedLinkedList<ScheduledRunnable> bucket;
 
 	// region builders
 
@@ -35,46 +36,20 @@ public final class ScheduledRunnable implements Comparable<ScheduledRunnable>, A
 	 * @param timestamp timestamp after which this runnable will be executed
 	 * @param runnable  runnable for executing
 	 */
-	private ScheduledRunnable(long timestamp, Runnable runnable) {
+	public ScheduledRunnable(long timestamp, Runnable runnable, ExposedLinkedList<ScheduledRunnable> bucket) {
 		this.timestamp = timestamp;
 		this.runnable = runnable;
-	}
-
-	public static ScheduledRunnable create(long timestamp, Runnable runnable) {
-		return new ScheduledRunnable(timestamp, runnable);
+		this.bucket = bucket;
 	}
 	// endregion
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		ScheduledRunnable that = (ScheduledRunnable) o;
-		return timestamp == that.timestamp;
-	}
-
-	@Override
-	public int hashCode() {
-		return (int) (timestamp ^ (timestamp >>> 32));
-	}
-
-	/**
-	 * Compares timestamps of two ScheduledRunnables
-	 *
-	 * @param o ScheduledRunnable for comparing
-	 * @return a negative integer, zero, or a positive integer as this
-	 * timestamp is less than, equal to, or greater than the timestamp of
-	 * ScheduledRunnable from argument.
-	 */
-	@Override
-	public int compareTo(ScheduledRunnable o) {
-		return Long.compare(timestamp, o.timestamp);
-	}
 
 	@Override
 	public void cancel() {
 		this.cancelled = true;
 		this.runnable = null;
+		if (node != null) {
+			bucket.removeNode(node);
+		}
 	}
 
 	public void complete() {
