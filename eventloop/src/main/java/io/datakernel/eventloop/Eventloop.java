@@ -815,9 +815,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	                                           SortedMap<Long, ExposedLinkedList<ScheduledRunnable>> tasks) {
 		assert inEventloopThread();
 
-		long rounded = ceilMod(timestamp, precision);
-		ExposedLinkedList<ScheduledRunnable> bucket = ensureEntry(rounded, tasks);
-		ScheduledRunnable schTask = new ScheduledRunnable(rounded, runnable, bucket);
+		long roundedTimestamp = ceilMod(timestamp, precision);
+		ExposedLinkedList<ScheduledRunnable> bucket = ensureEntry(roundedTimestamp, tasks);
+		ScheduledRunnable schTask = new ScheduledRunnable(roundedTimestamp, runnable, bucket);
 		bucket.addLastNode(schTask.node);
 		return schTask;
 	}
@@ -1330,6 +1330,43 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	public long getSocketsActive() {
 		return socketsCreated - socketsClosed;
 	}
+
+	// TODO(vmykhalko) remove extra jmx for scheduled tasks
+	// region extra jmx for scheduled tasks
+	@JmxAttribute
+	public ScheduledTaskStats getCurrentScheduledTasksStats() {
+		Map<Integer, Integer> delayToTasks = new HashMap<>();
+		long currentTime = currentTimeMillis();
+		for (Map.Entry<Long, ExposedLinkedList<ScheduledRunnable>> entry : scheduledTasks.entrySet()) {
+			int delay = (int) (entry.getKey() - currentTime);
+			delayToTasks.put(delay, entry.getValue().size());
+		}
+		return new ScheduledTaskStats(delayToTasks, delayGranularity, maxLinesToShow);
+	}
+
+	private int delayGranularity = 1;
+	private int maxLinesToShow = 100;
+
+	@JmxAttribute
+	public int getCurrentScheduledTasksStatsDelayGranularity() {
+		return delayGranularity;
+	}
+
+	@JmxAttribute
+	public void setCurrentScheduledTasksStatsDelayGranularity(int delayGranularity) {
+		this.delayGranularity = delayGranularity;
+	}
+
+	@JmxAttribute
+	public int getCurrentScheduledTasksStatsMaxLinesToShow() {
+		return maxLinesToShow;
+	}
+
+	@JmxAttribute
+	public void setCurrentScheduledTasksStatsMaxLinesToShow(int maxLinesToShow) {
+		this.maxLinesToShow = maxLinesToShow;
+	}
+	// endregion
 
 	void recordSocketCloseEvent() {
 		socketsClosed++;

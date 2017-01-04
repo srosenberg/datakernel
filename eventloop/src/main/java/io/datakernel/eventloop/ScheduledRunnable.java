@@ -49,6 +49,7 @@ public final class ScheduledRunnable implements AsyncCancellable {
 		this.runnable = null;
 		if (node != null) {
 			bucket.removeNode(node);
+			node = null;
 		}
 	}
 
