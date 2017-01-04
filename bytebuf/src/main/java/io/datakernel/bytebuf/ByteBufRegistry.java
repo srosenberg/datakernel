@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class ByteBufRegistry {
 	public static final int CLEAR_EMPTY_WRAPPERS_PERIOD = 1000;
@@ -32,6 +33,12 @@ public final class ByteBufRegistry {
 
 	private static volatile boolean storeByteBufs = false;
 	private static volatile boolean storeStackTrace = false;
+
+	private static final AtomicLong totalAllocatedBufs = new AtomicLong(0);
+	private static final AtomicLong totalRecycledBufs = new AtomicLong(0);
+
+	private static final AtomicLong totalAllocatedBytes = new AtomicLong(0);
+	private static final AtomicLong totalRecycledBytes = new AtomicLong(0);
 
 	private ByteBufRegistry() {}
 
@@ -59,9 +66,27 @@ public final class ByteBufRegistry {
 	public static void setStoreByteBufs(boolean store) {
 		storeByteBufs = store;
 	}
+
+	public static long getTotalAllocatedBufs() {
+		return totalAllocatedBufs.longValue();
+	}
+
+	public static long getTotalRecycledBufs() {
+		return totalAllocatedBufs.longValue();
+	}
+
+	public static long getTotalAllocatedBytes() {
+		return totalAllocatedBytes.longValue();
+	}
+
+	public static long getTotalRecycledBytes() {
+		return totalRecycledBytes.longValue();
+	}
 	// endregion
 
 	public static boolean recordAllocate(ByteBuf buf) {
+		totalAllocatedBufs.incrementAndGet();
+		totalAllocatedBytes.addAndGet(buf.array().length);
 		if (storeByteBufs) {
 			int current = counter.incrementAndGet();
 			if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
@@ -84,6 +109,8 @@ public final class ByteBufRegistry {
 	}
 
 	public static boolean recordRecycle(ByteBuf buf) {
+		totalRecycledBufs.incrementAndGet();
+		totalRecycledBytes.addAndGet(buf.array().length);
 		if (storeByteBufs) {
 			activeByteBufs.remove(new ByteBufWrapper(buf));
 		}

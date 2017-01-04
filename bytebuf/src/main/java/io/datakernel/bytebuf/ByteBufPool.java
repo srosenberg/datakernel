@@ -231,6 +231,18 @@ public final class ByteBufPool {
 
 		int getTotalActiveByteBufs();
 
+		long getBufs_TotalAllocated();
+
+		long getBufs_TotalRecycled();
+
+		long getBufs_TotalNotRecycled();
+
+		long getBytes_TotalAllocated();
+
+		long getBytes_TotalRecycled();
+
+		long getBytes_TotalNotRecycled();
+
 		void clearRegistry();
 	}
 
@@ -427,6 +439,36 @@ public final class ByteBufPool {
 		@Override
 		public int getTotalActiveByteBufs() {
 			return ByteBufRegistry.getActiveByteBufs().size();
+		}
+
+		@Override
+		public long getBufs_TotalAllocated() {
+			return ByteBufRegistry.getTotalAllocatedBufs();
+		}
+
+		@Override
+		public long getBufs_TotalRecycled() {
+			return ByteBufRegistry.getTotalRecycledBufs();
+		}
+
+		@Override
+		public long getBufs_TotalNotRecycled() {
+			return ByteBufRegistry.getTotalAllocatedBufs() - ByteBufRegistry.getTotalRecycledBufs();
+		}
+
+		@Override
+		public long getBytes_TotalAllocated() {
+			return ByteBufRegistry.getTotalAllocatedBytes();
+		}
+
+		@Override
+		public long getBytes_TotalRecycled() {
+			return ByteBufRegistry.getTotalRecycledBytes();
+		}
+
+		@Override
+		public long getBytes_TotalNotRecycled() {
+			return ByteBufRegistry.getTotalAllocatedBytes() - ByteBufRegistry.getTotalRecycledBytes();
 		}
 
 		@Override
