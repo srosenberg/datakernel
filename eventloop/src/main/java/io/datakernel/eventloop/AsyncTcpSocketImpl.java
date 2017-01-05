@@ -246,22 +246,26 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private String getContext() {
 		if (context == null) {
-			try {
-				StringBuilder ctx = new StringBuilder();
-				ctx.append("Handler: ");
-				ctx.append(socketEventHandler.getClass().getSimpleName());
-				ctx.append(" | ");
-				ctx.append(socketEventHandler.toString());
-				ctx.append("   Remote: ");
-				ctx.append(channel.getRemoteAddress());
-				ctx.append("   Local: ");
-				ctx.append(channel.getLocalAddress());
-				context = ctx.toString();
-			} catch (IOException e) {
-				context = "";
-			}
+			assert (context = createContextInfo()) != null;
 		}
 		return context;
+	}
+
+	private String createContextInfo() {
+		try {
+			StringBuilder ctx = new StringBuilder();
+			ctx.append("Handler: ");
+			ctx.append(socketEventHandler.getClass().getSimpleName());
+			ctx.append(" | ");
+			ctx.append(socketEventHandler.toString());
+			ctx.append("   Remote: ");
+			ctx.append(channel.getRemoteAddress());
+			ctx.append("   Local: ");
+			ctx.append(channel.getLocalAddress());
+			return ctx.toString();
+		} catch (IOException e) {
+			return "Error";
+		}
 	}
 	// endregion
 
