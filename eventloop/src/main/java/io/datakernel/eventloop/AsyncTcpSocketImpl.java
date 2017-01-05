@@ -296,7 +296,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			@SuppressWarnings("ConstantConditions")
 			ByteBuffer bufferToSend = bufToSend.toReadByteBuffer();
 
-			channel.write(bufferToSend);
+			try {
+				channel.write(bufferToSend);
+			} catch (IOException e) {
+				bufToSend.recycle();
+				throw e;
+			}
+
 			bufToSend.ofReadByteBuffer(bufferToSend);
 
 			if (bufToSend.canRead()) {
