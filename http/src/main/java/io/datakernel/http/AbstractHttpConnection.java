@@ -415,8 +415,11 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 				}
 
 				if (reading == FIRSTLINE) {
-					onFirstLine(headerBuf);
-					headerBuf.recycle();
+					try {
+						onFirstLine(headerBuf);
+					} finally {
+						headerBuf.recycle();
+					}
 					reading = HEADERS;
 					maxHeaders = MAX_HEADERS;
 				} else {
