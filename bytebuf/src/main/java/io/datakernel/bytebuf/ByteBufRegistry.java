@@ -72,7 +72,7 @@ public final class ByteBufRegistry {
 	}
 
 	public static long getTotalRecycledBufs() {
-		return totalAllocatedBufs.longValue();
+		return totalRecycledBufs.longValue();
 	}
 
 	public static long getTotalAllocatedBytes() {
