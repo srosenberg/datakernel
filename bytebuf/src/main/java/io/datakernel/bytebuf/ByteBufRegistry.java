@@ -101,7 +101,31 @@ public final class ByteBufRegistry {
 				stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
 			}
 			long timestamp = System.currentTimeMillis();
-			ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp);
+			ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp, null);
+			activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
+		}
+
+		return true;
+	}
+
+	public static boolean recordAllocateDebug(ByteBuf buf, String context) {
+		totalAllocatedBufs.incrementAndGet();
+		totalAllocatedBytes.addAndGet(buf.array().length);
+		if (storeByteBufs) {
+			int current = counter.incrementAndGet();
+			if (current % CLEAR_EMPTY_WRAPPERS_PERIOD == 0) { // in case of negative values it also works properly
+				clearEmptyWrappers();
+			}
+
+			StackTraceElement[] stackTrace = null;
+			if (storeStackTrace) {
+				// TODO(vmykhalko): maybe use new Exception().getStackTrace instead ? according to performance issues
+				StackTraceElement[] fullStackTrace = Thread.currentThread().getStackTrace();
+				// remove stack trace lines that stand for registration method calls
+				stackTrace = Arrays.copyOfRange(fullStackTrace, 3, fullStackTrace.length);
+			}
+			long timestamp = System.currentTimeMillis();
+			ByteBufMetaInfo metaInfo = new ByteBufMetaInfo(stackTrace, timestamp, context);
 			activeByteBufs.put(new ByteBufWrapper(buf), metaInfo);
 		}
 
@@ -162,18 +186,24 @@ public final class ByteBufRegistry {
 	static final class ByteBufMetaInfo {
 		private final StackTraceElement[] stackTrace;
 		private final long allocateTimestamp;
+		private final String context;
 
-		public ByteBufMetaInfo(StackTraceElement[] stackTrace, long allocateTimestamp) {
+		public ByteBufMetaInfo(StackTraceElement[] stackTrace, long allocateTimestamp, String context) {
 			this.stackTrace = stackTrace;
 			this.allocateTimestamp = allocateTimestamp;
+			this.context = context;
 		}
 
 		public StackTraceElement[] getStackTrace() {
 			return stackTrace;
 		}
 
-		public long getAllocationTimestamp() {
+		public long getAllocateTimestamp() {
 			return allocateTimestamp;
+		}
+
+		public String getContext() {
+			return context;
 		}
 	}
 }

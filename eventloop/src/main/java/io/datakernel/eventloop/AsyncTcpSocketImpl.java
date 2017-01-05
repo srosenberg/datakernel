@@ -211,7 +211,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doRead() {
-		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
+		ByteBuf buf = ByteBufPool.allocateDebug(receiveBufferSize, getContext());
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
 		int numRead;
@@ -239,6 +239,31 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		assert contractChecker.onRead();
 		socketEventHandler.onRead(buf);
 	}
+
+	// TODO(vmykh): remove debug code
+	// region debug code
+	private String context;
+
+	private String getContext() {
+		if (context == null) {
+			try {
+				StringBuilder ctx = new StringBuilder();
+				ctx.append("Handler: ");
+				ctx.append(socketEventHandler.getClass().getSimpleName());
+				ctx.append(" | ");
+				ctx.append(socketEventHandler.toString());
+				ctx.append("   Remote: ");
+				ctx.append(channel.getRemoteAddress());
+				ctx.append("   Local: ");
+				ctx.append(channel.getLocalAddress());
+				context = ctx.toString();
+			} catch (IOException e) {
+				context = "";
+			}
+		}
+		return context;
+	}
+	// endregion
 
 	// write cycle
 	@Override
